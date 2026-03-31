@@ -3,9 +3,10 @@ set -e
 
 case "$1" in
 
+
   db)
     echo "Starting PostgreSQL..."
-    docker compose up -d postgres
+    docker compose up -d db
     ;;
 
   obs)
@@ -15,7 +16,7 @@ case "$1" in
 
   all)
     echo "Starting everything..."
-    docker compose up -d postgres
+    docker compose up -d db
     docker compose -f docker-compose.observability.yml up -d
     mvn spring-boot:run
     ;;

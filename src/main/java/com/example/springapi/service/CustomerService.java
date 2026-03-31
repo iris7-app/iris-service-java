@@ -33,6 +33,7 @@ public class CustomerService {
 
         Customer saved = repository.save(customer);
         CustomerDto dto = toDto(saved);
+        //save to buffer
         recentCustomerBuffer.add(dto);
         return dto;
     }

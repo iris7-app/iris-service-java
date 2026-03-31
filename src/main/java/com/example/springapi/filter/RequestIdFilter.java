@@ -28,24 +28,32 @@ public class RequestIdFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+
+        // get request ID
         String requestId = request.getHeader(HEADER_NAME);
+        // if not set create UUID
         if (requestId == null || requestId.isBlank()) {
             requestId = UUID.randomUUID().toString();
         }
 
+        // backup in MDC context
         MDC.put(MDC_KEY, requestId);
+        // send back to response
         response.setHeader(HEADER_NAME, requestId);
 
+        // compute duration
         long start = System.nanoTime();
         try {
             filterChain.doFilter(request, response);
         } finally {
             long durationMs = (System.nanoTime() - start) / 1_000_000;
+            // send to log
             log.info("http_access method={} uri={} status={} durationMs={}",
                     request.getMethod(),
                     request.getRequestURI(),
                     response.getStatus(),
                     durationMs);
+            //bakcup in MDC context
             MDC.remove(MDC_KEY);
         }
     }

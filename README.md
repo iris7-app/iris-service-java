@@ -29,8 +29,7 @@ Ce projet ne vise pas à démontrer un simple CRUD, mais la capacité à :
 - Flyway
 - Actuator
 - Micrometer + Prometheus
-- OpenTelemetry (OTLP)
-- Grafana / LGTM
+- Grafana
 - Docker / Docker Compose
 - Testcontainers
 
@@ -104,3 +103,7 @@ Montrer comment qualifier un problème de temps de réponse sur un endpoint spé
 for i in {1..100}; do
   curl -s http://localhost:8080/customers/aggregate > /dev/null
 done
+
+### Vérification
+```bash
+curl -s http://localhost:8080/actuator/prometheus
