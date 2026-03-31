@@ -14,12 +14,14 @@ public class RecentCustomerBuffer {
 
     public synchronized void add(CustomerDto dto) {
         recent.addFirst(dto);
+        // only keep a few values
         if (recent.size() > 10) {
             recent.removeLast();
         }
     }
 
     public synchronized List<CustomerDto> getRecent() {
+        //get recent values
         SequencedCollection<CustomerDto> view = recent;
         return List.copyOf(view);
     }

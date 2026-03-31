@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 public class AggregationService {
 
     public AggregatedResponse aggregate() {
+        // aggregate with parallel virtual threads
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             var customerFuture = executor.submit(this::loadCustomerData);
             var statsFuture = executor.submit(this::loadStats);
