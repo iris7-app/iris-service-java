@@ -1,0 +1,26 @@
+stages:
+  - build
+  - test
+
+image: maven:3.9.9-eclipse-temurin-24
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version --no-transfer-progress"
+
+cache:
+  paths:
+    - .m2/repository
+
+build:
+  stage: build
+  script:
+    - mvn $MAVEN_CLI_OPTS -DskipTests clean package
+  artifacts:
+    paths:
+      - target/*.jar
+
+test:
+  stage: test
+  script:
+    - mvn $MAVEN_CLI_OPTS test
