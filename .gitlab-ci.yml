@@ -1,31 +1,48 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - when: never
+
 stages:
-  - test
-  - build
+  - verify
+  - package
 
-image: maven:3.9.14-eclipse-temurin-25-noble
+default:
+  image: maven:3.9.14-eclipse-temurin-25-noble
+  interruptible: true
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+    MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version --no-transfer-progress"
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+  cache:
+    key: "$CI_COMMIT_REF_SLUG"
+    paths:
+      - .m2/repository
 
-variables:
-  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
-  MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version --no-transfer-progress"
-  DOCKER_HOST: "tcp://docker:2375"
-  DOCKER_TLS_CERTDIR: ""
-
-cache:
-  paths:
-    - .m2/repository
-
-test:
-  stage: test
+verify:
+  stage: verify
   services:
     - name: docker:28-dind
       alias: docker
   script:
-    - mvn $MAVEN_CLI_OPTS test
+    - mvn $MAVEN_CLI_OPTS verify
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - target/surefire-reports/*.xml
+        - target/failsafe-reports/*.xml
+    expire_in: 1 week
 
-build:
-  stage: build
+package:
+  stage: package
+  needs:
+    - job: verify
   script:
     - mvn $MAVEN_CLI_OPTS -DskipTests package
   artifacts:
     paths:
       - target/*.jar
+    expire_in: 1 week
