@@ -18,7 +18,7 @@ public class CustomerStatsScheduler {
         this.repository = repository;
     }
 
-    // Toutes les 30s, log le nombre total de customers (démo simple)
+    // Every 30s, log the total number of customers (simple demo)
     @Scheduled(fixedDelay = 30_000)
     @SchedulerLock(name = "customerStats", lockAtMostFor = "PT25S", lockAtLeastFor = "PT10S")
     public void logCustomerStats() {
