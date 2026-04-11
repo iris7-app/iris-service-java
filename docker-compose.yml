@@ -43,6 +43,60 @@ services:
       retries: 10
       start_period: 30s
 
+  # ─── OpenTelemetry Collector ─────────────────────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    volumes:
+      - ./otel-collector.yml:/etc/otel/config.yaml
+    command: ["--config=/etc/otel/config.yaml"]
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    depends_on:
+      - tempo
+      - loki
+
+  # ─── Tempo (traces) ──────────────────────────────────────────────────────────
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yml:/etc/tempo.yaml
+      - tempo_data:/var/tempo
+    ports:
+      - "3200:3200"   # Tempo HTTP API
+      - "9095:9095"   # Tempo gRPC
+
+  # ─── Loki (logs) ─────────────────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./loki.yml:/etc/loki/config.yaml
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+
+  # ─── Grafana (dashboards) ────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - tempo
+      - loki
+
   # ─── Ollama (local LLM) ──────────────────────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
@@ -62,6 +116,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
       ollama:
         condition: service_started
     ports:
@@ -76,9 +132,14 @@ services:
       SPRING_JPA_SHOW_SQL: false
       # internal docker network address
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # send traces/logs to the OTel Collector inside Docker network
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OLLAMA_BASE_URL: http://ollama:11434
 
 volumes:
   # persistent
   postgres_data:
+  tempo_data:
+  loki_data:
+  grafana_data:
   ollama_data:
