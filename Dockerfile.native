@@ -12,7 +12,7 @@
 #   - Some dynamic features (reflection, proxies) need explicit hints in
 #     src/main/resources/META-INF/native-image/
 #
-# Build command: docker build -f Dockerfile.native -t spring-api:native .
+# Build command: docker build -f Dockerfile.native -t customer-service:native .
 # Or via Maven:  mvn -Pnative native:compile
 # =============================================================================
 
