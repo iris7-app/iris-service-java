@@ -1,10 +1,7 @@
 # Spring Boot 4 – Observable Customer Service
 
-This project demonstrates how to build, operate, and diagnose a production-grade Spring Boot service.
-The central scenario: a customer enrichment endpoint slows down under load. The stack exists to make
-that situation detectable, traceable, and explainable — not to list technologies.
-
-Each component has a specific role. None was added for its own sake.
+This project has one goal: demonstrate what it takes to diagnose an incident on a backend service.
+The stack is built around that scenario — not around the technologies themselves.
 
 ---
 
@@ -39,24 +36,234 @@ open http://localhost:3001   # Grafana + OTel — distributed traces (Tempo), st
 
 ---
 
-## Architecture decisions
+## What this demonstrates
 
-Every component in this project exists to enable a specific capability. The table below answers
-"why is this here?" for each one.
+### Core — observability and diagnosis
 
-| Component | Why it's here |
-|-----------|---------------|
-| **Kafka** | Two messaging patterns in one app: fire-and-forget (customer creation event) and synchronous request-reply (enrichment with correlation and timeout). These are the two most common Kafka use cases in microservices. |
-| **OpenTelemetry** | Exports traces to Tempo and structured logs to Loki. Enables end-to-end request tracing including DB spans — essential for diagnosing latency that isn't visible in application logs. |
-| **Micrometer + Prometheus** | Exposes HTTP latency histograms (p95/p99), custom counters (customer.created, enrich.duration), and Kafka consumer metrics. Grafana dashboards are built on these. |
-| **Resilience4j** | Circuit breaker + retry on external HTTP calls (`BioService`, `JsonPlaceholderClient`). Demonstrates graceful degradation: the main API stays responsive when a downstream dependency fails. |
-| **Keycloak** | Optional OAuth2 resource server alongside the built-in JWT. Shows how to support two authentication modes in the same filter chain without interference. |
-| **Bucket4j rate limiting** | Token-bucket per IP address (100 req/min). Defense before business logic — the filter rejects at the edge, keeping the rest of the stack clean. |
-| **ShedLock** | JDBC-backed distributed lock for `@Scheduled` tasks. Prevents duplicate execution when the service runs as multiple instances (Kubernetes, Docker Swarm). |
-| **GraalVM native image** | Demonstrates AOT compilation trade-offs: ~50 ms startup and ~50 MB RSS vs ~5 s startup and ~250 MB RSS for the JVM image. Built in the daily scheduled CI pipeline (`-Pnative` profile). |
-| **Virtual threads (Project Loom)** | `spring.threads.virtual.enabled=true` — Tomcat, `@Async`, and Kafka use virtual threads. The `AggregationService` spawns two virtual threads per request for parallel sub-tasks, cutting latency from 400 ms to 200 ms. |
-| **Redis** | `RecentCustomerBuffer` stores the 10 most recent customers using `LPUSH + LTRIM`. Demonstrates Redis as a bounded ring buffer, not just a cache. |
-| **ArchUnit** | Enforces layer isolation at build time: controllers may not call repositories directly, no circular dependencies. Prevents architectural drift before it reaches production. |
+Everything in this section is necessary to answer: *what is slow, what failed, and why?*
+
+| Capability | How it's implemented |
+|---|---|
+| Distributed tracing | OpenTelemetry → Tempo (OTLP); DB spans via `datasource-micrometer` |
+| Metrics and latency histograms | Micrometer → Prometheus → Grafana (p50/p95/p99, custom counters) |
+| Structured logs correlated with traces | OTel log exporter → Loki, trace ID injected in every log line |
+| Health probes | Custom `DatabaseReachabilityHealthIndicator`, liveness/readiness groups |
+| Operational endpoints | `/actuator/health/readiness`, `/actuator/prometheus`, Swagger UI |
+
+### Secondary — additional patterns covered
+
+These patterns are present and documented, but they support the scenario rather than define it.
+
+| Pattern | What it illustrates |
+|---|---|
+| Kafka fire-and-forget + request-reply | Async decoupling vs sync correlation with built-in timeout |
+| JWT + optional Keycloak | Two auth modes in one filter chain without interference |
+| Resilience4j circuit breaker + retry | Graceful degradation when an external dependency fails |
+| Bucket4j rate limiting | Token-bucket per IP, enforced before business logic |
+| ShedLock | Distributed `@Scheduled` lock — prevents duplicate execution across instances |
+| Spring AI + Ollama | Local LLM integration with circuit breaker fallback |
+| GraalVM native image | AOT trade-offs: ~50 ms start, ~50 MB RSS vs JVM baseline |
+| Virtual threads (Project Loom) | Parallel sub-tasks in `AggregationService`, enabled globally |
+
+---
+
+## Diagnostic scenarios
+
+Three scenarios that show the observability stack in action.
+
+### Scenario 1 — PostgreSQL unavailability
+
+```bash
+docker compose stop db
+curl -s http://localhost:8080/actuator/health/readiness | jq .
+```
+
+Expected response:
+```json
+{
+  "status": "OUT_OF_SERVICE",
+  "components": {
+    "db": {"status": "DOWN"},
+    "dbReachability": {"status": "DOWN", "details": {"error": "Connection refused"}}
+  }
+}
+```
+
+The `db` check is standard Spring Boot. `dbReachability` is a custom `HealthIndicator`
+(`observability/DatabaseReachabilityHealthIndicator`) that issues an actual test query — not just
+a connection ping. A Kubernetes readiness probe on this endpoint stops traffic routing before
+users see errors.
+
+### Scenario 2 — Endpoint latency on `/customers/aggregate`
+
+```bash
+for i in {1..100}; do
+  curl -s http://localhost:8080/customers/aggregate \
+    -H "Authorization: Bearer $TOKEN" > /dev/null
+done
+```
+
+Expected in Grafana (http://localhost:3000):
+- p50 ≈ **200 ms** — two parallel virtual-thread tasks (not 400 ms sequential)
+- p99 ≈ **220–250 ms** — low tail latency, no thread pool contention
+
+In Tempo traces: the `loadCustomerData` and `loadStats` sub-spans start and end at the same time,
+confirming that virtual-thread parallelism works and the latency is bounded.
+
+```bash
+# Raw metric
+curl -s http://localhost:8080/actuator/prometheus \
+  | grep 'http_server_requests_seconds.*aggregate'
+# http_server_requests_seconds_sum{uri="/customers/aggregate",...} ~20.0
+```
+
+### Scenario 3 — Kafka enrichment timeout
+
+```bash
+docker compose stop kafka
+curl -s http://localhost:8080/customers/1/enrich \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Expected after 5 s:
+```json
+{"type":"urn:problem:kafka-timeout","title":"Kafka Reply Timeout","status":504}
+```
+
+The `ReplyingKafkaTemplate` blocks for 5 s then throws — caught by the global exception handler
+and mapped to RFC 9457 Problem Details. The timeout metric:
+```bash
+curl -s http://localhost:8080/actuator/metrics/customer.enrich.duration
+```
+
+---
+
+## API reference
+
+### Authentication
+
+All endpoints except `/auth/login` and `/actuator/**` require a Bearer token.
+
+```bash
+curl -s -X POST http://localhost:8080/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin"}'
+# → {"token":"eyJhbGci..."}
+
+export TOKEN=<token>
+```
+
+### Customer endpoints
+
+```bash
+# List all customers
+curl -s http://localhost:8080/customers -H "Authorization: Bearer $TOKEN"
+
+# List — API v2 (adds createdAt field)
+curl -s http://localhost:8080/customers \
+  -H "Authorization: Bearer $TOKEN" -H "X-API-Version: 2.0"
+
+# Create (ROLE_ADMIN required)
+curl -s -X POST http://localhost:8080/customers \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"name":"Alice","email":"alice@example.com"}'
+
+# Idempotent create (same Idempotency-Key returns cached response, no duplicate insert)
+curl -s -X POST http://localhost:8080/customers \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: req-001' \
+  -d '{"name":"Alice","email":"alice@example.com"}'
+
+# 10 most recent customers (Redis ring buffer)
+curl -s http://localhost:8080/customers/recent -H "Authorization: Bearer $TOKEN"
+
+# Aggregate (200 ms intentional latency — parallel virtual threads)
+curl -s http://localhost:8080/customers/aggregate -H "Authorization: Bearer $TOKEN"
+
+# Enrich via Kafka request-reply (blocks up to 5 s)
+curl -s http://localhost:8080/customers/1/enrich -H "Authorization: Bearer $TOKEN"
+```
+
+### Operational endpoints (no auth)
+
+```bash
+curl -s http://localhost:8080/actuator/health
+curl -s http://localhost:8080/actuator/health/readiness
+curl -s http://localhost:8080/actuator/prometheus | grep 'http_server_requests\|customer'
+```
+
+---
+
+## Observability
+
+| Dashboard | URL | Shows |
+|-----------|-----|-------|
+| Grafana — HTTP | http://localhost:3000 | Throughput, latency (p50/p95/p99), customer creation rate, buffer size |
+| Prometheus | http://localhost:9090 | Raw metrics, histogram queries |
+| Grafana — OTel | http://localhost:3001 | Distributed traces (Tempo), structured logs (Loki) |
+
+### Trace a request end-to-end
+
+1. `POST /customers` with `Authorization: Bearer $TOKEN`
+2. Open http://localhost:3001 → Explore → Tempo
+3. Search by service `spring-4-demo`, operation `POST /customers`
+4. The trace shows: HTTP handler span → DB insert span → Kafka publish span
+
+---
+
+## Kafka patterns
+
+### Pattern 1 — Asynchronous (fire-and-forget)
+
+`POST /customers` persists the customer then publishes a `CustomerCreatedEvent` on `customer.created`
+without waiting for acknowledgement. A `@KafkaListener` in the same app consumes the event and logs it.
+
+```
+POST /customers → CustomerService → KafkaTemplate.send("customer.created") → 201 Created
+                                              ↓ (async, decoupled)
+                                    CustomerEventListener → logs: kafka_event type=CustomerCreatedEvent
+```
+
+```bash
+curl -s http://localhost:8080/actuator/metrics/kafka.customer.created.processed
+```
+
+### Pattern 2 — Synchronous (request-reply)
+
+`GET /customers/{id}/enrich` sends a request to `customer.request` and blocks until the reply
+arrives on `customer.reply` (timeout: 5 s). `ReplyingKafkaTemplate` handles correlation automatically.
+
+```
+GET /customers/{id}/enrich
+  → ReplyingKafkaTemplate.sendAndReceive("customer.request")  [blocks, max 5 s]
+      ↓
+  CustomerEnrichHandler [@KafkaListener + @SendTo] → reply on "customer.reply"
+      ↓
+  → {"displayName":"Alice <alice@example.com>"}
+```
+
+---
+
+## Resilience
+
+### Circuit breaker on external calls
+
+`BioService` calls Ollama (local LLM). If Ollama is down, the circuit breaker opens after 5 failures
+and returns a degraded response immediately — no 30 s timeout chain.
+
+```bash
+# Stop Ollama, then call enrich several times — circuit transitions CLOSED → OPEN
+docker compose stop ollama
+curl -s http://localhost:8080/actuator/metrics/resilience4j.circuitbreaker.state \
+  --data-urlencode "tag=name:ollama"
+```
+
+### Rate limiting
+
+```bash
+# 101st request in the same minute → 429
+curl -s http://localhost:8080/customers -H "Authorization: Bearer $TOKEN"
+```
 
 ---
 
@@ -73,246 +280,9 @@ Every component in this project exists to enable a specific capability. The tabl
 ./run.sh test           # unit tests (no Docker)
 ./run.sh integration    # integration tests (Testcontainers — requires Docker)
 ./run.sh verify         # lint + unit + integration (mirrors CI)
-./run.sh ci             # alias for verify
 ```
 
-Pre-push hook (via lefthook) runs `./run.sh check` (unit tests) automatically before every `git push`.
-
----
-
-## API reference
-
-### Authentication
-
-All endpoints except `/auth/login` and `/actuator/**` require a Bearer token.
-
-```bash
-# Get a token (valid 24 h)
-curl -s -X POST http://localhost:8080/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"admin"}'
-# → {"token":"eyJhbGci..."}
-
-export TOKEN=<token>
-```
-
-### Customer endpoints
-
-```bash
-# List all customers
-curl -s http://localhost:8080/customers \
-  -H "Authorization: Bearer $TOKEN"
-# → [{"id":1,"name":"Alice","email":"alice@example.com"}, ...]
-
-# List with API versioning (v2 adds a createdAt field)
-curl -s http://localhost:8080/customers \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "X-API-Version: 2.0"
-# → [{"id":1,"name":"Alice","email":"alice@example.com","createdAt":"2024-01-15T10:30:00"}, ...]
-
-# Create a customer (requires ROLE_ADMIN — included in all built-in tokens)
-curl -s -X POST http://localhost:8080/customers \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Alice","email":"alice@example.com"}'
-# → {"id":1,"name":"Alice","email":"alice@example.com"}
-
-# Idempotent creation (same Idempotency-Key returns cached response)
-curl -s -X POST http://localhost:8080/customers \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -H 'Idempotency-Key: req-001' \
-  -d '{"name":"Alice","email":"alice@example.com"}'
-# Second call with same key → same 200 response, no duplicate insert
-
-# Get 10 most recent customers (from Redis ring buffer)
-curl -s http://localhost:8080/customers/recent \
-  -H "Authorization: Bearer $TOKEN"
-# → [{"id":1,...}, ...]
-
-# Aggregate endpoint (200 ms intentional latency — two parallel virtual-thread tasks)
-curl -s http://localhost:8080/customers/aggregate \
-  -H "Authorization: Bearer $TOKEN"
-# → {"customerData":"customer-data","stats":"stats"}
-
-# Enrich via Kafka request-reply (blocks up to 5 s for Kafka reply)
-curl -s http://localhost:8080/customers/1/enrich \
-  -H "Authorization: Bearer $TOKEN"
-# → {"id":1,"name":"Alice","email":"alice@example.com","displayName":"Alice <alice@example.com>"}
-```
-
-### Operational endpoints (no auth)
-
-```bash
-curl -s http://localhost:8080/actuator/health
-# → {"status":"UP","components":{"db":{"status":"UP"},"kafka":{"status":"UP"},...}}
-
-curl -s http://localhost:8080/actuator/health/readiness
-# → {"status":"UP","components":{"db":{"status":"UP"},"dbReachability":{"status":"UP"},...}}
-
-curl -s http://localhost:8080/actuator/prometheus | grep 'http_server_requests\|customer'
-# → http_server_requests_seconds_* histograms, kafka.customer.created.processed, ...
-```
-
----
-
-## Observability
-
-### Dashboards
-
-| Dashboard | URL | Shows |
-|-----------|-----|-------|
-| Grafana — HTTP | http://localhost:3000 | Throughput, latency (p50/p95/p99), customer creation rate, buffer size |
-| Prometheus | http://localhost:9090 | Raw metrics, histogram queries |
-| Grafana — OTel | http://localhost:3001 | Distributed traces (Tempo), structured logs (Loki) |
-
-### What to look for on `/customers/aggregate`
-
-The endpoint runs two 200 ms sub-tasks in parallel using virtual threads. In Grafana:
-- p50 latency stabilises around **200 ms** (not 400 ms — parallelism working)
-- In Tempo traces, both sub-spans start at the same time and complete together
-
-### Trace a request end-to-end
-
-1. `POST /customers` with `Authorization: Bearer $TOKEN`
-2. Open Grafana OTel → Explore → Tempo
-3. Search by service `spring-4-demo`, operation `POST /customers`
-4. The trace shows: HTTP handler span → DB insert span (datasource-micrometer) → Kafka publish span
-
----
-
-## Kafka patterns
-
-This application is both producer and consumer of its own messages, demonstrating two distinct patterns.
-
-### Pattern 1 — Asynchronous (fire-and-forget)
-
-`POST /customers` persists the customer then publishes a `CustomerCreatedEvent` on `customer.created`
-**without waiting** for any consumer acknowledgement. A `@KafkaListener` in the same app consumes
-the event and logs it.
-
-```
-POST /customers → CustomerService → KafkaTemplate.send("customer.created") → 201 Created
-                                              ↓ (async, decoupled)
-                                    CustomerEventListener.onCustomerCreated()
-                                    → logs: kafka_event type=CustomerCreatedEvent id=1 name=Alice
-```
-
-```bash
-# Create a customer and watch logs
-curl -s -X POST http://localhost:8080/customers \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Alice","email":"alice@example.com"}'
-
-# Verify the event was processed
-curl -s http://localhost:8080/actuator/metrics/kafka.customer.created.processed
-```
-
-### Pattern 2 — Synchronous (request-reply)
-
-`GET /customers/{id}/enrich` sends a request to `customer.request` and **blocks until the reply**
-arrives on `customer.reply` (timeout: 5 s). Correlation is managed automatically by
-`ReplyingKafkaTemplate`.
-
-```
-GET /customers/{id}/enrich
-  → ReplyingKafkaTemplate.sendAndReceive("customer.request")  ← blocks here (max 5 s)
-      ↓
-  CustomerEnrichHandler.handleEnrichRequest()  [@KafkaListener("customer.request") + @SendTo]
-      ↓ computes displayName = "Alice <alice@example.com>"
-  → reply published on "customer.reply"
-  → ReplyingKafkaTemplate receives correlated reply
-  → 200 {"displayName":"Alice <alice@example.com>"}
-```
-
-If Kafka is down or the handler does not reply within 5 s:
-```bash
-curl -s http://localhost:8080/customers/1/enrich -H "Authorization: Bearer $TOKEN"
-# → 504 {"type":"urn:problem:kafka-timeout","title":"Kafka Reply Timeout","status":504}
-```
-
-```bash
-# Duration metric for the enrich round-trip
-curl -s http://localhost:8080/actuator/metrics/customer.enrich.duration
-```
-
----
-
-## Resilience
-
-### Circuit breaker on external calls
-
-`GET /customers/{id}/enrich` also calls an external BioService (Ollama LLM). If the LLM is
-unavailable, the circuit breaker opens after 5 failures and returns a degraded response immediately
-(no waiting 30 s for timeouts to stack up).
-
-```bash
-# With Ollama running
-curl -s http://localhost:8080/customers/1/enrich -H "Authorization: Bearer $TOKEN"
-# → full enriched response with bio
-
-# With Ollama stopped (docker compose stop ollama)
-# First 5 calls: 500 (circuit CLOSED, trying each time)
-# Subsequent calls: fast 503 (circuit OPEN, no attempt)
-curl -s http://localhost:8080/actuator/metrics/resilience4j.circuitbreaker.state \
-  --data-urlencode "tag=name:ollama"
-```
-
-### Rate limiting
-
-```bash
-# 101st request in the same minute from the same IP
-curl -s http://localhost:8080/customers -H "Authorization: Bearer $TOKEN"
-# → 429 Too Many Requests
-```
-
-### Diagnostic scenario 1 — PostgreSQL unavailability
-
-Stop PostgreSQL while the application is running:
-```bash
-docker compose stop db
-```
-
-Readiness probe detects it immediately:
-```bash
-curl -s http://localhost:8080/actuator/health/readiness | jq .
-# {
-#   "status": "OUT_OF_SERVICE",
-#   "components": {
-#     "db": {"status": "DOWN"},
-#     "dbReachability": {"status": "DOWN", "details": {"error": "Connection refused"}}
-#   }
-# }
-```
-
-A Kubernetes liveness/readiness probe on this endpoint would stop routing traffic to the pod
-before users see errors. The `db` check is standard Spring Boot; `dbReachability` is a custom
-`HealthIndicator` that issues an actual test query (not just a connection ping).
-
-### Diagnostic scenario 2 — Latency on `/customers/aggregate`
-
-Generate load and observe in Grafana:
-```bash
-for i in {1..100}; do
-  curl -s http://localhost:8080/customers/aggregate \
-    -H "Authorization: Bearer $TOKEN" > /dev/null
-done
-```
-
-Expected in Grafana (http://localhost:3000):
-- p50 ≈ **200 ms** — parallel virtual threads working correctly
-- p99 ≈ **220–250 ms** — low tail latency (virtual threads, no thread pool contention)
-
-Raw metric:
-```bash
-curl -s http://localhost:8080/actuator/prometheus \
-  | grep 'http_server_requests_seconds.*aggregate'
-# http_server_requests_seconds_sum{uri="/customers/aggregate",...} ~20.0 (100 req × 200 ms)
-```
-
-In Tempo traces: the two sub-spans (`loadCustomerData`, `loadStats`) are concurrent — they start
-and end at the same time, confirming virtual-thread parallelism.
+Pre-push hook (via lefthook) runs unit tests automatically before every `git push`.
 
 ---
 
@@ -325,56 +295,35 @@ com.example.springapi
 │                   SecurityConfig, AuthController         — JWT auth + Spring Security
 ├── customer/       Customer, CustomerRepository,
 │                   CustomerService, CustomerController,
-│                   CustomerDto, CustomerDtoV2,            — core domain (model, persistence,
-│                   CreateCustomerRequest, EnrichedCustomerDto,  service, API versioning)
+│                   CustomerDto, CustomerDtoV2,            — core domain
 │                   AggregationService, RecentCustomerBuffer,
 │                   CustomerStatsScheduler
-├── integration/    BioService, HttpClientConfig,
-│                   JsonPlaceholderClient, TodoService,
-│                   TodoItem                               — external HTTP calls (HTTP Interface + Spring AI)
+├── integration/    BioService, JsonPlaceholderClient,
+│                   TodoService                            — external HTTP calls (HTTP Interface + Spring AI)
 ├── messaging/      KafkaConfig, CustomerCreatedEvent,
-│                   CustomerEnrichRequest, CustomerEnrichReply,
-│                   CustomerEnrichHandler, CustomerEventListener — Kafka fire-and-forget + request-reply
+│                   CustomerEnrichHandler,
+│                   CustomerEventListener                  — Kafka fire-and-forget + request-reply
 ├── observability/  ObservabilityConfig, DatabaseReachabilityHealthIndicator,
 │                   RequestIdFilter, RequestContext,
 │                   TraceService                           — health, tracing, metrics, request ID
 ├── resilience/     IdempotencyFilter, RateLimitingFilter,
 │                   ShedLockConfig                         — rate limiting, idempotency, distributed lock
-└── SpringApiApplication.java                             — entry point
-```
-
-Test tree mirrors the same hierarchy:
-
-```
-src/test/java/com/example/springapi
-├── AbstractIntegrationTest.java   — shared Testcontainers base (PostgreSQL + Kafka)
-├── ArchitectureTest.java          — ArchUnit architectural constraints
-├── SpringApiApplicationITest.java — smoke test (context loads)
-├── config/TestAiConfig.java       — mock Spring AI bean for integration tests
-├── auth/       AuthITest, JwtTokenProviderTest
-├── customer/   CustomerApiITest, CustomerRestClientITest,
-│               AggregationServiceTest, RecentCustomerBufferTest
-├── messaging/  KafkaPatternITest
-└── resilience/ IdempotencyITest, RateLimitingITest
+└── SpringApiApplication.java
 ```
 
 ---
 
 ## CI/CD
 
-Two pipelines run in parallel:
-
 | Pipeline | Trigger | Jobs |
 |----------|---------|------|
 | **GitLab CI** | MR push + main push | hadolint → unit tests + SAST → integration tests + SpotBugs + JaCoCo → JAR + Docker image |
-| **GitHub Actions** | Push + PR | Same stages — mirrors the GitLab pipeline |
+| **GitHub Actions** | Push + PR | Same stages |
 
-Scheduled (daily, GitLab only): GraalVM native image build — only when `Dockerfile.native`, `pom.xml`,
-or `src/` changed (5–15 min, skipped otherwise).
+Scheduled (daily, GitLab): GraalVM native image — only when `Dockerfile.native`, `pom.xml` or `src/` changed.
 
-Local equivalent:
 ```bash
-./run.sh verify   # lint + unit + integration — mirrors the CI pipeline
+./run.sh verify   # local equivalent of the full CI pipeline
 ```
 
 ---
@@ -382,20 +331,17 @@ Local equivalent:
 ## Screenshots
 
 ### Grafana — HTTP metrics
-
 ![Grafana Dashboard](docs/screenshots/grafana-overview.png)
 
 ### Prometheus — raw metrics
-
 ![Prometheus Dashboard](docs/screenshots/prometheus-overview.png)
 
 ### Grafana — OpenTelemetry traces
-
 ![Grafana OTel Dashboard](docs/screenshots/grafana-otel-overview.png)
 
 ---
 
-## Appendix: Mechanisms reference
+## Appendix: Full mechanism list
 
 | Area | Mechanism | Where |
 |---|---|---|
