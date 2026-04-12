@@ -31,17 +31,17 @@
           shedlock:               split into two artifacts (spring / provider) — see dependency block.
           testcontainers:         BOM entry exists but pinned here to guarantee kafka module alignment.
         -->
-        <java.version>25</java.version>
-        <lombok.version>1.18.44</lombok.version>
-        <archunit.version>1.4.0</archunit.version>
-        <bucket4j.version>8.10.1</bucket4j.version>
-        <resilience4j.version>2.3.0</resilience4j.version>
-        <spring-ai.version>1.0.0-M6</spring-ai.version>
-        <datasource-micrometer.version>2.2.1</datasource-micrometer.version>
-        <springdoc.version>3.0.2</springdoc.version>
-        <testcontainers.version>1.21.4</testcontainers.version>
-        <jjwt.version>0.12.6</jjwt.version>
-        <shedlock.version>6.0.2</shedlock.version>
+        <java.version>25</java.version>          <!-- virtual threads (Loom) + pattern matching + record patterns -->
+        <lombok.version>1.18.44</lombok.version>   <!-- generates @Getter/@Setter/@Builder boilerplate at compile time -->
+        <archunit.version>1.4.0</archunit.version> <!-- architecture rule enforcement in unit tests (disabled on Java 25 — see ArchitectureTest) -->
+        <bucket4j.version>8.10.1</bucket4j.version>                 <!-- token-bucket rate limiting (in-memory, per IP) -->
+        <resilience4j.version>2.3.0</resilience4j.version>          <!-- @CircuitBreaker / @Retry / @Bulkhead annotations -->
+        <spring-ai.version>1.0.0-M6</spring-ai.version>             <!-- milestone; not yet in BOM — remove repo override when GA ships -->
+        <datasource-micrometer.version>2.2.1</datasource-micrometer.version> <!-- JDBC DataSource observation bridge → query latency in Prometheus -->
+        <springdoc.version>3.0.2</springdoc.version>                <!-- OpenAPI 3 spec + Swagger UI at /swagger-ui.html -->
+        <testcontainers.version>1.21.4</testcontainers.version>     <!-- pinned to align kafka module with the core version -->
+        <jjwt.version>0.12.6</jjwt.version>                        <!-- split into api/impl/jackson — see dependency block -->
+        <shedlock.version>6.0.2</shedlock.version>                  <!-- split into spring/provider — see dependency block -->
     </properties>
 
     <!--
