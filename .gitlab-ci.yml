@@ -102,41 +102,30 @@ unit-test:
 # GitLab SAST — static application security testing.
 # Runs semgrep rules against the source code to detect: injection flaws,
 # insecure deserialization, weak crypto, path traversal, XSS patterns, etc.
-# Results appear in Security > Vulnerability Report (blocked by MR approval rules
-# if configured). Does NOT require compiled bytecode — source-only analysis.
-# Defined by the included template; we just override the stage here.
+# Results appear in Security > Vulnerability Report.
 #
-# Why allow_failure: true?
-# The GitLab-managed template defines these jobs as configuration stubs that
-# intentionally exit 1 when triggered outside the official GitLab SAST runner
-# environment (i.e. free-tier shared runners without the GitLab Security Scanner
-# image). This causes the pipeline to fail even though no real vulnerability was
-# found. Setting allow_failure: true keeps the pipeline green while real findings
-# still surface in the Security > Vulnerability Report tab when a paid runner or
-# self-hosted runner with the scanner image is available.
+# Currently skipped (when: never) because on GitLab.com free-tier the template
+# is a configuration stub that intentionally exits 1, producing a pipeline warning
+# (orange ⚠️) on every run — even with allow_failure: true.
+#
+# To enable: requires GitLab Ultimate or a self-managed runner with the
+# GitLab Security Scanner image. Replace `when: never` with `when: on_success`.
 sast:
   stage: test
-  allow_failure: true
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - when: on_success
+    - when: never
 
 # GitLab Dependency Scanning.
 # Reads pom.xml and checks all direct + transitive Maven dependencies against
 # OSV, NVD, and GitHub Advisory databases for known CVEs.
 # Results appear in Security > Dependency List.
-# Defined by the included template; stage override keeps it parallel with unit-test.
 #
-# Why allow_failure: true? — same reason as sast above: template stub exits 1
-# on free-tier runners; dependency findings still surface in Security > Dependency List.
+# Skipped for the same reason as sast above — free-tier stub exits 1.
+# To enable on GitLab Ultimate: replace `when: never` with `when: on_success`.
 dependency_scanning:
   stage: test
-  allow_failure: true
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - when: on_success
+    - when: never
 
 # Pull in the GitLab-managed SAST and Dependency Scanning job definitions.
 # Placed after the overrides so our `stage:` settings take effect.
@@ -230,11 +219,13 @@ docker-build:
   script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
     - |
+      # Two tags: SHA (immutable, used for deploys) + ref slug (moving, e.g. "main")
+      # Note: inline comments after \ break shell line continuation — keep them here.
       docker build \
         --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
         --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" \      # immutable pointer — used for deployments
-        -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" \ # moving pointer (e.g. "main") — for convenience
+        -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" \
+        -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" \
         .
     - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
     - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
