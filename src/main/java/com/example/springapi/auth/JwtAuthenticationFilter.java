@@ -122,6 +122,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     @SuppressWarnings("unchecked")
     private void authenticateKeycloak(String token) {
+        // Precondition: caller (doFilterInternal) already guards keycloakJwtDecoder != null.
+        // This explicit check makes the contract visible to static analysis tools.
+        if (keycloakJwtDecoder == null) {
+            return;
+        }
         try {
             Jwt jwt = keycloakJwtDecoder.decode(token);
             List<GrantedAuthority> authorities = new ArrayList<>();
