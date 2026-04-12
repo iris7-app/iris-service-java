@@ -1,7 +1,9 @@
 package com.example.springapi.customer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+// [Spring Boot 4 / Jackson 3] — Jackson 3.x moved to the tools.jackson package.
+// ObjectMapper is still the central API; exceptions are now unchecked (JacksonException extends RuntimeException).
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -66,7 +68,7 @@ public class RecentCustomerBuffer {
             var ops = redisTemplate.opsForList();
             ops.leftPush(KEY, json);
             ops.trim(KEY, 0, MAX_SIZE - 1);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             // Non-critical: log and continue — buffer miss is acceptable
             log.warn("recent_buffer_add_failed id={} cause={}", dto.id(), e.getMessage());
         }
@@ -106,7 +108,7 @@ public class RecentCustomerBuffer {
     private CustomerDto deserialize(String json) {
         try {
             return objectMapper.readValue(json, CustomerDto.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.warn("recent_buffer_deserialize_failed cause={}", e.getMessage());
             return null;
         }
