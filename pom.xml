@@ -14,7 +14,7 @@
     <artifactId>springapi</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>springapi</name>
-    <description>Spring Boot demo upgraded for observability and CV positioning</description>
+    <description>Spring Boot 4 reference application — observability, security, messaging, resilience</description>
 
     <properties>
         <!--
