@@ -144,6 +144,41 @@ curl -s http://localhost:8080/actuator/metrics/customer.enrich.duration
 
 All endpoints except `/auth/login` and `/actuator/**` require a Bearer token.
 
+Two auth modes coexist in the same filter chain:
+
+```mermaid
+flowchart LR
+    subgraph Callers
+        A(["api-gateway\n(client_credentials)"])
+        B(["monitoring-service\n(client_credentials)"])
+        C(["curl / tests\n(/auth/login)"])
+    end
+
+    subgraph Keycloak["Keycloak  –  realm: customer-service"]
+        direction TB
+        K1["api-gateway\nROLE_ADMIN + ROLE_USER"]
+        K2["monitoring-service\nROLE_USER"]
+        JWKS["JWKS endpoint\n(public keys)"]
+    end
+
+    subgraph App["customer-service  –  OAuth2 resource server"]
+        direction TB
+        F["JwtAuthenticationFilter\n(validates both token types)"]
+        SC["SecurityConfig\n(role-based access)"]
+        API["Controllers\nGET /customers · POST /customers"]
+        F --> SC --> API
+    end
+
+    A -- "1. client_credentials" --> K1
+    B -- "1. client_credentials" --> K2
+    K1 -- "2. signed JWT" --> A
+    K2 -- "2. signed JWT" --> B
+    A -- "3. Bearer JWT" --> F
+    B -- "3. Bearer JWT" --> F
+    C -- "Bearer JWT\n(built-in)" --> F
+    JWKS -. "fetched once\nat startup" .-> F
+```
+
 ```bash
 curl -s -X POST http://localhost:8080/auth/login \
   -H 'Content-Type: application/json' \
