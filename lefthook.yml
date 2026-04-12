@@ -17,7 +17,7 @@ pre-push:
     unit-tests:
       # Mirrors 'make check' / 'make test': Maven Surefire, *ITest excluded, no Docker.
       # Runs in a few seconds — fast enough to be a pre-push gate.
-      run: make check
+      run: ./run.sh check
       fail_text: |
         Unit tests failed. Fix the failures before pushing.
         To skip this hook in an emergency: LEFTHOOK=0 git push
