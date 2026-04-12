@@ -346,6 +346,87 @@ com.example.customerservice
 └── CustomerServiceApplication.java
 ```
 
+```mermaid
+flowchart TB
+    Client(["HTTP client\n(curl / frontend)"])
+
+    subgraph App["customer-service"]
+        direction TB
+
+        subgraph Security["security"]
+            RL["RateLimitingFilter\nBucket4j · Redis"]
+            Idp["IdempotencyFilter\nRedis"]
+            Auth["JwtAuthenticationFilter\nJWT · Keycloak JWKS"]
+        end
+
+        subgraph Core["customer"]
+            CC["CustomerController"]
+            CS["CustomerService"]
+            Agg["AggregationService\n(virtual threads)"]
+            Buf["RecentCustomerBuffer"]
+            Sched["CustomerStatsScheduler\nShedLock"]
+        end
+
+        subgraph Messaging["messaging"]
+            Pub["CustomerEventPublisher"]
+            Lst["CustomerEventListener\n+ EnrichHandler"]
+        end
+
+        subgraph Integration["integration"]
+            Bio["BioService\nSpring AI · Ollama"]
+            Todo["TodoService\nRestClient"]
+        end
+
+        subgraph Obs["observability"]
+            Tr["TraceService\nOTel"]
+            Hi["HealthIndicator"]
+        end
+    end
+
+    subgraph Infra["infrastructure"]
+        PG[("PostgreSQL")]
+        KF[["Kafka"]]
+        RD[("Redis")]
+        KC["Keycloak"]
+        OL["Ollama"]
+        JP["jsonplaceholder\n(external API)"]
+    end
+
+    subgraph ObsStack["observability stack"]
+        PR["Prometheus"]
+        GR["Grafana"]
+        LK["Loki"]
+        TP["Tempo"]
+    end
+
+    Client --> RL --> Idp --> Auth
+    Auth --> CC
+    CC --> CS
+    CS --> Agg
+    CS --> Pub
+    Agg --> Bio
+    Agg --> Todo
+    Lst --> CS
+    CS --> Buf
+    Sched --> CS
+
+    CS --> PG
+    Pub --> KF
+    KF --> Lst
+    RL --> RD
+    Idp --> RD
+    Sched --> RD
+    Auth -.->|JWKS at startup| KC
+    Bio --> OL
+    Todo --> JP
+
+    Tr --> TP
+    Obs -.-> PR
+    PR --> GR
+    Tr -.-> LK
+    LK --> GR
+```
+
 ---
 
 ## CI/CD
