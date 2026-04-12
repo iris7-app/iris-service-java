@@ -6,3 +6,6 @@ target/
 *.iml
 .DS_Store
 .env
+
+# Claude Code local config and worktrees
+.claude/
