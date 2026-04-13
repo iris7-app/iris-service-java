@@ -271,6 +271,26 @@ The `RestTestClient`-based test (`CustomerRestClientITest`) is excluded from SB3
 since that class only exists in Spring Framework 7. The `CustomerApiITest` (MockMvc) covers
 the same endpoints.
 
+### Maven compatibility
+
+The project supports both **Maven 3.9.x** (default) and **Maven 4.0.x**.
+
+The Maven Wrapper (`./mvnw`) pins the exact version. To switch:
+
+```bash
+# Edit .mvn/wrapper/maven-wrapper.properties and uncomment the desired distributionUrl:
+#   Maven 3.9.14 (default)
+#   Maven 4.0.0-rc-3
+
+# Then verify:
+./mvnw --version
+```
+
+**Why both work**: all plugin versions are resolved via the `spring-boot-starter-parent`
+`<pluginManagement>`, which Maven 4 accepts. No unversioned plugins, no deprecated
+`<prerequisites>` or `<reporting>` sections. The `maven-antrun-plugin` conditional
+copies (`xmlns:if="ant:if"`) use standard Ant features supported by both Maven versions.
+
 ---
 
 ## CI/CD
