@@ -8,6 +8,9 @@
 #   ollama   — Local LLM runtime for Spring AI bio generation
 #   keycloak — Optional OAuth2 identity provider
 #   app      — Spring Boot application (built from Dockerfile)
+#   pgadmin  — PostgreSQL web admin UI (http://localhost:5050)
+#   kafka-ui — Kafka topics/messages/consumer groups UI (http://localhost:9080)
+#   redisinsight — Redis data browser and CLI (http://localhost:5540)
 #
 # Usage:
 #   docker compose up -d          start all services
@@ -193,7 +196,70 @@ services:
       # Redis host for the RecentCustomerBuffer (uses the service name in Docker network)
       SPRING_DATA_REDIS_HOST: redis
 
+  # ---------------------------------------------------------------------------
+  # pgAdmin 4 — PostgreSQL web administration UI
+  # Provides a graphical interface to browse schemas, run queries, and inspect
+  # data without a local psql client. Pre-configured to connect to the "db"
+  # service via servers.json mounted at startup.
+  # Access: http://localhost:5050 (admin@demo.com / admin)
+  # ---------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@demo.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./infra/pgadmin/servers.json:/pgadmin4/servers.json:ro
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Kafka UI — web interface for Apache Kafka
+  # Browse topics, messages, consumer groups, and lag in real time.
+  # Connects to the internal Kafka listener (29092) on the Docker network.
+  # Access: http://localhost:9080
+  # ---------------------------------------------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    ports:
+      - "9080:8080"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # RedisInsight — Redis data browser and CLI
+  # Visual explorer for keys, types, TTLs, and memory usage.
+  # On first launch, add the connection manually: host=redis, port=6379.
+  # Access: http://localhost:5540
+  # ---------------------------------------------------------------------------
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight_data:/data
+    restart: unless-stopped
+
 volumes:
   # Named volumes persist across "docker compose down" (use "docker compose down -v" to delete)
   postgres_data:
   ollama_data:
+  pgadmin_data:
+  redisinsight_data:

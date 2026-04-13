@@ -59,11 +59,29 @@ case "$1" in
     $MVNW spring-boot:run
     ;;
 
+  app-profiled)
+    echo "Starting Spring app with Pyroscope profiling..."
+    PYROSCOPE_JAR="infra/pyroscope/pyroscope.jar"
+    if [ ! -f "$PYROSCOPE_JAR" ]; then
+      echo "Downloading Pyroscope Java agent..."
+      mkdir -p infra/pyroscope
+      curl -sL https://github.com/grafana/pyroscope-java/releases/latest/download/pyroscope.jar -o "$PYROSCOPE_JAR"
+    fi
+    PYROSCOPE_APPLICATION_NAME=customer-service \
+    PYROSCOPE_SERVER_ADDRESS=${PYROSCOPE_SERVER_ADDRESS:-http://localhost:4040} \
+    $MVNW spring-boot:run -Dspring-boot.run.jvmArguments="-javaagent:$PYROSCOPE_JAR"
+    ;;
+
   all)
     echo "Starting everything..."
     docker compose up -d db kafka
     docker compose -f docker-compose.observability.yml up -d
     $MVNW spring-boot:run
+    ;;
+
+  simulate)
+    echo "Starting traffic simulation..."
+    ./infra/simulate-traffic.sh "${2:-60}" "${3:-2}"
     ;;
 
   stop)
@@ -139,7 +157,9 @@ case "$1" in
     echo "  kafka         start Kafka"
     echo "  obs           start observability stack"
     echo "  app           start Spring app (local)"
+    echo "  app-profiled  start Spring app with Pyroscope profiling"
     echo "  all           start everything"
+    echo "  simulate      run traffic simulation (default: 60 iterations, 2s pause)"
     echo "  stop          stop all containers"
     echo ""
     echo "Quality / CI:"

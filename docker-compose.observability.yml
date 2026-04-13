@@ -12,6 +12,15 @@
 #   Access: http://localhost:3001
 #
 # Path 2 — Standalone Prometheus + Grafana                      [port 3000 + 9090]
+#
+# Path 3 — Zipkin (standalone distributed tracing)              [port 9411]
+#   Lightweight alternative to Tempo. Receives spans via OTLP or Zipkin protocol.
+#   Access: http://localhost:9411
+#
+# Path 4 — Pyroscope (continuous profiling)                     [port 4040]
+#   CPU/memory flamegraphs. The Spring Boot app pushes profiles via the Pyroscope
+#   Java agent or HTTP SDK. Integrates with Grafana as a datasource.
+#   Access: http://localhost:4040
 #   Prometheus scrapes /actuator/prometheus every 15s.
 #   Grafana is provisioned with dashboards from infra/observability/grafana/.
 #   Access Grafana: http://localhost:3000
@@ -108,3 +117,38 @@ services:
   #      - "16686:16686"  # Jaeger UI
   #      - "4317:4317"    # OTLP gRPC (conflicts with LGTM if both run simultaneously)
   #      - "4318:4318"    # OTLP HTTP (conflicts with LGTM if both run simultaneously)
+
+  # ---------------------------------------------------------------------------
+  # Zipkin — lightweight distributed tracing UI
+  #
+  # Standalone alternative to Tempo/Jaeger with a simple, focused UI.
+  # Receives spans via its native Zipkin protocol (POST /api/v2/spans)
+  # or via OTLP when placed behind an OpenTelemetry Collector.
+  #
+  # Spring Boot integration: set management.zipkin.tracing.endpoint
+  # to http://localhost:9411/api/v2/spans in application.yml.
+  # Access: http://localhost:9411
+  # ---------------------------------------------------------------------------
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: customerservice-zipkin
+    ports:
+      - "9411:9411"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Pyroscope — continuous profiling (CPU, memory, allocations)
+  #
+  # Provides flamegraph visualizations for identifying performance bottlenecks.
+  # The Spring Boot app pushes profiles via the Pyroscope Java agent
+  # (add -javaagent:pyroscope.jar to JVM args) or HTTP SDK.
+  #
+  # Also integrates as a Grafana datasource for unified observability.
+  # Access: http://localhost:4040
+  # ---------------------------------------------------------------------------
+  pyroscope:
+    image: grafana/pyroscope:latest
+    container_name: customerservice-pyroscope
+    ports:
+      - "4040:4040"
+    restart: unless-stopped

@@ -202,6 +202,13 @@ management:
         # to be attached to histogram data points by the Micrometer/OTel bridge.
         http.server.requests: true
 
+  # ---------------------------------------------------------------------------
+  # Zipkin — dual trace export (alongside OTLP → Tempo)
+  # Zipkin UI: http://localhost:9411
+  # ---------------------------------------------------------------------------
+  zipkin:
+    endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+
 # =============================================================================
 # SpringDoc / OpenAPI / Swagger UI
 # API documentation available at: http://localhost:8080/swagger-ui.html

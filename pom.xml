@@ -134,10 +134,11 @@
         </dependency>
 
         <!--
-          Observability stack — four complementary artifacts:
+          Observability stack — five complementary artifacts:
             actuator              → /actuator/health, /actuator/prometheus, etc.
             micrometer-prometheus → Prometheus registry: scrape at /actuator/prometheus
             opentelemetry         → OTLP trace + log export to Tempo / Loki via OTEL collector
+            opentelemetry-zipkin  → exports traces to Zipkin (alongside OTLP to Tempo)
             datasource-micrometer → instruments JDBC DataSource with Micrometer Observations
                                     (query count, latency histograms, slow-query detection)
         -->
@@ -152,6 +153,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-opentelemetry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-zipkin</artifactId>
         </dependency>
         <dependency>
             <groupId>net.ttddyy.observation</groupId>
