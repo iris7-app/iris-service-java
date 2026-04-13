@@ -157,10 +157,13 @@ management:
         enabled: true
       group:
         # readiness = application is ready to serve traffic
-        # Includes: Spring readiness state + JDBC connection pool + custom DB check
-        # If any of these are DOWN, Kubernetes removes the pod from load-balancer rotation
+        # Includes: DB, Kafka, Redis — if any are DOWN, the pod is removed from load-balancer
         readiness:
-          include: readinessState,db,dbReachability
+          include: readinessState,db,dbReachability,kafka,redis
+        # liveness = is the process alive and not stuck?
+        # Lightweight checks only — no external dependencies (avoid cascading restarts)
+        liveness:
+          include: livenessState,diskSpace
 
   # ---------------------------------------------------------------------------
   # OpenTelemetry — distributed tracing + log export
