@@ -44,6 +44,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.OutputStreamWriter;
@@ -102,6 +103,7 @@ public class CustomerController {
     private final ReplyingKafkaTemplate<String, CustomerEnrichRequest, CustomerEnrichReply> replyingKafkaTemplate;
     private final TodoService todoService;
     private final BioService bioService;
+    private final SseEmitterRegistry sseEmitterRegistry;
     // Injected from application.yml: app.kafka.topics.customer-request
     private final String customerRequestTopic;
     // Injected from application.yml: app.kafka.enrich-timeout-seconds
@@ -128,6 +130,7 @@ public class CustomerController {
                               ReplyingKafkaTemplate<String, CustomerEnrichRequest, CustomerEnrichReply> replyingKafkaTemplate,
                               TodoService todoService,
                               BioService bioService,
+                              SseEmitterRegistry sseEmitterRegistry,
                               @Value("${app.kafka.topics.customer-request}") String customerRequestTopic,
                               @Value("${app.kafka.enrich-timeout-seconds}") long enrichTimeoutSeconds,
                               MeterRegistry meterRegistry) {
@@ -138,6 +141,7 @@ public class CustomerController {
         this.replyingKafkaTemplate = replyingKafkaTemplate;
         this.todoService = todoService;
         this.bioService = bioService;
+        this.sseEmitterRegistry = sseEmitterRegistry;
         this.customerRequestTopic = customerRequestTopic;
         this.enrichTimeoutSeconds = enrichTimeoutSeconds;
         this.customerCreatedCounter = Counter.builder("customer.created.count")
@@ -406,6 +410,22 @@ public class CustomerController {
                         throw new IllegalStateException("Enrich failed for id=" + id, e.getCause());
                     }
                 }));
+    }
+
+    // ─── SSE stream ─────────────────────────────────────────────────────────
+
+    /**
+     * Server-Sent Events stream that pushes newly created customers in real time.
+     *
+     * <p>Each new customer creation triggers a {@code customer} event containing
+     * the {@link CustomerDto} JSON payload. A {@code ping} event is sent every 30 s
+     * by {@link SseEmitterRegistry} to keep the connection alive.
+     *
+     * <p>Requires authentication (any authenticated user).
+     */
+    @GetMapping(value = "/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter stream() {
+        return sseEmitterRegistry.register();
     }
 
     // ─── Cursor-based pagination ────────────────────────────────────────────

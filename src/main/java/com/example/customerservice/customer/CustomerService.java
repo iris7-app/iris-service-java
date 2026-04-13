@@ -42,17 +42,20 @@ public class CustomerService {
     private final RecentCustomerBuffer recentCustomerBuffer;
     private final CustomerEventPublisher eventPublisher;
     private final SimpMessagingTemplate websocket;
+    private final SseEmitterRegistry sseEmitterRegistry;
     private final String customerCreatedTopic;
 
     public CustomerService(CustomerRepository repository,
                            RecentCustomerBuffer recentCustomerBuffer,
                            CustomerEventPublisher eventPublisher,
                            SimpMessagingTemplate websocket,
+                           SseEmitterRegistry sseEmitterRegistry,
                            @Value("${app.kafka.topics.customer-created}") String customerCreatedTopic) {
         this.repository = repository;
         this.recentCustomerBuffer = recentCustomerBuffer;
         this.eventPublisher = eventPublisher;
         this.websocket = websocket;
+        this.sseEmitterRegistry = sseEmitterRegistry;
         this.customerCreatedTopic = customerCreatedTopic;
     }
 
@@ -105,6 +108,9 @@ public class CustomerService {
 
         // WebSocket — push real-time notification to all connected clients
         websocket.convertAndSend("/topic/customers", dto);
+
+        // SSE — push to all active Server-Sent Events subscribers
+        sseEmitterRegistry.send("customer", dto);
 
         return dto;
     }
