@@ -111,7 +111,15 @@ case "$1" in
     echo "Starting everything..."
     # Start infra services only (not the app container — we run locally via Maven)
     docker compose up -d db kafka redis ollama keycloak pgadmin kafka-ui redisinsight
+    # Start observability stack
     docker compose -f docker-compose.observability.yml up -d
+    # Wait for DB to be healthy before starting the app
+    echo -n "Waiting for PostgreSQL"
+    until docker inspect -f '{{.State.Health.Status}}' postgres-demo 2>/dev/null | grep -q healthy; do
+      echo -n "."
+      sleep 2
+    done
+    echo " ready!"
     $MVNW spring-boot:run
     ;;
 
@@ -126,11 +134,20 @@ case "$1" in
     # Kill the running Spring app (target Java process only, not Docker)
     pgrep -f 'CustomerServiceApplication' | xargs kill 2>/dev/null || true
     pgrep -f 'spring-boot:run' | xargs kill 2>/dev/null || true
-    # Stop and recreate all containers
-    docker compose down
+    # Stop all containers (both compose files)
     docker compose -f docker-compose.observability.yml down
+    docker compose down
+    # Start infra (not the app container — we run locally via Maven)
     docker compose up -d db kafka redis ollama keycloak pgadmin kafka-ui redisinsight
+    # Start observability stack
     docker compose -f docker-compose.observability.yml up -d
+    # Wait for DB to be healthy before starting the app
+    echo -n "Waiting for PostgreSQL"
+    until docker inspect -f '{{.State.Health.Status}}' postgres-demo 2>/dev/null | grep -q healthy; do
+      echo -n "."
+      sleep 2
+    done
+    echo " ready!"
     echo "Infrastructure ready. Starting app..."
     $MVNW spring-boot:run
     ;;
