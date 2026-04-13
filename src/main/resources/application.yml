@@ -51,6 +51,13 @@ spring:
   # ---------------------------------------------------------------------------
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    # Enable Micrometer observation for Kafka producers and consumers.
+    # This propagates trace context (traceID/spanID) through Kafka message headers,
+    # creating end-to-end distributed traces: HTTP → Kafka producer → consumer → reply.
+    listener:
+      observation-enabled: true
+    template:
+      observation-enabled: true
 
   # ---------------------------------------------------------------------------
   # Redis — distributed cache for RecentCustomerBuffer
@@ -153,7 +160,11 @@ management:
         # env and configprops are excluded — they leak DB credentials, JWT secrets,
         # and full application configuration. Enable them only behind authentication.
         # Do NOT expose: shutdown, threaddump, heapdump in production without auth.
-        include: health,info,prometheus,metrics
+        include: health,info,prometheus,metrics,beans,loggers
+
+  info:
+    env:
+      enabled: true
 
   endpoint:
     health:
@@ -199,6 +210,7 @@ management:
       export:
         otlp:
           # Exports structured logs directly to Loki via the OpenTelemetry collector
+          enabled: true
           endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs
           transport: http
 
@@ -250,6 +262,34 @@ logging:
     format:
       # Uncomment to emit logs as ECS JSON (Elastic Common Schema) — ideal for Loki/Kibana
       # console: ecs
+
+# =============================================================================
+# Application info — exposed via /actuator/info
+# =============================================================================
+info:
+  app:
+    name: ${spring.application.name}
+    description: "Customer management REST API with full observability, resilience patterns, and AI integration"
+    version: "1.0.0"
+  stack:
+    java: ${java.version}
+    spring-boot: "4.0.x"
+    database: "PostgreSQL 17"
+    messaging: "Apache Kafka (KRaft)"
+    cache: "Redis 7"
+    ai: "Ollama (llama3.2) via Spring AI"
+    auth: "JWT + Keycloak OAuth2"
+  features:
+    - "CRUD with pagination, search, sort, versioned API (v1/v2)"
+    - "Idempotency keys (LRU cache)"
+    - "Rate limiting (Bucket4j — 100 req/min)"
+    - "Circuit breaker + retry (Resilience4j)"
+    - "Kafka async events + request-reply enrich"
+    - "Redis ring buffer (recent customers)"
+    - "AI bio generation (Ollama / Spring AI)"
+    - "Distributed tracing (OpenTelemetry → Zipkin + Tempo)"
+    - "Structured logging (OTLP → Loki)"
+    - "Prometheus metrics + Grafana dashboards"
 
 # =============================================================================
 # Resilience4j — circuit breaker + retry for external HTTP calls
