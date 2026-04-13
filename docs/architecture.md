@@ -133,7 +133,7 @@ com.example.customerservice
 │                   CustomerDto, CustomerDtoV2,            — core domain
 │                   AggregationService, RecentCustomerBuffer,
 │                   CustomerStatsScheduler, SecurityDemoController,
-│                   DockerController, BatchImportResult, CursorPage
+│                   BatchImportResult, CursorPage
 ├── integration/    BioService, JsonPlaceholderClient,
 │                   TodoService                            — external HTTP calls (HTTP Interface + Spring AI)
 ├── messaging/      KafkaConfig, CustomerCreatedEvent,
@@ -143,7 +143,7 @@ com.example.customerservice
 │                   KafkaHealthIndicator, OllamaHealthIndicator,
 │                   RequestIdFilter, RequestContext,
 │                   TraceService, ZipkinExporterConfig,
-│                   AuditService, ObsProxyController       — health, tracing, metrics, audit
+│                   AuditService                           — health, tracing, metrics, audit
 ├── resilience/     IdempotencyFilter, RateLimitingFilter,
 │                   ShedLockConfig                         — rate limiting, idempotency, distributed lock
 └── CustomerServiceApplication.java

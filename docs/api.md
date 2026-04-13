@@ -7,7 +7,6 @@
 - [Authentication](#authentication)
 - [Customer endpoints](#customer-endpoints)
 - [Operational endpoints](#operational-endpoints-no-auth)
-- [Docker management](#docker-management)
 - [Security demos](#security-demos)
 
 ---
@@ -141,19 +140,6 @@ curl -s http://localhost:8080/actuator/health
 curl -s http://localhost:8080/actuator/health/readiness
 curl -s http://localhost:8080/actuator/health/liveness
 curl -s http://localhost:8080/actuator/prometheus | grep 'http_server_requests\|customer'
-```
-
----
-
-## Docker management
-
-```bash
-# List containers
-curl -s http://localhost:8080/docker/containers -H "Authorization: Bearer $TOKEN" | jq .
-
-# Stop/start/restart a container
-curl -s -X POST http://localhost:8080/docker/containers/kafka-demo/restart \
-  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
