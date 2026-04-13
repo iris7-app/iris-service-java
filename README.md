@@ -240,6 +240,39 @@ Pre-push hook (via lefthook) runs unit tests automatically before every `git pus
 
 ---
 
+## Spring Boot & Java compatibility
+
+The default build targets **Spring Boot 4.0.5 + Java 25**. Maven profiles enable compilation
+and testing against older versions — no code change required.
+
+### Supported combinations
+
+| Command | Spring Boot | Java | Notes |
+|---------|-------------|------|-------|
+| `mvn verify` | 4.0.5 | 25 | Default — native API versioning, `ScopedValue`, switch pattern matching |
+| `mvn verify -Dcompat` | 4.0.5 | 21 | `ScopedValue` replaced by `ThreadLocal` |
+| `mvn verify -Dcompat -Djava17` | 4.0.5 | 17 | + switch pattern matching replaced by if/else |
+| `mvn verify -Dsb3` | 3.4.5 | 21 | SB3 BOM + `ThreadLocal` + manual header-based API versioning |
+| `mvn verify -Dsb3 -Djava17` | 3.4.5 | 17 | SB3 + Java 17 (all compat layers applied) |
+
+### How it works
+
+Source overlays in dedicated directories replace version-specific files at compile time.
+The compiler is pointed at a merged copy — no original file is modified.
+
+| Overlay directory | Replaces | Why |
+|-------------------|----------|-----|
+| `src/main/java-compat/` | `RequestContext`, `RequestIdFilter`, `TraceService` | `ScopedValue` (Java 25) → `ThreadLocal` (Java 17/21) |
+| `src/main/java-compat-java17/` | `ApiExceptionHandler` | switch pattern matching (Java 21) → if/else (Java 17) |
+| `src/main/java-sb3/` | `CustomerController` | `@GetMapping(version=...)` (Spring 7) → manual `X-API-Version` header dispatch |
+| `src/test/java-sb3/` | `AutoConfigureMockMvc` | Bridge annotation: SB4 package → SB3 package |
+
+The `RestTestClient`-based test (`CustomerRestClientITest`) is excluded from SB3 builds
+since that class only exists in Spring Framework 7. The `CustomerApiITest` (MockMvc) covers
+the same endpoints.
+
+---
+
 ## CI/CD
 
 | Pipeline | Config | Trigger |

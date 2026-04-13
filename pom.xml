@@ -603,6 +603,24 @@
         </profile>
 
         <!--
+          java17 profile — overrides java.version to 17 when -Djava17 is set.
+          Composable with -Dcompat or -Dsb3:
+            mvn verify -Dcompat -Djava17   → SB4 + Java 17
+            mvn verify -Dsb3 -Djava17      → SB3 + Java 17
+        -->
+        <profile>
+            <id>java17</id>
+            <activation>
+                <property>
+                    <name>java17</name>
+                </property>
+            </activation>
+            <properties>
+                <java.version>17</java.version>
+            </properties>
+        </profile>
+
+        <!--
           sb4 profile — Spring Boot 4 (default).
           Active when the "sb3" system property is NOT set: mvn verify (or mvn -Pnative verify).
           Provides dependencies that exist only in Spring Boot 4:
@@ -630,21 +648,82 @@
         </profile>
 
         <!--
+          compat profile — SB4 with older Java (17 or 21).
+          Activated via: mvn verify -Dcompat       (Java 21)
+                         mvn verify -Dcompat -Djava17   (Java 17)
+
+          Applies Java-version source overlays WITHOUT changing Spring Boot version:
+            java-compat       → ScopedValue replaced by ThreadLocal (Java <25)
+            java-compat-java17 → switch pattern matching replaced by if/else (Java 17)
+        -->
+        <profile>
+            <id>compat</id>
+            <activation>
+                <property>
+                    <name>compat</name>
+                </property>
+            </activation>
+            <properties>
+                <java.version>21</java.version>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>compat-merge-sources</id>
+                                <phase>initialize</phase>
+                                <goals><goal>run</goal></goals>
+                                <configuration>
+                                    <target xmlns:if="ant:if">
+                                        <!-- Step 1: copy all main sources -->
+                                        <copy todir="${project.build.directory}/merged-sources/main">
+                                            <fileset dir="src/main/java"/>
+                                        </copy>
+                                        <!-- Step 2: Java <25 compat overlay (ScopedValue → ThreadLocal) -->
+                                        <copy todir="${project.build.directory}/merged-sources/main" overwrite="true">
+                                            <fileset dir="src/main/java-compat"/>
+                                        </copy>
+                                        <!-- Step 3: Java 17 overlay (switch pattern matching → if/else) -->
+                                        <copy todir="${project.build.directory}/merged-sources/main" overwrite="true" if:set="java17">
+                                            <fileset dir="src/main/java-compat-java17"/>
+                                        </copy>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.build.directory}/merged-sources/main</compileSourceRoot>
+                            </compileSourceRoots>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!--
           sb3 profile — Spring Boot 3.4.x compatibility.
-          Activated via: mvn verify -Dsb3
+          Activated via: mvn verify -Dsb3            (SB3 + Java 21)
+                         mvn verify -Dsb3 -Djava17   (SB3 + Java 17)
 
           Strategy:
             1. Override Spring Boot version via BOM import (takes precedence over parent).
-            2. Pin Java to 21 (virtual threads available, records supported).
+            2. Default Java to 21 (virtual threads + records); override with -Djava17 for Java 17.
             3. Replace SB4-only dependencies with SB3 equivalents.
-            4. Add source overlays (src/main/java-sb3, src/test/java-sb3) via build-helper-maven-plugin.
-            5. Exclude SB4-only source files from compilation.
-
-          Source overlays:
-            src/main/java-sb3/.../CustomerController.java
-              → replaces @GetMapping(version=...) with manual X-API-Version header dispatch
-            src/test/java-sb3/.../AutoConfigureMockMvc.java
-              → bridge annotation: SB4 package delegates to SB3 @AutoConfigureMockMvc
+            4. Source overlays via maven-antrun-plugin (conditional copies):
+               - java-compat:          ScopedValue → ThreadLocal (always, since SB3 = Java <25)
+               - java-compat-java17:   switch pattern matching → if/else (only if -Djava17)
+               - java-sb3:             @GetMapping(version=...) → manual header dispatch (always)
+               - test/java-sb3:        AutoConfigureMockMvc bridge annotation (always)
+            5. Exclude RestTestClient test (SB4-only).
         -->
         <profile>
             <id>sb3</id>
@@ -692,78 +771,48 @@
                 </pluginManagement>
                 <plugins>
                     <!--
-                      Source overlay strategy: copy all sources → target/sb3-merged-sources,
-                      then overwrite SB4-specific files with SB3 alternatives.
-                      The compiler is pointed at the merged directory instead of src/main/java.
+                      Source overlay: copy all sources → target/merged-sources, then overwrite
+                      with version-specific alternatives. Conditional copies use Ant if:set.
                     -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-resources-plugin</artifactId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
                         <executions>
-                            <!-- Step 1: copy all main sources -->
                             <execution>
-                                <id>copy-main-sources</id>
+                                <id>sb3-merge-sources</id>
                                 <phase>initialize</phase>
-                                <goals><goal>copy-resources</goal></goals>
+                                <goals><goal>run</goal></goals>
                                 <configuration>
-                                    <outputDirectory>${project.build.directory}/sb3-merged-sources/main</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>src/main/java</directory>
-                                            <filtering>false</filtering>
-                                        </resource>
-                                    </resources>
-                                </configuration>
-                            </execution>
-                            <!-- Step 2: overlay SB3-specific files (overwrites SB4 versions) -->
-                            <execution>
-                                <id>overlay-sb3-main-sources</id>
-                                <phase>initialize</phase>
-                                <goals><goal>copy-resources</goal></goals>
-                                <configuration>
-                                    <outputDirectory>${project.build.directory}/sb3-merged-sources/main</outputDirectory>
-                                    <overwrite>true</overwrite>
-                                    <resources>
-                                        <resource>
-                                            <directory>src/main/java-sb3</directory>
-                                            <filtering>false</filtering>
-                                        </resource>
-                                    </resources>
-                                </configuration>
-                            </execution>
-                            <!-- Step 3: copy all test sources -->
-                            <execution>
-                                <id>copy-test-sources</id>
-                                <phase>initialize</phase>
-                                <goals><goal>copy-resources</goal></goals>
-                                <configuration>
-                                    <outputDirectory>${project.build.directory}/sb3-merged-sources/test</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>src/test/java</directory>
-                                            <filtering>false</filtering>
-                                            <excludes>
-                                                <!-- RestTestClient is Spring 7 / SB4 only -->
-                                                <exclude>com/example/customerservice/customer/CustomerRestClientITest.java</exclude>
-                                            </excludes>
-                                        </resource>
-                                    </resources>
-                                </configuration>
-                            </execution>
-                            <!-- Step 4: overlay SB3-specific test files -->
-                            <execution>
-                                <id>overlay-sb3-test-sources</id>
-                                <phase>initialize</phase>
-                                <goals><goal>copy-resources</goal></goals>
-                                <configuration>
-                                    <outputDirectory>${project.build.directory}/sb3-merged-sources/test</outputDirectory>
-                                    <overwrite>true</overwrite>
-                                    <resources>
-                                        <resource>
-                                            <directory>src/test/java-sb3</directory>
-                                            <filtering>false</filtering>
-                                        </resource>
-                                    </resources>
+                                    <target xmlns:if="ant:if">
+                                        <!-- Main sources -->
+                                        <copy todir="${project.build.directory}/merged-sources/main">
+                                            <fileset dir="src/main/java"/>
+                                        </copy>
+                                        <!-- Java <25 compat (ScopedValue → ThreadLocal) — always for SB3 -->
+                                        <copy todir="${project.build.directory}/merged-sources/main" overwrite="true">
+                                            <fileset dir="src/main/java-compat"/>
+                                        </copy>
+                                        <!-- Java 17 compat (switch → if/else) — only if -Djava17 -->
+                                        <copy todir="${project.build.directory}/merged-sources/main" overwrite="true" if:set="java17">
+                                            <fileset dir="src/main/java-compat-java17"/>
+                                        </copy>
+                                        <!-- SB3 overlay (@GetMapping without version=) — always for SB3 -->
+                                        <copy todir="${project.build.directory}/merged-sources/main" overwrite="true">
+                                            <fileset dir="src/main/java-sb3"/>
+                                        </copy>
+
+                                        <!-- Test sources (exclude SB4-only RestTestClient test) -->
+                                        <copy todir="${project.build.directory}/merged-sources/test">
+                                            <fileset dir="src/test/java">
+                                                <exclude name="com/example/customerservice/customer/CustomerRestClientITest.java"/>
+                                            </fileset>
+                                        </copy>
+                                        <!-- SB3 test overlay (AutoConfigureMockMvc bridge) -->
+                                        <copy todir="${project.build.directory}/merged-sources/test" overwrite="true">
+                                            <fileset dir="src/test/java-sb3"/>
+                                        </copy>
+                                    </target>
                                 </configuration>
                             </execution>
                         </executions>
@@ -774,10 +823,10 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <configuration>
                             <compileSourceRoots>
-                                <compileSourceRoot>${project.build.directory}/sb3-merged-sources/main</compileSourceRoot>
+                                <compileSourceRoot>${project.build.directory}/merged-sources/main</compileSourceRoot>
                             </compileSourceRoots>
                             <testCompileSourceRoots>
-                                <testCompileSourceRoot>${project.build.directory}/sb3-merged-sources/test</testCompileSourceRoot>
+                                <testCompileSourceRoot>${project.build.directory}/merged-sources/test</testCompileSourceRoot>
                             </testCompileSourceRoots>
                         </configuration>
                     </plugin>
