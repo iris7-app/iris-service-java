@@ -61,7 +61,7 @@ services:
   # start_period=30s accounts for KRaft startup time before health checks begin.
   # ---------------------------------------------------------------------------
   kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:4.0.0
     container_name: kafka-demo
     ports:
       - "${KAFKA_PORT:-9092}:9092"
@@ -112,7 +112,7 @@ services:
   # Note: model download may take several minutes on first run.
   # ---------------------------------------------------------------------------
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.9.0
     container_name: ollama
     ports:
       - "11434:11434"
@@ -202,10 +202,10 @@ services:
   # Provides a graphical interface to browse schemas, run queries, and inspect
   # data without a local psql client. Pre-configured to connect to the "db"
   # service via servers.json mounted at startup.
-  # Access: http://localhost:5050 (admin@demo.com / admin)
+  # Access: http://localhost:5050 (no login required — desktop mode for dev)
   # ---------------------------------------------------------------------------
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.4
     container_name: pgadmin
     depends_on:
       db:
@@ -214,11 +214,35 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@demo.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_LISTEN_PORT: 80
+      # Desktop mode: skip the login page entirely (dev only — never in production)
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports:
       - "5050:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       - ./infra/pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./infra/pgadmin/pgpassfile:/pgadmin4/pgpassfile:ro
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # pgweb — lightweight PostgreSQL web client with REST API
+  # Provides a simple SQL editor UI and a JSON API for the Angular frontend.
+  # Read-only mode prevents any data modification. CORS enabled for localhost:4200.
+  # Access: http://localhost:8081
+  # API: GET http://localhost:8081/api/query?query=SELECT...
+  # ---------------------------------------------------------------------------
+  pgweb:
+    image: sosedoff/pgweb:0.16.2
+    container_name: pgweb
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGWEB_DATABASE_URL: "postgres://demo:demo@db:5432/customer-service?sslmode=disable"
+    command: ["pgweb", "--bind=0.0.0.0", "--listen=8081", "--readonly", "--cors", "--cors-origin=http://localhost:4200"]
+    ports:
+      - "8081:8081"
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -228,7 +252,7 @@ services:
   # Access: http://localhost:9080
   # ---------------------------------------------------------------------------
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest
+    image: provectuslabs/kafka-ui:v0.7.2
     container_name: kafka-ui
     depends_on:
       kafka:
@@ -247,7 +271,7 @@ services:
   # Access: http://localhost:5540
   # ---------------------------------------------------------------------------
   redisinsight:
-    image: redis/redisinsight:latest
+    image: redis/redisinsight:2.68.0
     container_name: redisinsight
     depends_on:
       redis:
@@ -256,6 +280,48 @@ services:
       - "5540:5540"
     volumes:
       - redisinsight_data:/data
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Redis Commander — lightweight Redis web UI with live monitoring
+  # Alternative to RedisInsight — smaller footprint, auto-connects, shows
+  # real-time command stream. Useful for watching idempotency keys and rate
+  # limit buckets change in real time.
+  # Access: http://localhost:8082
+  # ---------------------------------------------------------------------------
+  redis-commander:
+    image: rediscommander/redis-commander:0.8.1
+    container_name: redis-commander
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOSTS: "local:redis:6379"
+    ports:
+      - "8082:8081"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # AKHQ — full-featured Kafka UI (alternative to Kafka UI)
+  # Provides live tail of messages, consumer group management, schema registry
+  # support, topic creation/deletion, and ACL management.
+  # Access: http://localhost:8083
+  # ---------------------------------------------------------------------------
+  akhq:
+    image: tchiotludo/akhq:0.27.0
+    container_name: akhq
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            local:
+              properties:
+                bootstrap.servers: "kafka:29092"
+    ports:
+      - "8083:8080"
     restart: unless-stopped
 
 volumes:
