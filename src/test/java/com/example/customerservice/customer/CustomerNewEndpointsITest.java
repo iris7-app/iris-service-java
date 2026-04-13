@@ -89,6 +89,20 @@ class CustomerNewEndpointsITest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.content", hasSize(0)));
     }
 
+    // ─── Summary projection ─────────────────────────────────────────────────
+
+    @Test
+    void summary_returnsIdAndNameOnly() throws Exception {
+        createCustomer("Alice", "alice@example.com");
+
+        mockMvc.perform(get("/customers/summary")
+                        .with(user("user").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].id").isNumber())
+                .andExpect(jsonPath("$.content[0].name").value("Alice"));
+    }
+
     // ─── Cursor pagination ──────────────────────────────────────────────────
 
     @Test
