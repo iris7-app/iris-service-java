@@ -115,7 +115,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated()) {
             String name = auth.getName();
-            // Tag the current span so the username appears in Zipkin/Grafana Tempo trace details
+            // Tag the current span so the username appears in Grafana Tempo trace details
             Span current = tracer.currentSpan();
             if (current != null) {
                 current.tag("user.name", name);

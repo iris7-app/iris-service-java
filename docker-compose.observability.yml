@@ -9,15 +9,13 @@
 #   grafana/otel-lgtm bundles all LGTM components in a single container.
 #   The Spring Boot app sends traces and logs via OpenTelemetry OTLP (port 4318).
 #   Grafana is pre-configured with Loki (logs) and Tempo (traces) datasources.
+#   Tempo HTTP query API exposed on port 3200 for direct trace lookup.
 #   Access: http://localhost:3001
+#   Explore traces: http://localhost:3001/explore (select Tempo datasource)
 #
 # Path 2 — Standalone Prometheus + Grafana                      [port 3000 + 9090]
 #
-# Path 3 — Zipkin (standalone distributed tracing)              [port 9411]
-#   Lightweight alternative to Tempo. Receives spans via OTLP or Zipkin protocol.
-#   Access: http://localhost:9411
-#
-# Path 4 — Pyroscope (continuous profiling)                     [port 4040]
+# Path 3 — Pyroscope (continuous profiling)                     [port 4040]
 #   CPU/memory flamegraphs. The Spring Boot app pushes profiles via the Pyroscope
 #   Java agent or HTTP SDK. Integrates with Grafana as a datasource.
 #   Access: http://localhost:4040
@@ -56,14 +54,14 @@ services:
       # with Access-Control-Allow-Origin headers for the Angular UI.
       - "4317:4317"    # OTLP gRPC
       - "4318:4318"    # OTLP HTTP — Spring Boot sends traces and logs here
-      - "9096:9096"    # Tempo gRPC — used by Jaeger Query to read traces
+      - "3200:3200"    # Tempo HTTP query API — direct trace lookup by ID
     depends_on:
       - prometheus
     volumes:
       # Pre-provision a Grafana dashboard into the LGTM Grafana instance
       - ./infra/observability/grafana/dashboards-lgtm/dashboard-demo-lgtm.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/dashboard-demo-lgtm.yaml
       - ./infra/observability/grafana/dashboards-lgtm/demo.json:/otel-lgtm/demo.json
-      # Override OTEL collector config to also forward traces to Jaeger
+      # Override OTEL collector config (Tempo-only pipeline, CORS allowed)
       - ./infra/observability/otelcol-override.yaml:/otel-lgtm/otelcol-config.yaml:ro
     environment:
       # Forward all application logs received via OTLP to Loki
@@ -122,51 +120,6 @@ services:
       - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards
 
   # ---------------------------------------------------------------------------
-  # Jaeger — distributed tracing with advanced analysis
-  #
-  # Receives traces via the Zipkin protocol (port 9412) from the Spring Boot
-  # app alongside Zipkin. Both Zipkin and Jaeger see the same traces.
-  # The Zipkin receiver is built into Jaeger all-in-one.
-  #
-  # Features over Zipkin: trace comparison, dependency graph, flamegraph,
-  # critical path analysis, deep dependency analysis.
-  # Access: http://localhost:16686
-  # ---------------------------------------------------------------------------
-  jaeger:
-    image: jaegertracing/all-in-one:1.64.0
-    container_name: customerservice-jaeger
-    environment:
-      COLLECTOR_ZIPKIN_HOST_PORT: ":9412"
-    ports:
-      - "16686:16686"    # Jaeger UI
-      - "14268:14268"    # Jaeger collector HTTP (accepts Zipkin spans)
-    restart: unless-stopped
-  #      - "4318:4318"    # OTLP HTTP (conflicts with LGTM if both run simultaneously)
-
-  # ---------------------------------------------------------------------------
-  # Zipkin — lightweight distributed tracing UI
-  #
-  # Standalone alternative to Tempo/Jaeger with a simple, focused UI.
-  # Receives spans via its native Zipkin protocol (POST /api/v2/spans)
-  # or via OTLP when placed behind an OpenTelemetry Collector.
-  #
-  # Spring Boot integration: set management.zipkin.tracing.endpoint
-  # to http://localhost:9411/api/v2/spans in application.yml.
-  # Access: http://localhost:9411
-  # ---------------------------------------------------------------------------
-  zipkin:
-    image: openzipkin/zipkin:3.5
-    container_name: customerservice-zipkin
-    ports:
-      - "9411:9411"
-    environment:
-      # Armeria (Zipkin's HTTP server) supports CORS via ZIPKIN_HTTP_ALLOWED_ORIGINS
-      # This lets the Angular UI on localhost:4200 call Zipkin directly without a proxy
-      ZIPKIN_HTTP_ALLOWED_ORIGINS: "http://localhost:4200"
-      JAVA_OPTS: "-Xms64m -Xmx256m"
-    restart: unless-stopped
-
-  # ---------------------------------------------------------------------------
   # Nginx CORS proxy for Loki
   #
   # The Angular UI on localhost:4200 needs to call Loki (3100) directly.
@@ -177,9 +130,6 @@ services:
   # frontend can call http://localhost:3100/loki/api/v1/query_range without
   # any port mapping changes. The LGTM container does NOT expose port 3100
   # to the host — only this proxy does.
-  #
-  # Zipkin has native CORS support via ZIPKIN_HTTP_ALLOWED_ORIGINS, so it
-  # does not need the proxy (direct access on port 9411).
   # ---------------------------------------------------------------------------
   cors-proxy:
     image: nginx:1.27-alpine

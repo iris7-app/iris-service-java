@@ -653,13 +653,13 @@ public class CustomerController {
      * Simulates a slow database query using PostgreSQL {@code pg_sleep()}.
      *
      * <p>Useful for observability demos: the long-running DB span is clearly visible
-     * in Tempo/Zipkin traces, and the latency spike appears in Grafana dashboards.
+     * in Grafana Tempo traces, and the latency spike appears in Grafana dashboards.
      *
      * @param seconds duration of the simulated slow query (capped at 10s)
      */
     @Operation(summary = "Simulate a slow database query",
             description = "Runs `SELECT pg_sleep(N)` to inject artificial latency. "
-                    + "The resulting DB span is visible in distributed traces (Tempo/Zipkin/Jaeger). "
+                    + "The resulting DB span is visible in distributed traces (Grafana Tempo). "
                     + "Max 10 seconds.")
     @ApiResponse(responseCode = "200", description = "Query completed — returns `{status, duration}`")
     @GetMapping("/slow-query")

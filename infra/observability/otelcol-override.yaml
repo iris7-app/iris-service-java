@@ -1,6 +1,6 @@
-# Override OTEL Collector config to also export traces to Jaeger.
-# This file is mounted over the default config in the LGTM container.
-# It adds a second exporter (otlphttp/jaeger) to the traces pipeline.
+# OTEL Collector config — mounted over the default config in the LGTM container.
+# Traces go to Tempo (via the local otlphttp/traces exporter).
+# Jaeger and Zipkin have been removed — Tempo is the single tracing backend.
 
 receivers:
   otlp:
@@ -37,11 +37,6 @@ exporters:
     endpoint: http://127.0.0.1:4418
     tls:
       insecure: true
-  # Forward traces to Jaeger (accepts OTLP on port 4317)
-  otlp/jaeger:
-    endpoint: customerservice-jaeger:4317
-    tls:
-      insecure: true
   otlphttp/logs:
     endpoint: http://127.0.0.1:3100/otlp
     tls:
@@ -57,8 +52,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      # Export to both Tempo (local) and Jaeger (external)
-      exporters: [otlphttp/traces, otlp/jaeger]
+      exporters: [otlphttp/traces]
     metrics:
       receivers: [otlp, prometheus/collector]
       processors: [batch]

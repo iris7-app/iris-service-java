@@ -1,29 +1,52 @@
 {
   "datasource": "Prometheus",
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "graphTooltip": 0,
   "panels": [
     {
       "type": "timeseries",
       "title": "HTTP requests rate",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
       "targets": [
-        { "expr": "sum(rate(http_server_requests_milliseconds_count[1m]))", "refId": "A" }
+        {
+          "expr": "sum(rate(http_server_requests_milliseconds_count[1m]))",
+          "refId": "A"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "Customer created count",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
       "targets": [
-        { "expr": "customer_created_count_total", "refId": "A" }
+        {
+          "expr": "customer_created_count_total",
+          "refId": "A"
+        }
       ]
     },
     {
       "type": "timeseries",
       "title": "Customer create latency p95",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum(rate(customer_create_duration_milliseconds_bucket[5m])) by (le))",
@@ -34,7 +57,12 @@
     {
       "type": "timeseries",
       "title": "Customer aggregate latency p95",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum(rate(customer_aggregate_duration_milliseconds_bucket[5m])) by (le))",
@@ -45,18 +73,47 @@
     {
       "type": "stat",
       "title": "Recent customer buffer size",
-
-      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 16 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 16
+      },
       "targets": [
-        { "expr": "customer_recent_buffer_size", "refId": "A" }
+        {
+          "expr": "customer_recent_buffer_size",
+          "refId": "A"
+        }
       ]
+    },
+    {
+      "type": "text",
+      "title": "\ud83d\udd0d Distributed Traces \u2014 Tempo",
+      "gridPos": {
+        "h": 6,
+        "w": 18,
+        "x": 6,
+        "y": 16
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "## Distributed Traces \u2014 Grafana Tempo\n\nTempo is bundled inside this LGTM container. Spring Boot sends traces via **OTLP on port 4318** \u2192 OTel Collector \u2192 Tempo.\n\n### Quick links\n\n- **[\ud83d\udd0d Search all traces (TraceQL)](http://localhost:3001/explore?schemaVersion=1&panes=%7B%22df4%22%3A%7B%22datasource%22%3A%22tempo%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22tempo%22%2C%22uid%22%3A%22tempo%22%7D%2C%22queryType%22%3A%22traceqlSearch%22%2C%22limit%22%3A20%2C%22tableType%22%3A%22traces%22%2C%22filters%22%3A%5B%7B%22id%22%3A%220153af9c%22%2C%22operator%22%3A%22%3D%22%2C%22scope%22%3A%22span%22%7D%5D%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D%7D&orgId=1)** \u2014 last 1 hour\n- **[\ud83d\udcdd Correlate logs in Loki](http://localhost:3001/explore?orgId=1&left=%7B%22datasource%22%3A%22loki%22%7D)** \u2014 LogQL queries\n\n> Trace HTTP requests end-to-end: controller \u2192 JPA \u2192 Redis \u2192 Kafka. Each span carries HTTP method, URL, status, and DB query.\n\n**Tempo API** (direct): "
+      }
     }
   ],
   "schemaVersion": 39,
   "style": "dark",
-  "tags": ["spring", "observability"],
-  "templating": { "list": [] },
-  "time": { "from": "now-15m", "to": "now" },
+  "tags": [
+    "spring",
+    "observability"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
   "title": "customerservice overview",
   "version": 1
 }

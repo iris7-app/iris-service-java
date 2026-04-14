@@ -135,11 +135,10 @@
         </dependency>
 
         <!--
-          Observability stack — five complementary artifacts:
+          Observability stack — four complementary artifacts:
             actuator              → /actuator/health, /actuator/prometheus, etc.
             micrometer-prometheus → Prometheus registry: scrape at /actuator/prometheus
             opentelemetry         → OTLP trace + log export to Tempo / Loki via OTEL collector
-            opentelemetry-zipkin  → exports traces to Zipkin (alongside OTLP to Tempo)
             datasource-micrometer → instruments JDBC DataSource with Micrometer Observations
                                     (query count, latency histograms, slow-query detection)
         -->
@@ -162,10 +161,6 @@
         </dependency>
         <!-- spring-boot-starter-opentelemetry: SB4-only, declared in sb4 profile below -->
         <!-- SB3 equivalent (micrometer-tracing-bridge-otel + opentelemetry-exporter-otlp) in sb3 profile -->
-        <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-exporter-zipkin</artifactId>
-        </dependency>
         <!-- OTLP log export: bridges Logback log events to OpenTelemetry pipeline (→ Loki via LGTM) -->
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>

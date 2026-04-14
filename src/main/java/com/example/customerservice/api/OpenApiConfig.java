@@ -56,7 +56,7 @@ public class OpenApiConfig {
                                 - **Kafka request-reply**: `/enrich` blocks until the consumer replies or times out → `504`
 
                                 ## Observability
-                                Every endpoint emits Micrometer metrics (→ Prometheus) and OpenTelemetry spans (→ Tempo/Jaeger).
+                                Every endpoint emits Micrometer metrics (→ Prometheus) and OpenTelemetry spans (→ Tempo via LGTM).
                                 """)
                         .version("2.0")
                         .contact(new Contact()
