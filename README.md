@@ -1,4 +1,49 @@
-# Spring Boot 4 – Observable Customer Service
+<div align="center">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="60%" r="60%">
+      <stop offset="0%" stop-color="#1e3a5f" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#1e3a5f" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="55" fill="url(#sky)" stroke="#3b82f6" stroke-width="0.5" opacity="0.3" />
+  <!-- Tower body -->
+  <rect x="50" y="65" width="20" height="38" rx="2" fill="#3b82f6" opacity="0.8" />
+  <!-- Tower platform / observation deck -->
+  <rect x="44" y="58" width="32" height="7" rx="2" fill="#3b82f6" />
+  <!-- Battlements -->
+  <rect x="44" y="53" width="6" height="5" rx="1" fill="#3b82f6" />
+  <rect x="53" y="53" width="6" height="5" rx="1" fill="#3b82f6" />
+  <rect x="62" y="53" width="6" height="5" rx="1" fill="#3b82f6" />
+  <rect x="71" y="53" width="5" height="5" rx="1" fill="#3b82f6" />
+  <!-- Tower window (eye/lens) -->
+  <ellipse cx="60" cy="75" rx="5" ry="4" fill="#0f172a" stroke="#3b82f6" stroke-width="1" />
+  <circle cx="60" cy="75" r="2" fill="#60a5fa" opacity="0.8" />
+  <!-- Binoculars on platform -->
+  <circle cx="55" cy="61" r="2.5" fill="none" stroke="#93c5fd" stroke-width="1.2" />
+  <circle cx="65" cy="61" r="2.5" fill="none" stroke="#93c5fd" stroke-width="1.2" />
+  <rect x="57" y="60.5" width="6" height="1" fill="#93c5fd" />
+  <!-- Radar sweep arcs -->
+  <path d="M 82 45 A 12 12 0 0 1 94 57" stroke="#34d399" stroke-width="1.2" fill="none" opacity="0.7" />
+  <path d="M 82 38 A 19 19 0 0 1 101 57" stroke="#34d399" stroke-width="1" fill="none" opacity="0.5" />
+  <path d="M 82 31 A 26 26 0 0 1 108 57" stroke="#34d399" stroke-width="0.8" fill="none" opacity="0.3" />
+  <!-- Signal dot -->
+  <circle cx="86" cy="48" r="2" fill="#34d399" opacity="0.9" />
+  <!-- Stars / metrics dots -->
+  <circle cx="25" cy="30" r="1" fill="#60a5fa" opacity="0.7" />
+  <circle cx="35" cy="22" r="1.5" fill="#60a5fa" opacity="0.5" />
+  <circle cx="15" cy="45" r="1" fill="#34d399" opacity="0.6" />
+  <circle cx="95" cy="25" r="1" fill="#60a5fa" opacity="0.5" />
+  <circle cx="30" cy="90" r="1" fill="#34d399" opacity="0.4" />
+  <!-- Ground base -->
+  <rect x="30" y="103" width="60" height="3" rx="1.5" fill="#3b82f6" opacity="0.3" />
+  <rect x="40" y="106" width="40" height="2" rx="1" fill="#3b82f6" opacity="0.15" />
+</svg>
+</div>
+
+# Mirador — Observable Customer API
+
+![Java 25](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white) ![Spring Boot 4](https://img.shields.io/badge/Spring_Boot-4-6DB33F?logo=springio&logoColor=white) ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white) ![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-black?logo=apachekafka&logoColor=white) ![Redis](https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white) ![Angular 21](https://img.shields.io/badge/Angular-21-DD0031?logo=angular&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white) ![GitLab CI](https://img.shields.io/badge/GitLab_CI-FC6D26?logo=gitlab&logoColor=white) ![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-7F52FF?logo=opentelemetry&logoColor=white)
 
 This project has one goal: demonstrate what it takes to diagnose an incident on a backend service.
 The stack is built around that scenario — not around the technologies themselves.
@@ -20,103 +65,39 @@ The stack is built around that scenario — not around the technologies themselv
 ## Architecture
 
 ```mermaid
-flowchart TB
-    Client(["HTTP client\n(curl / frontend)"])
+flowchart LR
+    Client(["Browser / curl"])
 
-    subgraph App["customer-service  (Spring Boot 4 / JDK 25)"]
-        direction TB
-
-        subgraph Security["security — every request passes through here in order"]
-            RL["① RateLimitingFilter\nBucket4j · 100 req/min per IP · Redis token bucket"]
-            Idp["② IdempotencyFilter\nIdempotency-Key header · bounded LRU cache in Redis"]
-            Auth["③ JwtAuthenticationFilter\nvalidates built-in JWT  or  Keycloak JWKS token"]
-        end
-
-        subgraph Core["customer — main domain"]
-            CC["CustomerController\nREST endpoints · header-based API versioning"]
-            CS["CustomerService\nTransactional · publishes events · calls enrichment"]
-            Agg["AggregationService\nparallel virtual threads · intentional 200 ms latency"]
-            Buf["RecentCustomerBuffer\nRedis LPUSH+LTRIM ring buffer · last 10"]
-            Sched["CustomerStatsScheduler\n@Scheduled · ShedLock distributed lock"]
-        end
-
-        subgraph Messaging["messaging — Kafka"]
-            Pub["CustomerEventPublisher\nfire-and-forget · customer.created topic"]
-            Lst["CustomerEventListener\nconsumes customer.created · logs + metrics"]
-            Enr["CustomerEnrichHandler\nrequest-reply · @KafkaListener + @SendTo"]
-        end
-
-        subgraph Integration["integration — external calls"]
-            Bio["BioService\nSpring AI ChatClient · Ollama · circuit breaker fallback"]
-            Todo["TodoService\nHTTP Interface @HttpExchange · jsonplaceholder.typicode.com"]
-        end
-
-        subgraph Obs["observability — cross-cutting"]
-            Tr["TraceService + OTel\nOTLP export to Tempo + Zipkin"]
-            Hi["Health indicators\nDB · Kafka · Redis · Ollama"]
-            Ri["RequestIdFilter\nScopedValue request-ID propagation"]
-        end
+    subgraph App["🔭 Mirador Service (Spring Boot 4 / Java 25)"]
+        Filter["🛡️ Security Filters\nRate limit · Idempotency · JWT/Keycloak"]
+        API["🔌 REST API\nCustomers (v1/v2) · Auth · Jobs"]
+        Domain["⚙️ Domain\nCustomerService · Scheduler (ShedLock)"]
+        Async["📨 Kafka\nPublish events · Request-reply enrich"]
+        AI["🤖 AI / Integration\nOllama LLM · JSONPlaceholder HTTP"]
     end
 
-    subgraph Infra["infrastructure (Docker Compose)"]
-        PG[("PostgreSQL 17\nFlyway migrations V1–V4")]
-        KF[["Kafka (KRaft)\n3 topics: created · request · reply"]]
-        RD[("Redis\nrate limit buckets · idempotency cache · recent buffer")]
-        KC["Keycloak\nrealm-dev · 2 confidential clients"]
-        OL["Ollama\nlocal LLM — llama3.2"]
-        JP["jsonplaceholder.typicode.com\npublic mock REST API"]
+    subgraph Infra["🐳 Infrastructure"]
+        PG[("PostgreSQL 17")]
+        KF[["Apache Kafka"]]
+        RD[("Redis 7")]
+        KC["Keycloak"]
+        OL["Ollama"]
     end
 
-    subgraph ObsStack["observability stack (Docker Compose)"]
-        PR["Prometheus"]
-        GR1["Grafana :3000"]
-        GR2["Grafana :3001 (OTel)"]
-        LK["Loki"]
-        TP["Tempo"]
-        ZK["Zipkin :9411"]
-        PY["Pyroscope :4040"]
+    subgraph Obs["📡 Observability"]
+        OTEL["OpenTelemetry\nTraces · Logs · Metrics"]
+        STACK["Grafana · Tempo\nLoki · Prometheus\nZipkin · Pyroscope"]
     end
 
-    subgraph AdminTools["admin & visualization tools"]
-        PGA["pgAdmin :5050"]
-        KUI["Kafka UI :9080"]
-        RIS["RedisInsight :5540"]
-    end
-
-    subgraph CI["CI/CD — local runner"]
-        GLR["GitLab Runner\ndocker-compose.runner.yml\nexecutes jobs on this machine"]
-        GLC[("gitlab.com\nrepo · pipeline view\nContainer Registry")]
-    end
-
-    Client --> RL --> Idp --> Auth
-    Auth --> CC
-    CC --> CS
-    CS --> Agg & Buf & Pub
-    Agg --> Bio & Todo
-    Lst --> CS
-    Sched --> CS
-
-    CS <--> PG
-    Pub --> KF
-    KF --> Lst & Enr
-    Enr -.->|reply| KF
-    RL & Idp & Buf --> RD
-    Sched --> RD
-    Auth -.->|JWKS fetched once at startup| KC
-    Bio --> OL
-    Todo --> JP
-
-    Tr --> TP
-    Tr --> ZK
-    Ri & Hi & Tr -.->|metrics + spans| PR
-    PR --> GR1
-    TP & LK --> GR2
-    Tr -.->|structured logs| LK
-    PGA -.-> PG
-    KUI -.-> KF
-    RIS -.-> RD
-    GLR -.->|"long-poll HTTPS\n(outbound only)"| GLC
-    GLC -.->|"triggers jobs"| GLR
+    Client --> Filter --> API --> Domain
+    Domain --> Async
+    Domain --> AI
+    Domain <--> PG
+    Async <--> KF
+    Domain --> RD
+    AI --> OL
+    Filter -.->|JWT verify| KC
+    Domain -.-> OTEL --> STACK
 ```
 
 ---
@@ -133,15 +114,15 @@ Internet
 ┌───────────────────────────────────────────────────────────┐
 │  Nginx Ingress Controller           namespace: ingress-nginx│
 │                                                           │
-│  /api/(.*)  →  strip /api  →  customer-service:8080      │
-│  /(.*)      →              →  customer-ui:80             │
+│  /api/(.*)  →  strip /api  →  mirador-service:8080       │
+│  /(.*)      →              →  mirador-ui:80              │
 └────────────────┬──────────────────────┬───────────────────┘
                  │                      │
    namespace: app│                      │
     ─────────────┼──────────────────────┼──────────────────
                  ▼                      ▼
     ┌─────────────────────┐   ┌──────────────────────┐
-    │  customer-service   │   │    customer-ui        │
+    │  mirador-service    │   │    mirador-ui         │
     │  Spring Boot 4      │   │  Angular 21 + Nginx   │
     │  replicas: 2        │   │  replicas: 2          │
     │  HPA: 1–5 @ 70% CPU │   │  RollingUpdate        │
@@ -293,7 +274,7 @@ Pre-push hook (via lefthook) runs unit tests automatically before every `git pus
 | Redis | 6379 | |
 | Kafka (KRaft) | 9092 | PLAINTEXT\_HOST listener |
 | Ollama (LLM) | 11434 | llama3.2:1b — pulled on first start |
-| Keycloak | 9090 | admin / admin · realm: `customer-service` |
+| Keycloak | 9090 | admin / admin · realm: `mirador-service` |
 
 #### Admin tools
 
