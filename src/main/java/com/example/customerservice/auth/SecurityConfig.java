@@ -111,6 +111,12 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        // Expose security headers so the Angular Security Demo can read them via HttpClient observe:'response'
+        config.setExposedHeaders(List.of(
+                "X-Content-Type-Options", "X-Frame-Options", "X-XSS-Protection",
+                "Referrer-Policy", "Content-Security-Policy", "Permissions-Policy",
+                "Strict-Transport-Security"
+        ));
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
