@@ -117,6 +117,9 @@ public class QualityReportEndpoint {
         List<Map<String, Object>> suites = new ArrayList<>();
         List<double[]> allTestCases = new ArrayList<>();
         List<String> allTestCaseNames = new ArrayList<>();
+        // Deduplicate by simple class name — stale reports from old packages
+        // (after a rename without mvn clean) would otherwise double-count.
+        java.util.Set<String> seenShortNames = new java.util.LinkedHashSet<>();
 
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         try {
@@ -131,16 +134,19 @@ public class QualityReportEndpoint {
                     int skipped = intAttr(suite, "skipped");
                     double time = doubleAttr(suite, "time");
 
+                    String fullName = suite.getAttribute("name");
+                    String shortName = fullName.contains(".")
+                            ? fullName.substring(fullName.lastIndexOf('.') + 1)
+                            : fullName;
+
+                    // Skip duplicate class names (e.g. old package + new package same class)
+                    if (!seenShortNames.add(shortName)) continue;
+
                     totalTests += tests;
                     totalFailures += failures;
                     totalErrors += errors;
                     totalSkipped += skipped;
                     totalTime += time;
-
-                    String fullName = suite.getAttribute("name");
-                    String shortName = fullName.contains(".")
-                            ? fullName.substring(fullName.lastIndexOf('.') + 1)
-                            : fullName;
 
                     Map<String, Object> suiteMap = new LinkedHashMap<>();
                     suiteMap.put("name", shortName);
@@ -773,8 +779,7 @@ public class QualityReportEndpoint {
                     String severity = vuln.path("severity").asText("UNKNOWN").toUpperCase();
                     double score    = vuln.path("cvssv3").path("baseScore").asDouble(
                                       vuln.path("cvssv2").path("score").asDouble(0.0));
-                    String desc     = vuln.path("description").asText("");
-                    if (desc.length() > 150) desc = desc.substring(0, 150) + "…";
+                    String desc     = cleanCveDescription(vuln.path("description").asText(""));
 
                     total++;
                     bySeverity.merge(severity, 1, Integer::sum);
@@ -912,5 +917,43 @@ public class QualityReportEndpoint {
 
     private static double round1(double v) {
         return Math.round(v * 10.0) / 10.0;
+    }
+
+    /**
+     * Cleans a CVE description from the NVD JSON for display.
+     * Some descriptions contain full Markdown with HTML code examples
+     * (e.g. DOMPurify PoC descriptions). We extract only the first
+     * meaningful plain-text sentence/paragraph.
+     */
+    private static String cleanCveDescription(String raw) {
+        if (raw == null || raw.isBlank()) return "";
+        // Strip markdown section headers (lines starting with #)
+        // and take content of the first non-empty, non-header paragraph
+        String[] lines = raw.split("\n");
+        StringBuilder first = new StringBuilder();
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("#") || trimmed.startsWith("```") || trimmed.startsWith("- ")) {
+                // If we already have content, stop here
+                if (!first.isEmpty()) break;
+                continue; // skip leading headers/code blocks
+            }
+            if (trimmed.isEmpty()) {
+                if (!first.isEmpty()) break; // end of first paragraph
+                continue;
+            }
+            if (!first.isEmpty()) first.append(" ");
+            first.append(trimmed);
+        }
+        String result = first.toString()
+                // Strip inline markdown: bold **x**, italic *x*, code `x`, links [text](url)
+                .replaceAll("\\*\\*([^*]+)\\*\\*", "$1")
+                .replaceAll("\\*([^*]+)\\*", "$1")
+                .replaceAll("`([^`]+)`", "$1")
+                .replaceAll("\\[([^]]+)]\\([^)]+\\)", "$1")
+                // Strip any residual HTML tags
+                .replaceAll("<[^>]+>", "")
+                .trim();
+        return result.length() > 200 ? result.substring(0, 200) + "…" : result;
     }
 }

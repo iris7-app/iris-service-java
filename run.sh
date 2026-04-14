@@ -8,7 +8,7 @@
 # Infrastructure commands (Docker Compose):
 #   db        start PostgreSQL
 #   kafka     start Kafka
-#   obs       start observability stack (Prometheus, Grafana/LGTM, Pyroscope)
+#   obs       start observability stack (Prometheus, Grafana/LGTM, Zipkin)
 #   app       start Spring application (local Maven)
 #   all       start everything (db + kafka + obs + app)
 #   restart   stop + clean restart of all containers, then start app
@@ -158,27 +158,6 @@ case "$1" in
     $MVNW spring-boot:run
     ;;
 
-  app-profiled)
-    echo "Starting Spring app with Pyroscope profiling..."
-    PYROSCOPE_JAR="infra/pyroscope/pyroscope.jar"
-    if [ ! -f "$PYROSCOPE_JAR" ]; then
-      echo "Downloading Pyroscope Java agent..."
-      mkdir -p infra/pyroscope
-      curl -sL https://github.com/grafana/pyroscope-java/releases/latest/download/pyroscope.jar -o "$PYROSCOPE_JAR"
-    fi
-    # Pyroscope profiles 3 dimensions:
-    #   CPU  — itimer event (which methods burn CPU time)
-    #   HEAP — alloc event (where memory is allocated, threshold 512KB)
-    #   LOCK — lock event (where thread contention happens, threshold 10ms)
-    PYROSCOPE_APPLICATION_NAME=mirador \
-    PYROSCOPE_SERVER_ADDRESS=${PYROSCOPE_SERVER_ADDRESS:-http://localhost:4040} \
-    PYROSCOPE_PROFILER_EVENT=itimer \
-    PYROSCOPE_PROFILER_ALLOC=512k \
-    PYROSCOPE_PROFILER_LOCK=10ms \
-    PYROSCOPE_LABELS="service=mirador,env=local" \
-    PYROSCOPE_UPLOAD_INTERVAL=10s \
-    $MVNW spring-boot:run -Dspring-boot.run.jvmArguments="-javaagent:$PYROSCOPE_JAR"
-    ;;
 
   all)
     ensure_docker
@@ -378,7 +357,7 @@ case "$1" in
 
     echo ""
     echo "  ── Observability ────────────────────────────────────────────"
-    for svc in customerservice-prometheus customerservice-lgtm customerservice-zipkin customerservice-pyroscope; do
+    for svc in customerservice-prometheus customerservice-lgtm customerservice-zipkin; do
       STATUS=$(docker inspect -f '{{.State.Status}}' "$svc" 2>/dev/null || echo "missing")
       if [ "$STATUS" = "running" ]; then
         LABEL="✅ $STATUS"
@@ -414,9 +393,8 @@ case "$1" in
     echo "  Kafka UI      http://localhost:9080"
     echo "  RedisInsight  http://localhost:5540"
     echo "  Keycloak      http://localhost:9090"
-    echo "  Grafana       http://localhost:3000"
+    echo "  Grafana       http://localhost:3000  (incl. Pyroscope Explore Profiles)"
     echo "  Zipkin        http://localhost:9411"
-    echo "  Pyroscope     http://localhost:4040"
     echo "  Prometheus    http://localhost:9091"
     echo "  GitLab (local) http://localhost:9081"
     echo ""
@@ -431,8 +409,7 @@ case "$1" in
     echo "  kafka         start Kafka"
     echo "  obs           start observability stack"
     echo "  app           start Spring app (local)"
-    echo "  app-profiled  start Spring app with Pyroscope profiling"
-    echo "  all           start everything (infra + obs + app)"
+      echo "  all           start everything (infra + obs + app)"
     echo "  restart       stop + restart everything (keeps data)"
     echo "  simulate      run traffic simulation (default: 60 iterations, 2s pause)"
     echo "  stop          stop app + all containers"

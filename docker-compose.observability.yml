@@ -14,9 +14,6 @@
 # Prometheus — scrapes /actuator/prometheus every 15s            [port 9091]
 #   Access: http://localhost:9091
 #
-# Pyroscope — continuous profiling (CPU/memory flamegraphs)      [port 4040]
-#   Access: http://localhost:4040
-#
 # cors-proxy — Nginx proxy adding CORS headers to Loki (:3100) and Docker API (:2375)
 # docker-proxy — read-only Docker Engine API for container status in the Angular UI
 # =============================================================================
@@ -144,19 +141,3 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
 
-  # ---------------------------------------------------------------------------
-  # Pyroscope — continuous profiling (CPU, memory, allocations)
-  #
-  # Provides flamegraph visualizations for identifying performance bottlenecks.
-  # The Spring Boot app pushes profiles via the Pyroscope Java agent
-  # (add -javaagent:pyroscope.jar to JVM args) or HTTP SDK.
-  #
-  # Also integrates as a Grafana datasource for unified observability.
-  # Access: http://localhost:4040
-  # ---------------------------------------------------------------------------
-  pyroscope:
-    image: grafana/pyroscope:1.20.3
-    container_name: customerservice-pyroscope
-    ports:
-      - "4040:4040"
-    restart: unless-stopped
