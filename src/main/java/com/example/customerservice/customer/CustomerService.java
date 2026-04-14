@@ -7,6 +7,7 @@ import com.example.customerservice.messaging.CustomerEventPublisher;
 import com.example.customerservice.customer.Customer;
 import com.example.customerservice.customer.CustomerRepository;
 import com.example.customerservice.observability.AuditService;
+import io.micrometer.observation.annotation.Observed;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,7 +38,11 @@ import java.util.Optional;
  * <p>The {@code KafkaTemplate<String, Object>} uses the shared producer factory configured in
  * {@link com.example.customerservice.config.KafkaConfig} with Jackson JSON serialization and
  * automatic {@code __TypeId__} headers so that consumers can deserialize to the correct type.
+ *
+ * <p>{@code @Observed} at class level wraps every public method in a Micrometer Observation span
+ * named {@code customer.service}, visible in Grafana Tempo as child spans of the HTTP server span.
  */
+@Observed(name = "customer.service")  // wraps every public method in a Micrometer Observation span
 @Service
 public class CustomerService {
 
@@ -104,6 +109,8 @@ public class CustomerService {
         customer.setEmail(request.email());
 
         Customer saved = repository.save(customer);
+        // Enrich MDC so all subsequent log lines in this thread carry the new customer ID
+        org.slf4j.MDC.put("customerId", String.valueOf(saved.getId()));
         CustomerDto dto = toDto(saved);
         recentCustomerBuffer.add(dto);
 
@@ -120,6 +127,7 @@ public class CustomerService {
 
         auditService.log(currentUser(), "CUSTOMER_CREATED",
                 "id=" + saved.getId() + " name=" + saved.getName(), null);
+        org.slf4j.MDC.remove("customerId");  // clean up MDC to avoid leaking across requests
         return dto;
     }
 
@@ -133,8 +141,11 @@ public class CustomerService {
         customer.setName(request.name());
         customer.setEmail(request.email());
         Customer saved = repository.save(customer);
+        // Enrich MDC so the audit log line carries the customer ID for log correlation
+        org.slf4j.MDC.put("customerId", String.valueOf(saved.getId()));
         auditService.log(currentUser(), "CUSTOMER_UPDATED",
                 "id=" + id + " name=" + saved.getName(), null);
+        org.slf4j.MDC.remove("customerId");  // clean up MDC to avoid leaking across requests
         return toDto(saved);
     }
 
@@ -146,8 +157,11 @@ public class CustomerService {
         if (!repository.existsById(id)) {
             throw new NoSuchElementException("Customer not found: " + id);
         }
+        // Enrich MDC before deleteById so the audit log line carries the customer ID
+        org.slf4j.MDC.put("customerId", String.valueOf(id));
         repository.deleteById(id);
         auditService.log(currentUser(), "CUSTOMER_DELETED", "id=" + id, null);
+        org.slf4j.MDC.remove("customerId");  // clean up MDC to avoid leaking across requests
     }
 
     /** Returns the authenticated user's name from the security context, or "anonymous". */

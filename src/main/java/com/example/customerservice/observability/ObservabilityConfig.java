@@ -3,6 +3,8 @@ package com.example.customerservice.observability;
 import com.example.customerservice.customer.RecentCustomerBuffer;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.observation.ObservationRegistry;
+import io.micrometer.observation.aop.ObservedAspect;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -31,6 +33,22 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class ObservabilityConfig {
+
+    /**
+     * Enables {@code @Observed} annotation support on Spring beans.
+     *
+     * <p>{@link ObservedAspect} intercepts methods annotated with {@code @Observed} and creates
+     * Micrometer Observation spans around them. These spans are exported via the Micrometer/OTel
+     * bridge to Tempo as distributed traces, so each CustomerService call appears as a named span
+     * in Grafana dashboards alongside the HTTP and DB spans.
+     *
+     * <p>Spring Boot 3.x auto-configures {@link ObservationRegistry} but does NOT auto-register
+     * this aspect — it must be declared as a bean explicitly.
+     */
+    @Bean
+    ObservedAspect observedAspect(ObservationRegistry observationRegistry) {
+        return new ObservedAspect(observationRegistry);
+    }
 
     /**
      * Registers a Gauge that reports the current number of entries in the recent-customer buffer.
