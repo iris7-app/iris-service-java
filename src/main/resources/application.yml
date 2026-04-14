@@ -166,7 +166,7 @@ management:
         # env and configprops are excluded — they leak DB credentials, JWT secrets,
         # and full application configuration. Enable them only behind authentication.
         # Do NOT expose: shutdown, threaddump, heapdump in production without auth.
-        include: health,info,prometheus,metrics,beans,loggers
+        include: health,info,prometheus,metrics,beans,loggers,maintenance
 
   info:
     env:

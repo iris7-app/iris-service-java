@@ -39,6 +39,7 @@
         <spring-ai.version>1.0.0-M6</spring-ai.version>             <!-- milestone; not yet in BOM — remove repo override when GA ships -->
         <datasource-micrometer.version>2.2.1</datasource-micrometer.version> <!-- JDBC DataSource observation bridge → query latency in Prometheus -->
         <springdoc.version>3.0.2</springdoc.version>                <!-- OpenAPI 3 spec + Swagger UI at /swagger-ui.html -->
+        <pyroscope.version>2.1.2</pyroscope.version>                <!-- continuous profiling agent — pushes CPU/memory profiles to Pyroscope -->
         <testcontainers.version>1.21.4</testcontainers.version>     <!-- pinned to align kafka module with the core version -->
         <jjwt.version>0.12.6</jjwt.version>                        <!-- split into api/impl/jackson — see dependency block -->
         <shedlock.version>6.0.2</shedlock.version>                  <!-- split into spring/provider — see dependency block -->
@@ -175,6 +176,15 @@
             <groupId>net.ttddyy.observation</groupId>
             <artifactId>datasource-micrometer-spring-boot</artifactId>
             <version>${datasource-micrometer.version}</version>
+        </dependency>
+
+        <!-- Pyroscope — continuous profiling agent (CPU, alloc, wall clock).
+             Pushes JFR profiles to the Pyroscope server every 10s.
+             Requires no JVM -javaagent flag when using the embedded SDK. -->
+        <dependency>
+            <groupId>io.pyroscope</groupId>
+            <artifactId>agent</artifactId>
+            <version>${pyroscope.version}</version>
         </dependency>
 
         <!-- WebSocket — real-time notifications via STOMP over SockJS -->
