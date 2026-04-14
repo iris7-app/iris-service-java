@@ -133,4 +133,82 @@ public class SecurityDemoController {
                 "yourOrigin", request.getHeader("Origin")
         );
     }
+
+    // ─── IDOR — Broken Object Level Authorization (OWASP A01) ───────────────
+
+    /**
+     * VULNERABLE — returns any customer record by ID with no ownership check.
+     *
+     * <p>An attacker can enumerate IDs (1, 2, 3 …) to harvest all customer data.
+     * This is OWASP API Security A01:2021 — Broken Object Level Authorization (BOLA/IDOR).
+     */
+    @GetMapping("/idor-vulnerable")
+    public Map<String, Object> idorVulnerable(@RequestParam long id) {
+        List<Map<String, Object>> results = jdbcTemplate.queryForList(
+                "SELECT id, name, email, created_at FROM customer WHERE id = ?", id);
+        return Map.of(
+                "requestedId", id,
+                "vulnerability", "No ownership check — any caller can access any customer by guessing the ID",
+                "owaspCategory", "A01:2021 — Broken Object Level Authorization (BOLA/IDOR)",
+                "exploit", "Enumerate IDs: try id=1, id=2, id=3 … to harvest all customer records",
+                "results", results
+        );
+    }
+
+    /**
+     * SAFE — shows how an ownership check should be implemented.
+     *
+     * <p>In a real endpoint, the check would compare the authenticated user's identity
+     * against the resource owner stored in the database. Here we simulate the pattern
+     * and return only the query that would be used.
+     */
+    @GetMapping("/idor-safe")
+    public Map<String, Object> idorSafe(@RequestParam long id) {
+        return Map.of(
+                "requestedId", id,
+                "fix", "Verify the caller owns or has explicit permission to access this specific resource",
+                "safeQuery", "SELECT * FROM customer WHERE id = ? AND created_by = :currentAuthenticatedUser",
+                "springAnnotation", "@PreAuthorize(\"hasRole('ADMIN') or @customerService.isOwner(#id, authentication.name)\")",
+                "pattern", "BOLA/IDOR prevention: every object-level read/write must include an ownership or permission check — not just 'is the user authenticated?'",
+                "results", List.of()
+        );
+    }
+
+    // ─── Security Headers ────────────────────────────────────────────────────
+
+    /**
+     * Returns metadata about the OWASP-recommended security headers set by
+     * {@link com.example.customerservice.auth.SecurityHeadersFilter} on every response.
+     *
+     * <p>The frontend reads the <em>actual</em> response headers from this HTTP response
+     * and compares them against the expected values returned in this body.
+     */
+    @GetMapping("/headers")
+    public Map<String, Object> headersInfo() {
+        return Map.of(
+                "headers", List.of(
+                        Map.of("name", "X-Content-Type-Options",
+                               "expected", "nosniff",
+                               "explanation", "Prevents MIME-type sniffing — browser won't reinterpret a CSV as HTML or JavaScript"),
+                        Map.of("name", "X-Frame-Options",
+                               "expected", "DENY",
+                               "explanation", "Blocks clickjacking — prevents this page from being embedded in an <iframe>"),
+                        Map.of("name", "X-XSS-Protection",
+                               "expected", "0",
+                               "explanation", "Disables the broken legacy XSS auditor. Modern protection uses CSP instead."),
+                        Map.of("name", "Referrer-Policy",
+                               "expected", "strict-origin-when-cross-origin",
+                               "explanation", "Limits URL leakage in the Referer header for cross-origin requests"),
+                        Map.of("name", "Content-Security-Policy",
+                               "expected", "default-src 'self'; frame-ancestors 'none'",
+                               "explanation", "Blocks inline scripts and external resource loading — prevents XSS escalation and clickjacking"),
+                        Map.of("name", "Permissions-Policy",
+                               "expected", "camera=(), microphone=(), geolocation=()",
+                               "explanation", "Disables browser APIs (camera, mic, geolocation) that a REST API should never need"),
+                        Map.of("name", "Strict-Transport-Security",
+                               "expected", "not set (HTTP dev environment)",
+                               "explanation", "Should be set in HTTPS production: max-age=31536000; includeSubDomains — forces HTTPS for 1 year and prevents SSL stripping")
+                )
+        );
+    }
 }
