@@ -643,6 +643,13 @@
                 <!-- skip=true by default — enabled via -Preport to avoid slowing down regular builds -->
                 <skip>true</skip>
             </configuration>
+            <executions>
+                <execution>
+                    <id>dependency-check</id>
+                    <phase>verify</phase>
+                    <goals><goal>check</goal></goals>
+                </execution>
+            </executions>
         </plugin>
         <!-- HTML test report: generated automatically after every mvn verify at target/site/surefire-report.html -->
         <plugin>
@@ -678,11 +685,9 @@
                 <outputDirectory>${project.build.directory}</outputDirectory>
                 <format>xml</format>
                 <includeTests>false</includeTests>
+                <!-- Custom ruleset excludes LawOfDemeter (StackOverflow on Java 25) -->
                 <rulesets>
-                    <ruleset>category/java/bestpractices.xml</ruleset>
-                    <ruleset>category/java/design.xml</ruleset>
-                    <ruleset>category/java/errorprone.xml</ruleset>
-                    <ruleset>category/java/performance.xml</ruleset>
+                    <ruleset>pmd-ruleset.xml</ruleset>
                 </rulesets>
             </configuration>
             <executions>
@@ -1210,10 +1215,12 @@
         </profile>
 
         <!--
-          report profile — enables all quality analysis tools that are skip=true by default.
-          Usage: mvn verify -Preport
-          Generates: SpotBugs XML, OWASP CVE JSON/HTML, PMD XML, Checkstyle XML, JaCoCo CSV.
-          Pitest must be run separately: mvn test-compile pitest:mutationCoverage -Preport
+          report profile — enables quality analysis tools that are skip=true by default.
+          Usage: mvn verify -Preport -DskipITs -Djacoco.skip=true
+          Generates: SpotBugs XML, OWASP CVE JSON/HTML, Checkstyle XML.
+          Note: PMD is excluded here — its type inference engine crashes on Java 25 code.
+                Run PMD on -Dcompat -Djava17 builds instead.
+          Pitest: mvn test-compile pitest:mutationCoverage -Preport
           Intended to be run manually or via a daily CI schedule — NOT on every push.
         -->
         <profile>
@@ -1235,6 +1242,33 @@
                         </configuration>
                     </plugin>
                     <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <configuration>
+                            <skip>false</skip>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!--
+          report-static profile — enables PMD and Checkstyle for static analysis.
+          Both tools crash on Java 25 syntax (pattern matching when-guards), so this
+          profile must be combined with -Dcompat (Java 21) or -Dcompat -Djava17 (Java 17).
+
+          Usage:
+            mvn verify -Preport,report-static -Dcompat -DskipITs -Djacoco.skip=true
+              → SpotBugs + OWASP + PMD + Checkstyle on Java 21
+
+          PMD is compatible with Java ≤ 22; Checkstyle is compatible with Java ≤ 21.
+          Do NOT use with Java 25 — both tools crash on Java 25 syntax.
+        -->
+        <profile>
+            <id>report-static</id>
+            <build>
+                <plugins>
+                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-pmd-plugin</artifactId>
                         <configuration>
@@ -1248,15 +1282,34 @@
                             <skip>false</skip>
                         </configuration>
                     </plugin>
-                    <plugin>
-                        <groupId>org.pitest</groupId>
-                        <artifactId>pitest-maven</artifactId>
-                        <configuration>
-                            <skip>false</skip>
-                        </configuration>
-                    </plugin>
                 </plugins>
             </build>
+        </profile>
+
+        <!--
+          java26 profile — targets Java 26 (short-term release, GA March 2026).
+          Activated via -Djava26 property.
+          Usage: mvn verify -Djava26                    → SB4 + Java 26
+                 mvn verify -Djava26 -Dcompat           → SB4 + Java 26 (compat source)
+
+          Prerequisites:
+            - Java 26 JDK must be installed and set as JAVA_HOME
+            - ASM 9.8+ may need an update to 9.9+ when Java 26 class files (version 70) are parsed by SpotBugs
+
+          Note: Java 26 does not introduce incompatible changes with Java 25 code.
+          The ScopedValue / StructuredConcurrency APIs used in this project are stable in Java 26.
+          Run: mvn verify -Djava26 to validate after installing Java 26 JDK.
+        -->
+        <profile>
+            <id>java26</id>
+            <activation>
+                <property>
+                    <name>java26</name>
+                </property>
+            </activation>
+            <properties>
+                <java.version>26</java.version>
+            </properties>
         </profile>
     </profiles>
 
