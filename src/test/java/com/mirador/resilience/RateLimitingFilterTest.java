@@ -6,6 +6,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -96,8 +97,4 @@ class RateLimitingFilterTest {
         assertThat(resB.getStatus()).isNotEqualTo(429);
     }
 
-    // Needed because chain is a raw mock in the exhaust loops
-    private static <T> T any() {
-        return org.mockito.ArgumentMatchers.any();
-    }
 }
