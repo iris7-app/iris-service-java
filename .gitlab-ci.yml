@@ -46,6 +46,7 @@ stages:
   - package       # Produce deployable artifacts — JAR + Docker image
   - compat        # On-demand compatibility matrix: SB3/SB4 × Java17/21/25
   - native        # GraalVM AOT native-image build (main branch + tags only)
+  - deploy        # Deploy to Kubernetes / PaaS (6 targets — see below)
 
 # ── shared defaults ────────────────────────────────────────────────────────────
 
@@ -437,3 +438,227 @@ build-native:
     - |
       echo "NATIVE_IMAGE_TAG=$CI_REGISTRY_IMAGE:native-$CI_COMMIT_SHA" > native-image.env
       echo "NATIVE_IMAGE_SLUG=$CI_REGISTRY_IMAGE:native-$CI_COMMIT_REF_SLUG" >> native-image.env
+
+# ── stage: deploy ─────────────────────────────────────────────────────────────
+#
+# Six deployment targets — one auto (GKE Autopilot, default) + five manual.
+#
+# Provider         Image used              Required GitLab CI/CD variables
+# ──────────────── ─────────────────────── ────────────────────────────────────────────────────────
+# GKE Autopilot ✓  google/cloud-sdk:alpine GCP_SA_KEY¹, GCP_PROJECT, GKE_CLUSTER, GKE_REGION
+# AWS EKS          alpine/k8s:1.30.2       AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, EKS_CLUSTER
+# Azure AKS        mcr.microsoft.com/azure-cli AZURE_APP_ID, AZURE_PASSWORD, AZURE_TENANT, AKS_RG, AKS_CLUSTER
+# Google Cloud Run google/cloud-sdk:alpine GCP_SA_KEY¹, GCP_PROJECT, GCP_REGION
+# Fly.io           flyio/flyctl:latest     FLY_API_TOKEN
+# k3s / bare metal bitnami/kubectl:latest  K8S_SERVER, K8S_TOKEN, K8S_CA_CERT²
+#
+# All kubectl targets also need: K8S_HOST (public hostname), DB_PASSWORD
+# ¹ base64-encoded service-account JSON (roles/container.developer or roles/run.admin)
+# ² base64-encoded cluster CA certificate
+#
+# Set variables in GitLab → Settings → CI/CD → Variables (masked + protected).
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Common kubectl apply fragment — reused by GKE, EKS, AKS, and k3s jobs via
+# GitLab's `!reference` tag (expanded at pipeline parse time, not YAML merge).
+.kubectl-apply:
+  script:
+    # Export substitution variables consumed by envsubst in the manifests
+    - export IMAGE_REGISTRY="$CI_REGISTRY_IMAGE"
+    - export IMAGE_TAG="$CI_COMMIT_SHA"
+    - |
+      # Create namespaces (idempotent)
+      kubectl create namespace app   --dry-run=client -o yaml | kubectl apply -f -
+      kubectl create namespace infra --dry-run=client -o yaml | kubectl apply -f -
+    - |
+      # GitLab Container Registry pull secret — needed by EKS/AKS to pull the image
+      kubectl create secret docker-registry gitlab-registry \
+        --docker-server="$CI_REGISTRY" \
+        --docker-username="$CI_REGISTRY_USER" \
+        --docker-password="$CI_REGISTRY_PASSWORD" \
+        --namespace=app --dry-run=client -o yaml | kubectl apply -f -
+    - |
+      # App secrets (DB password injected as env var in the deployment)
+      kubectl create secret generic customer-service-secrets \
+        --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+        --namespace=app --dry-run=client -o yaml | kubectl apply -f -
+    - |
+      # Apply manifests — envsubst replaces ${K8S_HOST}, ${IMAGE_REGISTRY}, ${IMAGE_TAG}
+      for f in k8s/namespace.yaml \
+                k8s/infra/postgres.yaml k8s/infra/redis.yaml \
+                k8s/backend/configmap.yaml k8s/backend/deployment.yaml \
+                k8s/backend/service.yaml k8s/backend/hpa.yaml \
+                k8s/ingress.yaml; do
+        [ -f "$f" ] && envsubst < "$f" | kubectl apply -f -
+      done
+    # Wait for the rolling update to complete (180 s timeout)
+    - kubectl rollout status deployment/customer-service -n app --timeout=180s
+
+# ── GKE Autopilot — DEFAULT production (runs automatically on main) ───────────
+#
+# GKE Autopilot manages nodes automatically: no node pools to configure,
+# automatic scaling, auto-upgrade, and Workload Identity out of the box.
+# All you need is an Autopilot cluster + a service account with
+# roles/container.developer.
+deploy:gke:
+  stage: deploy
+  image: google/cloud-sdk:alpine
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH   # auto on every main push
+  environment:
+    name: production/gke
+    url: "https://$K8S_HOST"
+  script:
+    - echo "$GCP_SA_KEY" | base64 -d > /tmp/sa.json
+    - gcloud auth activate-service-account --key-file=/tmp/sa.json
+    - gcloud container clusters get-credentials "$GKE_CLUSTER"
+        --region "$GKE_REGION" --project "$GCP_PROJECT"
+    - !reference [.kubectl-apply, script]
+
+# ── AWS EKS — manual ──────────────────────────────────────────────────────────
+#
+# Elastic Kubernetes Service: managed control plane, self-managed node groups
+# or Fargate (serverless nodes). Uses the AWS credentials in the CI variables
+# to update the local kubeconfig via `aws eks update-kubeconfig`.
+deploy:eks:
+  stage: deploy
+  image: alpine/k8s:1.30.2   # kubectl + aws-cli + helm in a single Alpine image
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  environment:
+    name: production/eks
+    url: "https://$K8S_HOST"
+  script:
+    - aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
+    - !reference [.kubectl-apply, script]
+
+# ── Azure AKS — manual ────────────────────────────────────────────────────────
+#
+# Azure Kubernetes Service: managed control plane with optional Virtual Nodes
+# (serverless node pools backed by Azure Container Instances).
+# Uses a service principal for non-interactive auth.
+deploy:aks:
+  stage: deploy
+  image: mcr.microsoft.com/azure-cli:latest
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  environment:
+    name: production/aks
+    url: "https://$K8S_HOST"
+  before_script:
+    - az aks install-cli --only-show-errors   # installs kubectl
+  script:
+    - az login --service-principal -u "$AZURE_APP_ID" -p "$AZURE_PASSWORD"
+        --tenant "$AZURE_TENANT" --output none
+    - az aks get-credentials --resource-group "$AKS_RG" --name "$AKS_CLUSTER"
+    - !reference [.kubectl-apply, script]
+
+# ── Google Cloud Run — manual ─────────────────────────────────────────────────
+#
+# Fully serverless: no cluster, no nodes, no ingress. Scales to zero when idle.
+# Best for: demos, low-traffic environments, cost-sensitive deployments.
+# Limitation: no persistent volumes → PostgreSQL must be Cloud SQL (or external).
+# DB_PASSWORD is read from Secret Manager (not a k8s secret).
+deploy:cloud-run:
+  stage: deploy
+  image: google/cloud-sdk:alpine
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  environment:
+    name: production/cloud-run
+  script:
+    - echo "$GCP_SA_KEY" | base64 -d > /tmp/sa.json
+    - gcloud auth activate-service-account --key-file=/tmp/sa.json
+    - gcloud config set project "$GCP_PROJECT"
+    - |
+      gcloud run deploy customer-service \
+        --image "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" \
+        --region "${GCP_REGION:-europe-west1}" \
+        --platform managed \
+        --allow-unauthenticated \
+        --port 8080 \
+        --cpu 1 --memory 512Mi \
+        --set-env-vars "SPRING_PROFILES_ACTIVE=cloud-run" \
+        --set-secrets "DB_PASSWORD=customer-service-db-password:latest" \
+        --quiet
+
+# ── Fly.io — manual ───────────────────────────────────────────────────────────
+#
+# PaaS with global anycast routing. The simplest deploy — no cluster to manage.
+# Requires a fly.toml at the project root (see: fly launch --no-deploy).
+# Best for: demos, side projects, quick staging environments.
+deploy:fly:
+  stage: deploy
+  image: flyio/flyctl:latest
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  environment:
+    name: production/fly
+  script:
+    - flyctl auth token "$FLY_API_TOKEN"
+    - flyctl deploy --image "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" --remote-only
+
+# ── k3s / self-hosted — manual ─────────────────────────────────────────────────
+#
+# Generic kubectl deploy to any cluster (k3s, kubeadm, Hetzner Cloud,
+# OVHcloud Managed Kubernetes, bare metal, Raspberry Pi…).
+# Provide the cluster API URL, a service-account token with deploy rights,
+# and the cluster CA cert (all base64-encoded) as CI variables.
+deploy:k3s:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  environment:
+    name: production/k3s
+    url: "https://$K8S_HOST"
+  script:
+    - |
+      # Build kubeconfig from CI variables (no kubeconfig file in the runner)
+      kubectl config set-cluster self-hosted \
+        --server="$K8S_SERVER" \
+        --certificate-authority=<(echo "$K8S_CA_CERT" | base64 -d)
+      kubectl config set-credentials ci-runner --token="$K8S_TOKEN"
+      kubectl config set-context default --cluster=self-hosted --user=ci-runner
+      kubectl config use-context default
+    - !reference [.kubectl-apply, script]
