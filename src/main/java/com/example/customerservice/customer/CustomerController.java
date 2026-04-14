@@ -17,6 +17,15 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -88,6 +97,7 @@ import java.util.concurrent.ExecutionException;
  * fluent Micrometer builder API so that they appear in {@code /actuator/metrics} immediately,
  * even before the first request hits the endpoint.
  */
+@Tag(name = "Customers", description = "Customer CRUD, search, export, real-time stream, and advanced patterns (Kafka enrich, virtual threads, cursor pagination, LLM bio generation)")
 @RestController
 @RequestMapping("/customers")
 public class CustomerController {
@@ -179,9 +189,24 @@ public class CustomerController {
      * using the {@link org.springframework.web.accept.ApiVersionStrategy} configured in
      * {@code spring.mvc.apiversion.*} in {@code application.yml}.
      */
+    @Operation(summary = "List customers (v1)",
+            description = "Paginated list of customers (id, name, email). Default version — also returned when `X-API-Version` header is absent. "
+                    + "Supports optional full-text search on name and email. "
+                    + "Adds RFC 8288 `Link` headers (next, prev, first, last) and `Deprecation`/`Sunset` headers.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Page of customers",
+                    headers = {
+                            @Header(name = "Link", description = "RFC 8288 pagination links", schema = @Schema(type = "string")),
+                            @Header(name = "Deprecation", description = "Marks v1 as deprecated", schema = @Schema(type = "string")),
+                            @Header(name = "Sunset", description = "Date after which v1 will be removed", schema = @Schema(type = "string"))
+                    }),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token", content = @Content),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded (100 req/min per IP)", content = @Content)
+    })
     @GetMapping(version = "1.0")
     public ResponseEntity<Page<CustomerDto>> getAll(
             @PageableDefault(size = 20, sort = "id") Pageable pageable,
+            @Parameter(description = "Optional search term — filters on name and email (case-insensitive, partial match)")
             @RequestParam(required = false) String search) {
         Pageable capped = capPageSize(pageable);
         Page<CustomerDto> page = Observation.createNotStarted("customer.find-all", observationRegistry)
@@ -208,9 +233,19 @@ public class CustomerController {
      * <p>[Spring 7 / Spring Boot 4] Demonstrates the API versioning feature introduced in
      * Spring Framework 7.0 ({@code @RequestMapping#version()}).
      */
+    @Operation(summary = "List customers (v2)",
+            description = "Same as v1 but includes `createdAt` (ISO-8601 UTC timestamp). "
+                    + "Requires `X-API-Version: 2.0` header. "
+                    + "Uses Spring Framework 7 native versioning — `version = \"2.0+\"` means this handler serves 2.0 and any future version until a higher one is declared.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Page of customers including createdAt"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token", content = @Content),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded", content = @Content)
+    })
     @GetMapping(version = "2.0+")
     public ResponseEntity<Page<CustomerDtoV2>> getAllV2(
             @PageableDefault(size = 20, sort = "id") Pageable pageable,
+            @Parameter(description = "Optional search term — filters on name and email")
             @RequestParam(required = false) String search) {
         Pageable capped = capPageSize(pageable);
         Page<CustomerDtoV2> page = Observation.createNotStarted("customer.find-all-v2", observationRegistry)
@@ -233,6 +268,18 @@ public class CustomerController {
      */
     // [Spring Security] — method-level check complements the URL rule in SecurityConfig.
     // When a Keycloak token carries ROLE_ADMIN in realm_access.roles, this passes.
+    @Operation(summary = "Create a customer",
+            description = "Creates a new customer, fires a Kafka `CustomerCreatedEvent` (fire-and-forget), "
+                    + "adds the customer to the in-memory recent buffer, and increments the `customer.created.count` Micrometer counter. "
+                    + "Requires `ROLE_ADMIN`. Supports idempotency via the `Idempotency-Key` header — repeating the same request returns the cached response.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Customer created"),
+            @ApiResponse(responseCode = "400", description = "Validation failed (blank name, invalid email, etc.)", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Authenticated but lacks ROLE_ADMIN", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Email already in use", content = @Content),
+            @ApiResponse(responseCode = "429", description = "Rate limit exceeded", content = @Content)
+    })
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public CustomerDto create(@Valid @RequestBody CreateCustomerRequest request) {
@@ -250,8 +297,16 @@ public class CustomerController {
      *
      * <p>Returns HTTP 404 if the customer does not exist.
      */
+    @Operation(summary = "Get a customer by ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Customer found"),
+            @ApiResponse(responseCode = "404", description = "No customer with this ID", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token", content = @Content)
+    })
     @GetMapping("/{id}")
-    public CustomerDto getById(@PathVariable Long id) {
+    public CustomerDto getById(
+            @Parameter(description = "Customer ID", example = "42")
+            @PathVariable Long id) {
         return service.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Customer not found: " + id));
     }
@@ -261,9 +316,19 @@ public class CustomerController {
      *
      * <p>Returns HTTP 404 if the customer does not exist.
      */
+    @Operation(summary = "Update a customer", description = "Replaces the name and email of an existing customer. Requires ROLE_ADMIN.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Customer updated"),
+            @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Lacks ROLE_ADMIN", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Customer not found", content = @Content)
+    })
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public CustomerDto update(@PathVariable Long id, @Valid @RequestBody CreateCustomerRequest request) {
+    public CustomerDto update(
+            @Parameter(description = "Customer ID", example = "42") @PathVariable Long id,
+            @Valid @RequestBody CreateCustomerRequest request) {
         return service.update(id, request);
     }
 
@@ -272,10 +337,18 @@ public class CustomerController {
      *
      * <p>Returns HTTP 204 (No Content) on success, HTTP 404 if the customer does not exist.
      */
+    @Operation(summary = "Delete a customer", description = "Permanently deletes the customer. Requires ROLE_ADMIN.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Deleted successfully", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Lacks ROLE_ADMIN", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Customer not found", content = @Content)
+    })
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(
+            @Parameter(description = "Customer ID", example = "42") @PathVariable Long id) {
         service.delete(id);
     }
 
@@ -286,6 +359,10 @@ public class CustomerController {
      * This pattern is useful to demonstrate the difference between a metric gauge (buffer size)
      * and a query-backed endpoint, and to illustrate the cost of DB round-trips vs. in-process reads.
      */
+    @Operation(summary = "Recent customers (in-memory buffer)",
+            description = "Returns the last 10 customers from the in-memory `RecentCustomerBuffer`. "
+                    + "No DB query — populated on each `POST /customers`. Demonstrates in-process caching vs DB round-trips.")
+    @ApiResponse(responseCode = "200", description = "Up to 10 most recently created customers")
     @GetMapping("/recent")
     public List<CustomerDto> getRecent() {
         return Observation.createNotStarted("customer.recent", observationRegistry)
@@ -318,6 +395,11 @@ public class CustomerController {
      * execution pattern visible in traces and in the {@code customer.aggregate.duration} metric.
      * See {@link AggregationService} for the implementation.
      */
+    @Operation(summary = "Aggregate stats via virtual threads",
+            description = "Runs two data-loading tasks in parallel using Java virtual threads (Project Loom). "
+                    + "Each task takes ~200 ms — both run concurrently so the total is ~200 ms, not ~400 ms. "
+                    + "Visible in traces (two parallel child spans) and in the `customer.aggregate.duration` metric.")
+    @ApiResponse(responseCode = "200", description = "Aggregated result with count, average name length, and virtual-thread timing")
     @GetMapping("/aggregate")
     public AggregationService.AggregatedResponse aggregate() {
         return Observation.createNotStarted("customer.aggregate", observationRegistry)
@@ -332,8 +414,18 @@ public class CustomerController {
      * another model requires only a configuration change. The LLM call is synchronous and
      * blocking, so response time depends on model and hardware (~1–5 s on a local machine).
      */
+    @Operation(summary = "Generate AI bio (Ollama LLM)",
+            description = "Calls the local Ollama LLM (llama3.2) via Spring AI to generate a professional bio for the customer. "
+                    + "Protected by a Resilience4j **circuit breaker** + **retry** — returns 503 when the circuit is open. "
+                    + "Response time: 1–10 s depending on model and hardware.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Bio generated — `{\"bio\": \"...\"}` "),
+            @ApiResponse(responseCode = "404", description = "Customer not found", content = @Content),
+            @ApiResponse(responseCode = "503", description = "Ollama unavailable or circuit breaker open", content = @Content)
+    })
     @GetMapping("/{id}/bio")
-    public java.util.Map<String, String> generateBio(@PathVariable Long id) {
+    public java.util.Map<String, String> generateBio(
+            @Parameter(description = "Customer ID", example = "3") @PathVariable Long id) {
         CustomerDto customer = service.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Customer not found: " + id));
         return java.util.Map.of("bio", bioService.generateBio(customer));
@@ -351,8 +443,17 @@ public class CustomerController {
      *       ensuring graceful degradation rather than an error response.</li>
      * </ul>
      */
+    @Operation(summary = "Get todos from JSONPlaceholder (external API)",
+            description = "Fetches todos for the customer from the external JSONPlaceholder API (https://jsonplaceholder.typicode.com). "
+                    + "Decorated with Resilience4j **circuit breaker** + **retry** + fallback (empty list). "
+                    + "Demonstrates graceful degradation — never returns 5xx even if the external API is down.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "List of todos (may be empty if circuit is open or API is down)"),
+            @ApiResponse(responseCode = "404", description = "Customer not found", content = @Content)
+    })
     @GetMapping("/{id}/todos")
-    public List<TodoItem> getTodos(@PathVariable Long id) {
+    public List<TodoItem> getTodos(
+            @Parameter(description = "Customer ID", example = "3") @PathVariable Long id) {
         service.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Customer not found: " + id));
         return todoService.getTodos(id);
@@ -377,8 +478,19 @@ public class CustomerController {
      * <p>This pattern is demonstrated to show that Kafka can be used for synchronous
      * interactions, not just asynchronous fire-and-forget messaging.
      */
+    @Operation(summary = "Enrich customer via Kafka request-reply",
+            description = "Sends a `CustomerEnrichRequest` to the `customer.request` Kafka topic and **blocks** until the consumer "
+                    + "replies on `customer.reply` with a computed `displayName`. "
+                    + "Demonstrates synchronous Kafka request-reply (not just fire-and-forget). "
+                    + "Returns `504 Gateway Timeout` if no reply arrives within the configured timeout.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Enriched customer with displayName"),
+            @ApiResponse(responseCode = "404", description = "Customer not found", content = @Content),
+            @ApiResponse(responseCode = "504", description = "Kafka consumer did not reply within the timeout", content = @Content)
+    })
     @GetMapping("/{id}/enrich")
-    public EnrichedCustomerDto enrich(@PathVariable Long id) {
+    public EnrichedCustomerDto enrich(
+            @Parameter(description = "Customer ID", example = "3") @PathVariable Long id) {
         return Observation.createNotStarted("customer.enrich", observationRegistry)
                 .lowCardinalityKeyValue("endpoint", "/customers/{id}/enrich")
                 .observe(() -> customerEnrichTimer.record(() -> {
@@ -423,6 +535,12 @@ public class CustomerController {
      *
      * <p>Requires authentication (any authenticated user).
      */
+    @Operation(summary = "Server-Sent Events stream",
+            description = "Opens an SSE connection that pushes `customer` events (JSON) whenever a new customer is created. "
+                    + "A `ping` event is sent every 30 s to keep the connection alive. "
+                    + "**No authentication required** — `EventSource` cannot send custom headers, so this endpoint is `permitAll`.")
+    @ApiResponse(responseCode = "200", description = "SSE stream — content-type: text/event-stream")
+    @SecurityRequirements
     @GetMapping(value = "/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream() {
         return sseEmitterRegistry.register();
@@ -440,6 +558,11 @@ public class CustomerController {
      * <p>Performance advantage: offset-based pagination scans and skips rows, becoming slower
      * as the page number increases. Cursor pagination always does an index seek.
      */
+    @Operation(summary = "Cursor-based pagination",
+            description = "Returns customers using `WHERE id > cursor ORDER BY id LIMIT size+1`. "
+                    + "Faster than offset-based pagination for large datasets — always an index seek, never a full scan. "
+                    + "Pass the last returned `id` as `cursor` in the next request.")
+    @ApiResponse(responseCode = "200", description = "Page with `items`, `nextCursor`, and `hasNext`")
     @GetMapping("/cursor")
     public CursorPage<CustomerDto> getAllCursor(
             @RequestParam(defaultValue = "0") Long cursor,
@@ -456,6 +579,14 @@ public class CustomerController {
      * abort the entire batch. Duplicate emails are detected and reported as errors.
      * Successfully created customers trigger Kafka events and WebSocket notifications.
      */
+    @Operation(summary = "Batch import customers",
+            description = "Creates multiple customers in one request. Each entry is validated individually — a failure on one row does not abort the batch. "
+                    + "Returns a summary with `created`, `failed`, and `errors` lists. Requires ROLE_ADMIN.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Batch result with per-row status"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Lacks ROLE_ADMIN", content = @Content)
+    })
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/batch")
     public BatchImportResult batchCreate(@Valid @RequestBody List<CreateCustomerRequest> requests) {
@@ -483,8 +614,15 @@ public class CustomerController {
      *
      * @param seconds duration of the simulated slow query (capped at 10s)
      */
+    @Operation(summary = "Simulate a slow database query",
+            description = "Runs `SELECT pg_sleep(N)` to inject artificial latency. "
+                    + "The resulting DB span is visible in distributed traces (Tempo/Zipkin/Jaeger). "
+                    + "Max 10 seconds.")
+    @ApiResponse(responseCode = "200", description = "Query completed — returns `{status, duration}`")
     @GetMapping("/slow-query")
-    public java.util.Map<String, String> slowQuery(@RequestParam(defaultValue = "2") double seconds) {
+    public java.util.Map<String, String> slowQuery(
+            @Parameter(description = "Sleep duration in seconds (capped at 10)", example = "2")
+            @RequestParam(defaultValue = "2") double seconds) {
         double capped = Math.min(seconds, 10);
         service.simulateSlowQuery(capped);
         return java.util.Map.of("status", "completed", "duration", capped + "s");
@@ -492,6 +630,12 @@ public class CustomerController {
 
     // ─── CSV export ─────────────────────────────────────────────────────────
 
+    @Operation(summary = "Export all customers as CSV",
+            description = "Streams all customers directly to the response output stream using `StreamingResponseBody` — "
+                    + "avoids loading the entire result set into memory. "
+                    + "Returns `Content-Disposition: attachment; filename=customers.csv`.")
+    @ApiResponse(responseCode = "200", description = "CSV file stream",
+            content = @Content(mediaType = "text/csv"))
     @GetMapping("/export")
     public ResponseEntity<StreamingResponseBody> exportCsv() {
         StreamingResponseBody body = outputStream -> {

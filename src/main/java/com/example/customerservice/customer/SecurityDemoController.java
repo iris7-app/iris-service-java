@@ -1,5 +1,9 @@
 package com.example.customerservice.customer;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +33,9 @@ import java.util.Map;
  *       why {@code allowedOrigins("*")} with {@code allowCredentials(true)} is dangerous.</li>
  * </ul>
  */
+@Tag(name = "Security Demos (OWASP)", description = "⚠️ Intentionally vulnerable endpoints for educational purposes. "
+        + "Demonstrates SQL Injection (A03), XSS (A07), CORS misconfiguration, IDOR (A01), and security headers.")
+@SecurityRequirements   // all demo endpoints are permit-all
 @RestController
 @RequestMapping("/demo/security")
 public class SecurityDemoController {
@@ -48,9 +55,14 @@ public class SecurityDemoController {
      * Try: {@code ?name='; DROP TABLE customer; --} (won't work because
      * {@code queryForList} doesn't execute DDL, but illustrates the risk).
      */
+    @Operation(summary = "⚠️ SQL Injection — VULNERABLE",
+            description = "Concatenates user input directly into SQL. Try `?name=Alice' OR '1'='1` to dump all customers. "
+                    + "**OWASP A03:2021 — Injection**")
     @GetMapping("/sqli-vulnerable")
     @SuppressWarnings("SqlInjection")
-    public Map<String, Object> sqliVulnerable(@RequestParam String name) {
+    public Map<String, Object> sqliVulnerable(
+            @Parameter(description = "User input injected into SQL", example = "Alice' OR '1'='1")
+            @RequestParam String name) {
         String sql = "SELECT id, name, email FROM customer WHERE name = '" + name + "'";
         List<Map<String, Object>> results = jdbcTemplate.queryForList(sql);
         return Map.of(
@@ -67,8 +79,12 @@ public class SecurityDemoController {
      * <p>The {@code ?} placeholder tells the JDBC driver to treat the value as data,
      * not as part of the SQL syntax. No escaping needed — the driver handles it.
      */
+    @Operation(summary = "✅ SQL Injection — SAFE",
+            description = "Uses a parameterized query (`?` placeholder). Same input as the vulnerable endpoint — the driver treats it as data, not SQL.")
     @GetMapping("/sqli-safe")
-    public Map<String, Object> sqliSafe(@RequestParam String name) {
+    public Map<String, Object> sqliSafe(
+            @Parameter(description = "Same input, now safely parameterized", example = "Alice")
+            @RequestParam String name) {
         String sql = "SELECT id, name, email FROM customer WHERE name = ?";
         List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, name);
         return Map.of(
@@ -86,8 +102,13 @@ public class SecurityDemoController {
      * <p>Try: {@code ?name=<script>alert('XSS')</script>}
      * The browser will execute the script if the response is rendered as HTML.
      */
+    @Operation(summary = "⚠️ XSS — VULNERABLE (reflects raw HTML)",
+            description = "Echoes `name` directly into an HTML page. Try `?name=<script>alert('XSS')</script>`. "
+                    + "**OWASP A07:2021 — Cross-Site Scripting**")
     @GetMapping(value = "/xss-vulnerable", produces = "text/html")
-    public String xssVulnerable(@RequestParam String name) {
+    public String xssVulnerable(
+            @Parameter(description = "Injected HTML/JavaScript", example = "<img src=x onerror=alert('XSS')>")
+            @RequestParam String name) {
         return "<html><body><h1>Hello, " + name + "!</h1>"
                 + "<p>This page is vulnerable to XSS because user input is reflected without escaping.</p>"
                 + "<p>Try: <code>?name=&lt;script&gt;alert('XSS')&lt;/script&gt;</code></p>"
@@ -100,8 +121,12 @@ public class SecurityDemoController {
      * <p>The same input {@code <script>alert('XSS')</script>} is rendered as
      * harmless text instead of being executed as JavaScript.
      */
+    @Operation(summary = "✅ XSS — SAFE (HTML-encoded output)",
+            description = "HTML-encodes the input using `HtmlUtils.htmlEscape()` before reflecting it. `<script>` becomes `&lt;script&gt;` — displayed as text, not executed.")
     @GetMapping(value = "/xss-safe", produces = "text/html")
-    public String xssSafe(@RequestParam String name) {
+    public String xssSafe(
+            @Parameter(description = "Input that will be safely HTML-encoded", example = "<b>Bold</b> & <i>italic</i>")
+            @RequestParam String name) {
         String escaped = name
                 .replace("&", "&amp;")
                 .replace("<", "&lt;")
@@ -122,6 +147,8 @@ public class SecurityDemoController {
      * a misconfigured CORS policy), but explains what goes wrong when
      * {@code allowedOrigins("*")} is combined with {@code allowCredentials(true)}.
      */
+    @Operation(summary = "CORS configuration info",
+            description = "Explains why `allowedOrigins('*') + allowCredentials(true)` is dangerous and how this API is correctly configured.")
     @GetMapping("/cors-info")
     public Map<String, Object> corsInfo(HttpServletRequest request) {
         return Map.of(
@@ -142,8 +169,13 @@ public class SecurityDemoController {
      * <p>An attacker can enumerate IDs (1, 2, 3 …) to harvest all customer data.
      * This is OWASP API Security A01:2021 — Broken Object Level Authorization (BOLA/IDOR).
      */
+    @Operation(summary = "⚠️ IDOR — VULNERABLE (no ownership check)",
+            description = "Returns any customer record by ID with no access control. Enumerate IDs to harvest all data. "
+                    + "**OWASP A01:2021 — Broken Object Level Authorization (BOLA/IDOR)**")
     @GetMapping("/idor-vulnerable")
-    public Map<String, Object> idorVulnerable(@RequestParam long id) {
+    public Map<String, Object> idorVulnerable(
+            @Parameter(description = "Any customer ID", example = "1")
+            @RequestParam long id) {
         List<Map<String, Object>> results = jdbcTemplate.queryForList(
                 "SELECT id, name, email, created_at FROM customer WHERE id = ?", id);
         return Map.of(
@@ -162,8 +194,12 @@ public class SecurityDemoController {
      * against the resource owner stored in the database. Here we simulate the pattern
      * and return only the query that would be used.
      */
+    @Operation(summary = "✅ IDOR — SAFE (ownership check pattern)",
+            description = "Shows the correct pattern: `WHERE id = ? AND created_by = :currentUser` + `@PreAuthorize` ownership check.")
     @GetMapping("/idor-safe")
-    public Map<String, Object> idorSafe(@RequestParam long id) {
+    public Map<String, Object> idorSafe(
+            @Parameter(description = "Customer ID to demonstrate the safe pattern", example = "1")
+            @RequestParam long id) {
         return Map.of(
                 "requestedId", id,
                 "fix", "Verify the caller owns or has explicit permission to access this specific resource",
@@ -183,6 +219,10 @@ public class SecurityDemoController {
      * <p>The frontend reads the <em>actual</em> response headers from this HTTP response
      * and compares them against the expected values returned in this body.
      */
+    @Operation(summary = "Security headers metadata",
+            description = "Returns expected values and explanations for OWASP-recommended security headers: "
+                    + "`X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, `CSP`, `Permissions-Policy`. "
+                    + "The frontend compares these expected values against the actual response headers.")
     @GetMapping("/headers")
     public Map<String, Object> headersInfo() {
         return Map.of(

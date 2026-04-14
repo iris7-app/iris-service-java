@@ -1,5 +1,7 @@
 package com.example.customerservice.customer;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.Instant;
 
 /**
@@ -23,5 +25,18 @@ import java.time.Instant;
  *
  * [Spring Boot 4 / Spring 7 API versioning demo — @RequestMapping(version = "2.0")]
  */
-public record CustomerDtoV2(Long id, String name, String email, Instant createdAt) {
+@Schema(description = "Customer resource (API v2) — adds createdAt compared to v1. Request with X-API-Version: 2.0")
+public record CustomerDtoV2(
+        @Schema(description = "Unique auto-incremented identifier", example = "42")
+        Long id,
+
+        @Schema(description = "Full name of the customer", example = "Alice Martin")
+        String name,
+
+        @Schema(description = "Email address (unique per customer)", example = "alice@example.com")
+        String email,
+
+        @Schema(description = "UTC timestamp when the customer record was created (ISO-8601)", example = "2024-06-01T10:30:00Z")
+        Instant createdAt
+) {
 }

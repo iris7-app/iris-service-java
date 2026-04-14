@@ -79,11 +79,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll() // token refresh (validates existing JWT internally)
                         .requestMatchers("/demo/security/**").permitAll()             // security demo endpoints (educational)
                         .requestMatchers(HttpMethod.GET, "/customers/stream").permitAll() // SSE stream — EventSource cannot send headers
-                        // Actuator: only health probes, info, and prometheus are public.
-                        // /actuator/prometheus is accessed by Prometheus — restrict to internal
-                        // network via network policy, not Spring Security (Prometheus sends no JWT).
-                        .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
-                        .requestMatchers("/actuator/**").hasRole("ADMIN")             // other actuator endpoints require auth
+                        // Actuator: root discovery + safe read-only probes are public.
+                        // /actuator (root) lists available endpoints — no sensitive data.
+                        // /actuator/prometheus is scraped by Prometheus (no JWT available).
+                        // Sensitive endpoints (env, beans, heapdump, etc.) remain ADMIN-only.
+                        .requestMatchers("/actuator", "/actuator/health/**", "/actuator/info",
+                                "/actuator/prometheus", "/actuator/metrics/**",
+                                "/actuator/loggers", "/actuator/loggers/**").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")             // heapdump, env, beans, etc. require ADMIN
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll() // Swagger UI
                         .requestMatchers("/v3/api-docs/**").permitAll()               // OpenAPI spec
                         .requestMatchers("/ws/**").permitAll()                        // WebSocket STOMP endpoint
