@@ -40,6 +40,15 @@ public class OllamaHealthIndicator implements HealthIndicator {
                     .withDetail("endpoint", baseUrl)
                     .build();
         } catch (Exception ex) {
+            // Connection refused means Ollama is simply not running — report as
+            // UNKNOWN (optional service) rather than DOWN to keep overall health UP.
+            String msg = ex.getMessage();
+            if (msg != null && (msg.contains("Connection refused") || msg.contains("Failed to connect"))) {
+                return Health.unknown()
+                        .withDetail("endpoint", baseUrl)
+                        .withDetail("reason", "Ollama not running (optional — required for /bio endpoint)")
+                        .build();
+            }
             return Health.down(ex)
                     .withDetail("endpoint", baseUrl)
                     .build();

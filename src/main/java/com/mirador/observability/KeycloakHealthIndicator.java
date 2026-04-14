@@ -42,9 +42,10 @@ public class KeycloakHealthIndicator implements HealthIndicator {
 
     @Override
     public Health health() {
-        if (issuerUri == null || issuerUri.isBlank()) {
+        if (issuerUri == null || issuerUri.isBlank()
+                || (!issuerUri.startsWith("http://") && !issuerUri.startsWith("https://"))) {
             return Health.unknown()
-                    .withDetail("reason", "keycloak.issuer-uri not configured")
+                    .withDetail("reason", "keycloak.issuer-uri not configured (set KEYCLOAK_URL)")
                     .build();
         }
         try {

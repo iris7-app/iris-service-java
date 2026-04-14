@@ -1251,6 +1251,14 @@
                         <configuration>
                             <skip>false</skip>
                         </configuration>
+                        <!-- Bind to verify phase so mvn verify -Preport runs pitest automatically -->
+                        <executions>
+                            <execution>
+                                <id>pitest-verify</id>
+                                <phase>verify</phase>
+                                <goals><goal>mutationCoverage</goal></goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
