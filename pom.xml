@@ -1507,42 +1507,13 @@
                 <version>4.8.6.4</version>
             </plugin>
 
-            <!-- PMD — skip=false overrides the build plugin's skip=true so the report is generated -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-pmd-plugin</artifactId>
-                <version>3.26.0</version>
-                <configuration>
-                    <skip>false</skip>
-                    <failOnViolation>false</failOnViolation>
-                    <!-- targetJdk=21 avoids PMD parser failures with Java 25 preview features -->
-                    <targetJdk>21</targetJdk>
-                    <rulesets>
-                        <ruleset>pmd-ruleset.xml</ruleset>
-                    </rulesets>
-                    <linkXRef>true</linkXRef>
-                </configuration>
-                <reportSets>
-                    <reportSet>
-                        <reports>
-                            <report>pmd</report>
-                            <report>cpd</report>
-                        </reports>
-                    </reportSet>
-                </reportSets>
-            </plugin>
+            <!-- PMD and CPD omitted from site reporting — PMD 7.x crashes with StackOverflowError
+                 on some Java 25 pattern-matching constructs (known upstream issue). PMD results
+                 are already available at /actuator/quality (embedded XML in the JAR). -->
 
-            <!-- Checkstyle — google_checks.xml used for site as in build -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>3.6.0</version>
-                <configuration>
-                    <configLocation>google_checks.xml</configLocation>
-                    <failsOnError>false</failsOnError>
-                    <linkXRef>true</linkXRef>
-                </configuration>
-            </plugin>
+            <!-- Checkstyle omitted from site reporting — its Antlr-based parser does not support
+                 Java 25 pattern guards (`case X e when ...`). Results available at /actuator/quality.
+                 Re-add when checkstyle-plugin bundles an Antlr grammar for Java 25. -->
 
             <!-- Javadoc API reference -->
             <plugin>
@@ -1564,12 +1535,8 @@
                 </reportSets>
             </plugin>
 
-            <!-- JXR cross-reference: generates browsable source HTML; enables source links in PMD/Checkstyle -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jxr-plugin</artifactId>
-                <version>3.6.0</version>
-            </plugin>
+            <!-- JXR omitted: fails to parse Java 25 syntax (ParseLock#doParse StackOverflowError).
+                 Re-add when JXR 3.x adds Java 25 language support. -->
         </plugins>
     </reporting>
 
