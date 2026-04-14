@@ -78,6 +78,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()  // public token endpoint
                         .requestMatchers(HttpMethod.POST, "/auth/refresh").permitAll() // token refresh (validates existing JWT internally)
                         .requestMatchers("/demo/security/**").permitAll()             // security demo endpoints (educational)
+                        .requestMatchers(HttpMethod.GET, "/customers/stream").permitAll() // SSE stream — EventSource cannot send headers
                         // Actuator: only health probes, info, and prometheus are public.
                         // /actuator/prometheus is accessed by Prometheus — restrict to internal
                         // network via network policy, not Spring Security (Prometheus sends no JWT).
