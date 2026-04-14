@@ -1,6 +1,7 @@
 package com.mirador.auth;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
@@ -199,7 +200,9 @@ public class JwtTokenProvider {
                     .build()
                     .parseSignedClaims(token);
             return true;
-        } catch (Exception e) {
+        } catch (JwtException | IllegalArgumentException e) {
+            // JwtException covers: expired, malformed, wrong signature, missing/incorrect claims.
+            // IllegalArgumentException is thrown by JJWT when the token string is null or blank.
             log.debug("Invalid JWT token: {}", e.getMessage());
             return false;
         }
