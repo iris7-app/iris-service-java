@@ -91,7 +91,11 @@ public class KafkaConfig {
 
     @Bean
     KafkaTemplate<String, Object> kafkaTemplate(ProducerFactory<String, Object> pf) {
-        return new KafkaTemplate<>(pf);
+        var template = new KafkaTemplate<>(pf);
+        // spring.kafka.template.observation-enabled only applies to Spring Boot's auto-configured
+        // KafkaTemplate bean. For manually declared beans, observation must be enabled explicitly.
+        template.setObservationEnabled(true);
+        return template;
     }
 
     // ─── @KafkaListener container factory (shared by all listeners) ──────────
@@ -103,6 +107,9 @@ public class KafkaConfig {
         factory.setConsumerFactory(listenerConsumerFactory());
         // required for @SendTo (reply routing in Pattern 2)
         factory.setReplyTemplate(kafkaTemplate);
+        // spring.kafka.listener.observation-enabled only applies to auto-configured factories.
+        // Must be set programmatically on manually declared beans.
+        factory.getContainerProperties().setObservationEnabled(true);
         return factory;
     }
 
