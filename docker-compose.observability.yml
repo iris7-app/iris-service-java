@@ -107,6 +107,7 @@ services:
       - "3000:3000"    # Grafana UI — http://localhost:3000
     depends_on:
       - prometheus
+      - lgtm           # Tempo (3200) and Loki (3100) run inside LGTM — must be up before datasources are queried
     environment:
       # Disable login for dev — anonymous access with Admin role
       GF_AUTH_ANONYMOUS_ENABLED: "true"
