@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # =============================================================================
-# register-runner.sh — register the local GitLab Runner with gitlab.com
+# register-runner.sh — register the local GitLab Runner against a GitLab instance
 #
 # Prerequisites:
 #   1. Runner container must be running:
-#      docker compose -f docker-compose.runner.yml up -d
+#      ./run.sh runner
 #
-#   2. Get a runner token from gitlab.com:
+#   2. Get a runner token from the target GitLab instance:
 #      Project → Settings → CI/CD → Runners → New project runner
 #      ✓ "Run untagged jobs"  ✓ "Lock to current project"
 #      Click "Create runner" → copy the token (glrt-xxxxxxxxxxxx)
 #
 # Usage:
-#   ./scripts/register-runner.sh <TOKEN>
-#   ./scripts/register-runner.sh glrt-xxxxxxxxxxxx
+#   ./scripts/register-runner.sh local <TOKEN>   — register against local GitLab (localhost:9081)
+#   ./scripts/register-runner.sh cloud <TOKEN>   — register against gitlab.com
 # =============================================================================
 
 set -euo pipefail
@@ -23,19 +23,35 @@ log()  { echo -e "${BLUE}▶  $*${NC}"; }
 ok()   { echo -e "${GREEN}✓  $*${NC}"; }
 die()  { echo -e "${RED}✗  $*${NC}" >&2; exit 1; }
 
-TOKEN="${1:-}"
-[[ -z "$TOKEN" ]] && die "Usage: $0 <RUNNER_TOKEN>\n  Get it from: gitlab.com → Project → Settings → CI/CD → Runners → New project runner"
+TARGET="${1:-}"
+TOKEN="${2:-}"
+
+case "$TARGET" in
+  local)
+    GITLAB_URL="http://host.docker.internal:9081"
+    INSTANCE_LABEL="local GitLab (localhost:9081)"
+    ;;
+  cloud)
+    GITLAB_URL="https://gitlab.com"
+    INSTANCE_LABEL="gitlab.com"
+    ;;
+  *)
+    die "Usage: $0 <local|cloud> <RUNNER_TOKEN>\n  local — register against local GitLab (localhost:9081)\n  cloud — register against gitlab.com"
+    ;;
+esac
+
+[[ -z "$TOKEN" ]] && die "Usage: $0 $TARGET <RUNNER_TOKEN>\n  Get it from: $INSTANCE_LABEL → Project → Settings → CI/CD → Runners → New project runner"
 
 # Check the runner container is up
 docker ps --filter "name=gitlab-runner" --filter "status=running" --format "{{.Names}}" \
   | grep -q "gitlab-runner" \
-  || die "Runner container is not running. Start it first:\n  docker compose -f docker-compose.runner.yml up -d"
+  || die "Runner container is not running. Start it first:\n  ./run.sh runner"
 
-log "Registering runner with gitlab.com..."
+log "Registering runner against ${INSTANCE_LABEL}..."
 
 docker exec -it gitlab-runner gitlab-runner register \
   --non-interactive \
-  --url "https://gitlab.com" \
+  --url "$GITLAB_URL" \
   --token "$TOKEN" \
   --executor "docker" \
   --docker-image "maven:3.9.14-eclipse-temurin-25-noble" \
@@ -55,7 +71,7 @@ docker exec gitlab-runner sed -i \
   "s/^concurrent = .*/concurrent = ${CONCURRENCY}/" \
   /etc/gitlab-runner/config.toml
 
-ok "Runner registered — ${CONCURRENCY} concurrent jobs (${CORES} cores detected)"
+ok "Runner registered against ${INSTANCE_LABEL} — ${CONCURRENCY} concurrent jobs (${CORES} cores detected)"
 
 # ── Show config summary ───────────────────────────────────────────────────────
 echo ""

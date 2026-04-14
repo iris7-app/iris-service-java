@@ -8,10 +8,22 @@
 # Infrastructure commands (Docker Compose):
 #   db        start PostgreSQL
 #   kafka     start Kafka
-#   obs       start observability stack (Prometheus, Grafana, Loki, Tempo)
+#   obs       start observability stack (Prometheus, Grafana/LGTM, Pyroscope)
 #   app       start Spring application (local Maven)
 #   all       start everything (db + kafka + obs + app)
-#   stop      stop all containers
+#   restart   stop + clean restart of all containers, then start app
+#   stop      stop app + all containers (infra, obs, GitLab)
+#   nuke      full cleanup — containers, volumes, build artifacts
+#   status    check status of all services and print URLs
+#   simulate  run HTTP traffic simulation (default: 60 iterations, 2s pause)
+#
+# GitLab CI/CD commands:
+#   gitlab         start local GitLab CE (http://localhost:9081)
+#   gitlab-stop    stop local GitLab CE + runner
+#   runner         start GitLab Runner (docker-compose.runner.yml)
+#   runner-stop    stop GitLab Runner
+#   register       register runner against local GitLab (./scripts/register-runner.sh local <TOKEN>)
+#   register-cloud register runner against gitlab.com  (./scripts/register-runner.sh cloud <TOKEN>)
 #
 # Quality commands (mirror CI pipeline — no Docker needed except for 'integration'):
 #   lint      Dockerfile linting with hadolint
@@ -86,6 +98,59 @@ case "$1" in
     ensure_docker
     echo "Starting observability stack..."
     docker compose -f docker-compose.observability.yml up -d
+    ;;
+
+  gitlab)
+    ensure_docker
+    echo "Starting local GitLab CE (http://localhost:9081)..."
+    echo "First-run initialisation takes ~2-3 minutes."
+    docker compose -f docker-compose.gitlab.yml up -d
+    echo ""
+    echo "  Watch logs:  docker logs -f gitlab"
+    echo "  Ready when:  curl -s http://localhost:9081/-/health"
+    ;;
+
+  gitlab-stop)
+    echo "Stopping local GitLab CE + runner..."
+    docker compose -f docker-compose.gitlab.yml down
+    docker compose -f docker-compose.runner.yml down
+    ;;
+
+  runner)
+    ensure_docker
+    echo "Starting GitLab Runner..."
+    docker compose -f docker-compose.runner.yml up -d
+    echo ""
+    echo "  Runner is up. Register it with:"
+    echo "    ./run.sh register        — against local GitLab (localhost:9081)"
+    echo "    ./run.sh register-cloud  — against gitlab.com"
+    ;;
+
+  runner-stop)
+    echo "Stopping GitLab Runner..."
+    docker compose -f docker-compose.runner.yml down
+    ;;
+
+  register)
+    TOKEN="${2:-}"
+    if [ -z "$TOKEN" ]; then
+      echo "Usage: ./run.sh register <TOKEN>"
+      echo ""
+      echo "  Get the token from: http://localhost:9081 → Project → Settings → CI/CD → Runners"
+      exit 1
+    fi
+    ./scripts/register-runner.sh local "$TOKEN"
+    ;;
+
+  register-cloud)
+    TOKEN="${2:-}"
+    if [ -z "$TOKEN" ]; then
+      echo "Usage: ./run.sh register-cloud <TOKEN>"
+      echo ""
+      echo "  Get the token from: gitlab.com → Project → Settings → CI/CD → Runners"
+      exit 1
+    fi
+    ./scripts/register-runner.sh cloud "$TOKEN"
     ;;
 
   app)
@@ -168,6 +233,15 @@ case "$1" in
     pgrep -f 'spring-boot:run' | xargs kill 2>/dev/null || true
     docker compose down -v
     docker compose -f docker-compose.observability.yml down -v
+    docker compose -f docker-compose.runner.yml down -v 2>/dev/null || true
+    # GitLab volumes are large — only wipe if explicitly requested
+    if [ "${2:-}" = "--with-gitlab" ]; then
+      echo "Wiping GitLab CE volumes (this deletes all repos and CI history)..."
+      docker compose -f docker-compose.gitlab.yml down -v
+    else
+      docker compose -f docker-compose.gitlab.yml down 2>/dev/null || true
+      echo "  (GitLab volumes preserved — use './run.sh nuke --with-gitlab' to also wipe them)"
+    fi
     $MAVEN clean
     echo "Done. Run './run.sh all' to start from scratch."
     ;;
@@ -178,6 +252,8 @@ case "$1" in
     pgrep -f 'spring-boot:run' | xargs kill 2>/dev/null || true
     docker compose down
     docker compose -f docker-compose.observability.yml down
+    docker compose -f docker-compose.runner.yml down 2>/dev/null || true
+    docker compose -f docker-compose.gitlab.yml down 2>/dev/null || true
     ;;
 
   # ---------------------------------------------------------------------------
@@ -302,7 +378,7 @@ case "$1" in
 
     echo ""
     echo "  ── Observability ────────────────────────────────────────────"
-    for svc in customerservice-prometheus customerservice-grafana customerservice-lgtm customerservice-zipkin customerservice-pyroscope; do
+    for svc in customerservice-prometheus customerservice-lgtm customerservice-zipkin customerservice-pyroscope; do
       STATUS=$(docker inspect -f '{{.State.Status}}' "$svc" 2>/dev/null || echo "missing")
       if [ "$STATUS" = "running" ]; then
         LABEL="✅ $STATUS"
@@ -314,6 +390,23 @@ case "$1" in
     done
 
     echo ""
+    echo "  ── CI/CD ────────────────────────────────────────────────────"
+    GITLAB_STATUS=$(docker inspect -f '{{.State.Status}}' "gitlab" 2>/dev/null || echo "missing")
+    RUNNER_STATUS=$(docker inspect -f '{{.State.Status}}' "gitlab-runner" 2>/dev/null || echo "missing")
+    if [ "$GITLAB_STATUS" = "running" ]; then
+      GITLAB_LABEL="✅ $GITLAB_STATUS"
+    else
+      GITLAB_LABEL="⬚  $GITLAB_STATUS"
+    fi
+    if [ "$RUNNER_STATUS" = "running" ]; then
+      RUNNER_LABEL="✅ $RUNNER_STATUS"
+    else
+      RUNNER_LABEL="⬚  $RUNNER_STATUS"
+    fi
+    printf "  %-22s%s\n" "gitlab (local)" "$GITLAB_LABEL"
+    printf "  %-22s%s\n" "gitlab-runner" "$RUNNER_LABEL"
+
+    echo ""
     echo "  ── URLs ─────────────────────────────────────────────────────"
     echo "  App           http://localhost:8080"
     echo "  Swagger       http://localhost:8080/swagger-ui.html"
@@ -322,10 +415,10 @@ case "$1" in
     echo "  RedisInsight  http://localhost:5540"
     echo "  Keycloak      http://localhost:9090"
     echo "  Grafana       http://localhost:3000"
-    echo "  Grafana OTel  http://localhost:3001"
     echo "  Zipkin        http://localhost:9411"
     echo "  Pyroscope     http://localhost:4040"
-    echo "  Prometheus    http://localhost:9090"
+    echo "  Prometheus    http://localhost:9091"
+    echo "  GitLab (local) http://localhost:9081"
     echo ""
     ;;
 
@@ -345,6 +438,14 @@ case "$1" in
     echo "  stop          stop app + all containers"
     echo "  nuke          full cleanup — containers, volumes, build artifacts"
     echo "  status        check status of all services"
+    echo ""
+    echo "GitLab CI/CD:"
+    echo "  gitlab         start local GitLab CE (http://localhost:9081)"
+    echo "  gitlab-stop    stop local GitLab CE + runner"
+    echo "  runner         start GitLab Runner"
+    echo "  runner-stop    stop GitLab Runner"
+    echo "  register <TOKEN>        register runner against local GitLab"
+    echo "  register-cloud <TOKEN>  register runner against gitlab.com"
     echo ""
     echo "Quality / CI:"
     echo "  check         unit tests only — fast, no Docker required"
