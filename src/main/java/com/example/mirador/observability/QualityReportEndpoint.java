@@ -1,5 +1,7 @@
 package com.example.mirador.observability;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -49,6 +51,7 @@ import org.w3c.dom.NodeList;
 public class QualityReportEndpoint {
 
     private static final DateTimeFormatter TS_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     // Classpath paths (inside packaged JAR)
     private static final String CP_JACOCO = "META-INF/build-reports/jacoco.csv";
@@ -56,11 +59,21 @@ public class QualityReportEndpoint {
     private static final String CP_SPOTBUGS = "META-INF/build-reports/spotbugsXml.xml";
     private static final String CP_SUREFIRE_PATTERN = "META-INF/build-reports/surefire/TEST-*.xml";
     private static final String CP_BUILD_INFO = "META-INF/build-info.properties";
+    private static final String CP_PMD        = "META-INF/build-reports/pmd.xml";
+    private static final String CP_CPD        = "META-INF/build-reports/cpd.xml";
+    private static final String CP_CHECKSTYLE = "META-INF/build-reports/checkstyle-result.xml";
+    private static final String CP_OWASP      = "META-INF/build-reports/dependency-check-report.json";
+    private static final String CP_PITEST     = "META-INF/build-reports/pit-reports/mutations.xml";
 
     // Fallback paths for local development
     private static final String DEV_JACOCO = "target/site/jacoco/jacoco.csv";
     private static final String DEV_SPOTBUGS = "target/spotbugsXml.xml";
     private static final String DEV_SUREFIRE_DIR = "target/surefire-reports";
+    private static final String DEV_PMD        = "target/pmd.xml";
+    private static final String DEV_CPD        = "target/cpd.xml";
+    private static final String DEV_CHECKSTYLE = "target/checkstyle-result.xml";
+    private static final String DEV_OWASP      = "target/dependency-check-report.json";
+    private static final String DEV_PITEST     = "target/pit-reports/mutations.xml";
 
     @Autowired
     private RequestMappingHandlerMapping requestMappingHandlerMapping;
@@ -72,6 +85,10 @@ public class QualityReportEndpoint {
         result.put("tests", buildTestsSection());
         result.put("coverage", buildCoverageSection());
         result.put("bugs", buildBugsSection());
+        result.put("pmd",       buildPmdSection());
+        result.put("checkstyle",buildCheckstyleSection());
+        result.put("owasp",     buildOwaspSection());
+        result.put("pitest",    buildPitestSection());
         result.put("build", buildBuildSection());
         result.put("git", buildGitSection());
         result.put("api", buildApiSection());
@@ -98,6 +115,8 @@ public class QualityReportEndpoint {
         double totalTime = 0.0;
         long lastModified = System.currentTimeMillis();
         List<Map<String, Object>> suites = new ArrayList<>();
+        List<double[]> allTestCases = new ArrayList<>();
+        List<String> allTestCaseNames = new ArrayList<>();
 
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         try {
@@ -131,6 +150,16 @@ public class QualityReportEndpoint {
                     suiteMap.put("skipped", skipped);
                     suiteMap.put("time", String.format("%.3fs", time));
                     suites.add(suiteMap);
+
+                    // Parse individual test cases for slowest tests
+                    NodeList testCases = doc.getElementsByTagName("testcase");
+                    for (int k = 0; k < testCases.getLength(); k++) {
+                        Element tc = (Element) testCases.item(k);
+                        double tcTime = doubleAttr(tc, "time");
+                        String tcName = tc.getAttribute("classname") + "." + tc.getAttribute("name");
+                        allTestCases.add(new double[]{tcTime});
+                        allTestCaseNames.add(tcName);
+                    }
                 } catch (Exception ignored) {
                     // skip malformed XML
                 }
@@ -144,6 +173,18 @@ public class QualityReportEndpoint {
 
         boolean allPassed = totalFailures == 0 && totalErrors == 0;
 
+        // Build slowest tests list
+        List<Map<String,Object>> slowestTests = new ArrayList<>();
+        for (int i = 0; i < allTestCaseNames.size(); i++) {
+            Map<String,Object> tc = new LinkedHashMap<>();
+            tc.put("name", allTestCaseNames.get(i));
+            tc.put("time", String.format("%.3fs", allTestCases.get(i)[0]));
+            tc.put("timeMs", (long)(allTestCases.get(i)[0] * 1000));
+            slowestTests.add(tc);
+        }
+        slowestTests.sort((a, b) -> Long.compare((Long)b.get("timeMs"), (Long)a.get("timeMs")));
+        if (slowestTests.size() > 10) slowestTests = slowestTests.subList(0, 10);
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("available", true);
         result.put("status", allPassed ? "PASSED" : "FAILED");
@@ -155,6 +196,7 @@ public class QualityReportEndpoint {
         result.put("time", String.format("%.2fs", totalTime));
         result.put("runAt", runAt);
         result.put("suites", suites);
+        result.put("slowestTests", slowestTests);
         return result;
     }
 
@@ -499,8 +541,8 @@ public class QualityReportEndpoint {
         InputStream is = loadResource(CP_JACOCO, DEV_JACOCO);
         if (is == null) return Map.of("available", false);
 
-        long totalClasses = 0, totalMethods = 0, totalLines = 0;
-        Map<String, long[]> pkgMetrics = new LinkedHashMap<>(); // [classes, lines, methods]
+        long totalClasses = 0, totalMethods = 0, totalLines = 0, totalComplexity = 0;
+        Map<String, long[]> pkgMetrics = new LinkedHashMap<>(); // [classes, lines, methods, complexity]
 
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
             String line;
@@ -512,20 +554,24 @@ public class QualityReportEndpoint {
                 try {
                     long lineMissed   = Long.parseLong(cols[7].trim());
                     long lineCovered  = Long.parseLong(cols[8].trim());
+                    long cxMissed     = Long.parseLong(cols[9].trim());
+                    long cxCovered    = Long.parseLong(cols[10].trim());
                     long methodMissed = Long.parseLong(cols[11].trim());
                     long methodCovered= Long.parseLong(cols[12].trim());
-                    long lines   = lineMissed + lineCovered;
-                    long methods = methodMissed + methodCovered;
+                    long lines      = lineMissed + lineCovered;
+                    long methods    = methodMissed + methodCovered;
+                    long complexity = cxMissed + cxCovered;
 
                     totalClasses++;
-                    totalMethods += methods;
-                    totalLines   += lines;
+                    totalMethods    += methods;
+                    totalLines      += lines;
+                    totalComplexity += complexity;
 
                     String pkg = cols[1].trim();
                     String[] parts = pkg.replace('/', '.').split("\\.");
                     String pkgShort = parts[parts.length - 1];
-                    pkgMetrics.merge(pkgShort, new long[]{1, lines, methods},
-                        (a, b) -> new long[]{a[0]+1, a[1]+b[1], a[2]+b[2]});
+                    pkgMetrics.merge(pkgShort, new long[]{1, lines, methods, complexity},
+                        (a, b) -> new long[]{a[0]+1, a[1]+b[1], a[2]+b[2], a[3]+b[3]});
                 } catch (NumberFormatException ignored) {}
             }
         } catch (IOException e) {
@@ -540,16 +586,283 @@ public class QualityReportEndpoint {
             p.put("classes", v[0]);
             p.put("lines", v[1]);
             p.put("methods", v[2]);
+            p.put("complexity", v[3]);
             packages.add(p);
         }
-        packages.sort((a, b) -> Long.compare((Long)b.get("lines"), (Long)a.get("lines")));
+        // Sort by complexity desc (top 10 most complex packages first)
+        packages.sort((a, b) -> Long.compare((Long)b.get("complexity"), (Long)a.get("complexity")));
 
         Map<String,Object> r = new LinkedHashMap<>();
         r.put("available", true);
         r.put("totalClasses", totalClasses);
         r.put("totalMethods", totalMethods);
         r.put("totalLines", totalLines);
+        r.put("totalComplexity", totalComplexity);
         r.put("packages", packages);
+        return r;
+    }
+
+    // -------------------------------------------------------------------------
+    // PMD section
+    // -------------------------------------------------------------------------
+
+    private Map<String, Object> buildPmdSection() {
+        InputStream is = loadResource(CP_PMD, DEV_PMD);
+        if (is == null) return Map.of("available", false);
+
+        int total = 0;
+        Map<String, Integer> byRuleset  = new LinkedHashMap<>();
+        Map<String, Integer> byPriority = new LinkedHashMap<>();
+        Map<String, Integer> byRule     = new LinkedHashMap<>();
+        List<Map<String, Object>> violations = new ArrayList<>();
+
+        try (is) {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = factory.newDocumentBuilder();
+            Document doc = db.parse(is);
+
+            NodeList files = doc.getElementsByTagName("file");
+            for (int i = 0; i < files.getLength(); i++) {
+                Element file = (Element) files.item(i);
+                String filename = file.getAttribute("name");
+                // Short class name from path
+                String shortFile = filename.contains("/")
+                    ? filename.substring(filename.lastIndexOf('/') + 1).replace(".java", "")
+                    : filename;
+
+                NodeList viols = file.getElementsByTagName("violation");
+                for (int j = 0; j < viols.getLength(); j++) {
+                    Element v = (Element) viols.item(j);
+                    String rule     = v.getAttribute("rule");
+                    String ruleset  = v.getAttribute("ruleset");
+                    String priority = v.getAttribute("priority");
+                    String msg      = v.getTextContent().trim();
+
+                    total++;
+                    byRuleset.merge(ruleset, 1, Integer::sum);
+                    byPriority.merge(priorityLabel(priority), 1, Integer::sum);
+                    byRule.merge(rule, 1, Integer::sum);
+
+                    if (violations.size() < 50) { // limit to first 50
+                        Map<String, Object> vmap = new LinkedHashMap<>();
+                        vmap.put("file",     shortFile);
+                        vmap.put("rule",     rule);
+                        vmap.put("ruleset",  ruleset);
+                        vmap.put("priority", priority);
+                        vmap.put("message",  msg.length() > 120 ? msg.substring(0, 120) + "…" : msg);
+                        violations.add(vmap);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            return Map.of("available", false, "error", e.getMessage());
+        }
+
+        // Sort byRule by count desc, keep top 10
+        List<Map<String, Object>> topRules = byRule.entrySet().stream()
+            .sorted((a, b) -> b.getValue() - a.getValue())
+            .limit(10)
+            .map(e -> { Map<String, Object> m = new LinkedHashMap<>(); m.put("rule", e.getKey()); m.put("count", e.getValue()); return m; })
+            .toList();
+
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("available", true);
+        r.put("total", total);
+        r.put("byRuleset",  byRuleset);
+        r.put("byPriority", byPriority);
+        r.put("topRules",   topRules);
+        r.put("violations", violations);
+        return r;
+    }
+
+    // -------------------------------------------------------------------------
+    // Checkstyle section
+    // -------------------------------------------------------------------------
+
+    private Map<String, Object> buildCheckstyleSection() {
+        InputStream is = loadResource(CP_CHECKSTYLE, DEV_CHECKSTYLE);
+        if (is == null) return Map.of("available", false);
+
+        int total = 0;
+        Map<String, Integer> bySeverity = new LinkedHashMap<>();
+        Map<String, Integer> byChecker  = new LinkedHashMap<>();
+        List<Map<String, Object>> violations = new ArrayList<>();
+
+        try (is) {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = factory.newDocumentBuilder();
+            Document doc = db.parse(is);
+
+            NodeList files = doc.getElementsByTagName("file");
+            for (int i = 0; i < files.getLength(); i++) {
+                Element file = (Element) files.item(i);
+                String filename = file.getAttribute("name");
+                String shortFile = filename.contains("/")
+                    ? filename.substring(filename.lastIndexOf('/') + 1).replace(".java", "")
+                    : filename;
+
+                NodeList errors = file.getElementsByTagName("error");
+                for (int j = 0; j < errors.getLength(); j++) {
+                    Element err = (Element) errors.item(j);
+                    String severity = err.getAttribute("severity");
+                    String source   = err.getAttribute("source");
+                    String message  = err.getAttribute("message");
+                    String line     = err.getAttribute("line");
+
+                    // Short checker name: last segment of FQCN
+                    String checker = source.contains(".")
+                        ? source.substring(source.lastIndexOf('.') + 1)
+                        : source;
+
+                    total++;
+                    bySeverity.merge(severity, 1, Integer::sum);
+                    byChecker.merge(checker, 1, Integer::sum);
+
+                    if (violations.size() < 50) {
+                        Map<String, Object> vmap = new LinkedHashMap<>();
+                        vmap.put("file",     shortFile);
+                        vmap.put("line",     line);
+                        vmap.put("severity", severity);
+                        vmap.put("checker",  checker);
+                        vmap.put("message",  message.length() > 100 ? message.substring(0, 100) + "…" : message);
+                        violations.add(vmap);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            return Map.of("available", false, "error", e.getMessage());
+        }
+
+        List<Map<String, Object>> topCheckers = byChecker.entrySet().stream()
+            .sorted((a, b) -> b.getValue() - a.getValue())
+            .limit(10)
+            .map(e -> { Map<String, Object> m = new LinkedHashMap<>(); m.put("checker", e.getKey()); m.put("count", e.getValue()); return m; })
+            .toList();
+
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("available",   true);
+        r.put("total",       total);
+        r.put("bySeverity",  bySeverity);
+        r.put("topCheckers", topCheckers);
+        r.put("violations",  violations);
+        return r;
+    }
+
+    // -------------------------------------------------------------------------
+    // OWASP section
+    // -------------------------------------------------------------------------
+
+    private Map<String, Object> buildOwaspSection() {
+        InputStream is = loadResource(CP_OWASP, DEV_OWASP);
+        if (is == null) return Map.of("available", false);
+
+        int total = 0;
+        Map<String, Integer> bySeverity = new LinkedHashMap<>();
+        List<Map<String, Object>> vulns = new ArrayList<>();
+
+        try (is) {
+            JsonNode root = MAPPER.readTree(is);
+            JsonNode dependencies = root.path("dependencies");
+            for (JsonNode dep : dependencies) {
+                JsonNode vulnerabilities = dep.path("vulnerabilities");
+                if (vulnerabilities.isEmpty()) continue;
+
+                String depName = dep.path("fileName").asText("unknown");
+                for (JsonNode vuln : vulnerabilities) {
+                    String name     = vuln.path("name").asText("?");
+                    String severity = vuln.path("severity").asText("UNKNOWN").toUpperCase();
+                    double score    = vuln.path("cvssv3").path("baseScore").asDouble(
+                                      vuln.path("cvssv2").path("score").asDouble(0.0));
+                    String desc     = vuln.path("description").asText("");
+                    if (desc.length() > 150) desc = desc.substring(0, 150) + "…";
+
+                    total++;
+                    bySeverity.merge(severity, 1, Integer::sum);
+
+                    Map<String, Object> v = new LinkedHashMap<>();
+                    v.put("cve",        name);
+                    v.put("severity",   severity);
+                    v.put("score",      score);
+                    v.put("dependency", depName);
+                    v.put("description", desc);
+                    vulns.add(v);
+                }
+            }
+            // Sort by score desc
+            vulns.sort((a, b) -> Double.compare((Double)b.get("score"), (Double)a.get("score")));
+        } catch (Exception e) {
+            return Map.of("available", false, "error", e.getMessage());
+        }
+
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("available",   true);
+        r.put("total",       total);
+        r.put("bySeverity",  bySeverity);
+        r.put("vulnerabilities", vulns.size() > 30 ? vulns.subList(0, 30) : vulns);
+        return r;
+    }
+
+    // -------------------------------------------------------------------------
+    // Pitest section
+    // -------------------------------------------------------------------------
+
+    private Map<String, Object> buildPitestSection() {
+        InputStream is = loadResource(CP_PITEST, DEV_PITEST);
+        if (is == null) return Map.of("available", false, "note", "Run: mvn test-compile pitest:mutationCoverage");
+
+        int total = 0, killed = 0, survived = 0, noCoverage = 0;
+        Map<String, Integer> byMutator  = new LinkedHashMap<>();
+        Map<String, Integer> byStatus   = new LinkedHashMap<>();
+        List<Map<String, Object>> surviving = new ArrayList<>();
+
+        try (is) {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = factory.newDocumentBuilder();
+            Document doc = db.parse(is);
+
+            NodeList mutations = doc.getElementsByTagName("mutation");
+            for (int i = 0; i < mutations.getLength(); i++) {
+                Element m = (Element) mutations.item(i);
+                String status  = m.getAttribute("status");
+                String mutator = m.getAttribute("mutator");
+                if (mutator.contains(".")) mutator = mutator.substring(mutator.lastIndexOf('.') + 1);
+
+                total++;
+                byStatus.merge(status, 1, Integer::sum);
+                byMutator.merge(mutator, 1, Integer::sum);
+
+                switch (status) {
+                    case "KILLED"      -> killed++;
+                    case "SURVIVED"    -> { survived++; if (surviving.size() < 20) {
+                        Map<String,Object> sm = new LinkedHashMap<>();
+                        sm.put("class",  getTagText(m, "mutatedClass").contains(".")
+                            ? getTagText(m, "mutatedClass").substring(getTagText(m, "mutatedClass").lastIndexOf('.')+1)
+                            : getTagText(m, "mutatedClass"));
+                        sm.put("method", getTagText(m, "mutatedMethod"));
+                        sm.put("mutator", mutator);
+                        sm.put("description", getTagText(m, "description"));
+                        surviving.add(sm);
+                    }}
+                    case "NO_COVERAGE" -> noCoverage++;
+                    default            -> { /* TIMED_OUT, RUN_ERROR, etc. — count only */ }
+                }
+            }
+        } catch (Exception e) {
+            return Map.of("available", false, "error", e.getMessage());
+        }
+
+        double score = total > 0 ? round1(100.0 * killed / total) : 0.0;
+
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("available",    true);
+        r.put("total",        total);
+        r.put("killed",       killed);
+        r.put("survived",     survived);
+        r.put("noCoverage",   noCoverage);
+        r.put("score",        score);
+        r.put("byStatus",     byStatus);
+        r.put("byMutator",    byMutator);
+        r.put("survivingMutations", surviving);
         return r;
     }
 

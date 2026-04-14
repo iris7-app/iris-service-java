@@ -657,6 +657,106 @@
             </executions>
         </plugin>
         <!--
+          maven-pmd-plugin — static code analysis (code smells, dead code, complexity).
+          failOnViolation=false so it never breaks the build; reports are copied to the
+          classpath by maven-resources-plugin for the /actuator/quality endpoint.
+          targetJdk=21 avoids PMD parser issues with Java 25 preview features.
+        -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-pmd-plugin</artifactId>
+            <version>3.26.0</version>
+            <configuration>
+                <skip>true</skip>
+                <failOnViolation>false</failOnViolation>
+                <printFailingErrors>false</printFailingErrors>
+                <targetJdk>21</targetJdk>
+                <outputDirectory>${project.build.directory}</outputDirectory>
+                <format>xml</format>
+                <includeTests>false</includeTests>
+                <rulesets>
+                    <ruleset>category/java/bestpractices.xml</ruleset>
+                    <ruleset>category/java/design.xml</ruleset>
+                    <ruleset>category/java/errorprone.xml</ruleset>
+                    <ruleset>category/java/performance.xml</ruleset>
+                </rulesets>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>pmd-analyze</id>
+                    <phase>verify</phase>
+                    <goals>
+                        <goal>pmd</goal>
+                        <goal>cpd</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <!--
+          maven-checkstyle-plugin — code style enforcement.
+          Uses Google's style guide. failsOnError=false; report written to XML for
+          /actuator/quality.
+        -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-checkstyle-plugin</artifactId>
+            <version>3.6.0</version>
+            <configuration>
+                <skip>true</skip>
+                <failsOnError>false</failsOnError>
+                <failOnViolation>false</failOnViolation>
+                <consoleOutput>false</consoleOutput>
+                <outputFileFormat>xml</outputFileFormat>
+                <outputFile>${project.build.directory}/checkstyle-result.xml</outputFile>
+                <configLocation>google_checks.xml</configLocation>
+                <suppressionsLocation></suppressionsLocation>
+                <includeTestSourceDirectory>false</includeTestSourceDirectory>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>checkstyle-analyze</id>
+                    <phase>verify</phase>
+                    <goals>
+                        <goal>checkstyle</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <!--
+          pitest-maven — mutation testing. Skipped by default (long to run).
+          Run manually: mvn test-compile pitest:mutationCoverage
+          Reports in target/pit-reports/mutations.xml → copied to classpath.
+        -->
+        <plugin>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-maven</artifactId>
+            <version>1.17.4</version>
+            <dependencies>
+                <dependency>
+                    <groupId>org.pitest</groupId>
+                    <artifactId>pitest-junit5-plugin</artifactId>
+                    <version>1.2.1</version>
+                </dependency>
+            </dependencies>
+            <configuration>
+                <skip>true</skip>
+                <targetClasses>
+                    <param>com.example.mirador.*</param>
+                </targetClasses>
+                <targetTests>
+                    <param>com.example.mirador.*</param>
+                </targetTests>
+                <outputFormats>
+                    <outputFormat>XML</outputFormat>
+                </outputFormats>
+                <timestampedReports>false</timestampedReports>
+                <mutators>
+                    <mutator>DEFAULTS</mutator>
+                </mutators>
+                <reportsDirectory>${project.build.directory}/pit-reports</reportsDirectory>
+            </configuration>
+        </plugin>
+        <!--
           Copy HTML test reports into the JAR's static resources so Spring Boot serves them
           at http://localhost:8080/reports/surefire.html and .../failsafe.html.
           The Angular frontend embeds these as iframes (X-Frame-Options is relaxed for /reports/**).
@@ -732,6 +832,83 @@
                       </resource>
                     </resources>
                   </configuration>
+                </execution>
+                <!-- PMD XML report -->
+                <execution>
+                    <id>copy-pmd-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <includes>
+                                    <include>pmd.xml</include>
+                                    <include>cpd.xml</include>
+                                </includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- Checkstyle XML report -->
+                <execution>
+                    <id>copy-checkstyle-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <includes>
+                                    <include>checkstyle-result.xml</include>
+                                </includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- OWASP Dependency Check JSON report -->
+                <execution>
+                    <id>copy-owasp-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <includes>
+                                    <include>dependency-check-report.json</include>
+                                </includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- Pitest mutation XML report -->
+                <execution>
+                    <id>copy-pitest-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports/pit-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}/pit-reports</directory>
+                                <includes>
+                                    <include>mutations.xml</include>
+                                </includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
                 </execution>
                 <execution>
                     <id>copy-test-reports-to-static</id>
