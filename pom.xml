@@ -644,9 +644,13 @@
                 <skip>true</skip>
             </configuration>
             <executions>
+                <!-- Bound to prepare-package so the generated JSON is available
+                     for the copy-resources execution (also at prepare-package).
+                     Maven runs executions within the same phase in declaration order,
+                     so OWASP check runs before the copy-owasp-report resources execution. -->
                 <execution>
                     <id>dependency-check</id>
-                    <phase>verify</phase>
+                    <phase>prepare-package</phase>
                     <goals><goal>check</goal></goals>
                 </execution>
             </executions>
