@@ -775,11 +775,13 @@ public class QualityReportEndpoint {
 
                 String depName = dep.path("fileName").asText("unknown");
                 for (JsonNode vuln : vulnerabilities) {
-                    String name     = vuln.path("name").asText("?");
+                    String rawName  = vuln.path("name").asText("?");
+                    String name     = cleanCveId(rawName, vuln.path("references"));
                     String severity = vuln.path("severity").asText("UNKNOWN").toUpperCase();
                     double score    = vuln.path("cvssv3").path("baseScore").asDouble(
                                       vuln.path("cvssv2").path("score").asDouble(0.0));
-                    String desc     = cleanCveDescription(vuln.path("description").asText(""));
+                    String desc     = cleanCveDescription(
+                            vuln.path("description").asText(rawName)); // fallback to name if no desc
 
                     total++;
                     bySeverity.merge(severity, 1, Integer::sum);
@@ -917,6 +919,34 @@ public class QualityReportEndpoint {
 
     private static double round1(double v) {
         return Math.round(v * 10.0) / 10.0;
+    }
+
+    /**
+     * Returns a short, displayable identifier for a vulnerability.
+     * Proper CVE IDs (CVE-YYYY-NNNNN) are returned as-is.
+     * RetireJS/GHSA advisories put the full Markdown description in the name field —
+     * for those we extract the GHSA-xxxx ID from references, or return a short summary.
+     */
+    private static String cleanCveId(String rawName, JsonNode references) {
+        if (rawName == null || rawName.isBlank()) return "UNKNOWN";
+        // Proper CVE ID
+        if (rawName.matches("CVE-\\d{4}-\\d+")) return rawName;
+        // Look for GHSA-xxxx in references first
+        if (references != null) {
+            for (JsonNode ref : references) {
+                String url = ref.path("url").asText("");
+                java.util.regex.Matcher m = java.util.regex.Pattern
+                        .compile("(GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4})")
+                        .matcher(url);
+                if (m.find()) return m.group(1);
+            }
+        }
+        // Fallback: first non-empty, non-markdown line, truncated
+        String first = rawName.lines()
+                .map(String::trim)
+                .filter(l -> !l.isEmpty() && !l.startsWith("#") && !l.startsWith("```"))
+                .findFirst().orElse(rawName);
+        return first.length() > 40 ? first.substring(0, 40) + "…" : first;
     }
 
     /**
