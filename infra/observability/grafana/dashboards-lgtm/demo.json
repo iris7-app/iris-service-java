@@ -18,9 +18,17 @@
       "targets": [
         {
           "expr": "sum(rate(http_server_requests_milliseconds_count[1m]))",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -34,9 +42,17 @@
       "targets": [
         {
           "expr": "customer_created_count_total",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -50,9 +66,17 @@
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum(rate(customer_create_duration_milliseconds_bucket[5m])) by (le))",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -66,9 +90,17 @@
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum(rate(customer_aggregate_duration_milliseconds_bucket[5m])) by (le))",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "stat",
@@ -82,9 +114,17 @@
       "targets": [
         {
           "expr": "customer_recent_buffer_size",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "text",
@@ -112,9 +152,17 @@
       "targets": [
         {
           "expr": "customer_created_count_total",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -129,9 +177,17 @@
         {
           "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_milliseconds_bucket{uri!~\"/actuator.*\"}[5m])) by (le, uri))",
           "refId": "A",
-          "legendFormat": "{{ uri }}"
+          "legendFormat": "{{ uri }}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -146,9 +202,17 @@
         {
           "expr": "sum(rate(http_server_requests_milliseconds_count{http_response_status_code=~\"4[0-9][0-9]|5[0-9][0-9]\"}[1m])) by (http_response_status_code)",
           "refId": "A",
-          "legendFormat": "HTTP {{ http_response_status_code }}"
+          "legendFormat": "HTTP {{ http_response_status_code }}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -162,9 +226,17 @@
       "targets": [
         {
           "expr": "rate(kafka_customer_created_processed_total[1m])",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -179,9 +251,17 @@
         {
           "expr": "resilience4j_circuitbreaker_state",
           "refId": "A",
-          "legendFormat": "{{ name }} = {{ state }}"
+          "legendFormat": "{{ name }} = {{ state }}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -196,14 +276,26 @@
         {
           "expr": "histogram_quantile(0.50, sum(rate(customer_find_all_duration_milliseconds_bucket[5m])) by (le))",
           "refId": "A",
-          "legendFormat": "p50"
+          "legendFormat": "p50",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "histogram_quantile(0.99, sum(rate(customer_find_all_duration_milliseconds_bucket[5m])) by (le))",
           "refId": "B",
-          "legendFormat": "p99"
+          "legendFormat": "p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -218,9 +310,17 @@
         {
           "expr": "sum(jvm_memory_used_bytes) by (area)",
           "refId": "A",
-          "legendFormat": "{{ area }}"
+          "legendFormat": "{{ area }}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "type": "timeseries",
@@ -235,19 +335,35 @@
         {
           "expr": "hikaricp_connections_active",
           "refId": "A",
-          "legendFormat": "active"
+          "legendFormat": "active",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "hikaricp_connections_idle",
           "refId": "B",
-          "legendFormat": "idle"
+          "legendFormat": "idle",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         },
         {
           "expr": "hikaricp_connections_pending",
           "refId": "C",
-          "legendFormat": "pending"
+          "legendFormat": "pending",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
-      ]
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     }
   ],
   "schemaVersion": 39,
