@@ -62,15 +62,20 @@ public class JwtTokenProvider {
 
     /**
      * Generates a signed access token JWT for the given username (15 min validity).
+     * Includes a {@code role} claim so clients (Angular JWT inspector) can display
+     * the user's role without a separate API call.
      */
     public String generateToken(String username) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + ACCESS_TOKEN_EXPIRATION_MS);
+        // admin is the only user in this demo — everyone else gets ROLE_USER
+        String role = "admin".equals(username) ? "ROLE_ADMIN" : "ROLE_USER";
 
         return Jwts.builder()
                 .subject(username)
                 .issuer(ISSUER)
                 .audience().add(AUDIENCE).and()
+                .claim("role", role)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)
