@@ -42,8 +42,11 @@ public class OllamaHealthIndicator implements HealthIndicator {
         } catch (Exception ex) {
             // Connection refused means Ollama is simply not running — report as
             // UNKNOWN (optional service) rather than DOWN to keep overall health UP.
-            String msg = ex.getMessage();
-            if (msg != null && (msg.contains("Connection refused") || msg.contains("Failed to connect"))) {
+            String msg = ex.getMessage() != null ? ex.getMessage() : "";
+            if (ex instanceof org.springframework.web.client.ResourceAccessException
+                    || msg.contains("Connection refused")
+                    || msg.contains("Failed to connect")
+                    || msg.contains("I/O error")) {
                 return Health.unknown()
                         .withDetail("endpoint", baseUrl)
                         .withDetail("reason", "Ollama not running (optional — required for /bio endpoint)")
