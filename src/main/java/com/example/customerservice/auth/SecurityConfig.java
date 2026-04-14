@@ -99,7 +99,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/customers/**").hasRole("ADMIN")           // delete — ROLE_ADMIN only
                         .requestMatchers(HttpMethod.POST, "/customers").hasAnyRole("ADMIN", "USER")     // create — ROLE_ADMIN or ROLE_USER
                         .requestMatchers(HttpMethod.POST, "/customers/batch").hasAnyRole("ADMIN", "USER") // batch — ROLE_ADMIN or ROLE_USER
-                        .requestMatchers(HttpMethod.PUT, "/customers/**").hasAnyRole("ADMIN", "USER")   // update — ROLE_ADMIN or ROLE_USER
+                        .requestMatchers(HttpMethod.PUT, "/customers/**").hasAnyRole("ADMIN", "USER")    // update — ROLE_ADMIN or ROLE_USER
+                        .requestMatchers(HttpMethod.PATCH, "/customers/**").hasAnyRole("ADMIN", "USER")  // partial update — ROLE_ADMIN or ROLE_USER
                         .anyRequest().authenticated()                                 // GET and all other endpoints: any authenticated user (incl. ROLE_READER)
                 )
                 // Return 401 (not a redirect to a login page) for missing or invalid tokens.
@@ -118,7 +119,7 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         var config = new CorsConfiguration();
         config.setAllowedOrigins(allowedOrigins);
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         // Expose security headers so the Angular Security Demo can read them via HttpClient observe:'response'

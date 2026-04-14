@@ -333,6 +333,29 @@ public class CustomerController {
     }
 
     /**
+     * Partially updates a customer's name and/or email.
+     *
+     * <p>Only provided (non-null) fields are applied — unlike PUT which replaces the entire resource.
+     * Useful for updating a single field without knowing the current values of the other fields.
+     */
+    @Operation(summary = "Partially update a customer",
+            description = "Applies only the provided fields. Omit fields you do not want to change. Requires ROLE_USER or ROLE_ADMIN.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Customer updated"),
+            @ApiResponse(responseCode = "400", description = "Validation failed", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Lacks ROLE_USER or ROLE_ADMIN", content = @Content),
+            @ApiResponse(responseCode = "404", description = "Customer not found", content = @Content)
+    })
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")   // same roles as PUT — ROLE_READER is denied
+    @org.springframework.web.bind.annotation.PatchMapping("/{id}")
+    public CustomerDto patch(
+            @Parameter(description = "Customer ID", example = "42") @PathVariable Long id,
+            @Valid @RequestBody PatchCustomerRequest request) {
+        return service.patch(id, request);
+    }
+
+    /**
      * Deletes a customer by ID.
      *
      * <p>Returns HTTP 204 (No Content) on success, HTTP 404 if the customer does not exist.

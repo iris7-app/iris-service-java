@@ -344,6 +344,32 @@ class CustomerNewEndpointsITest extends AbstractIntegrationTest {
                 .andExpect(header().string("Link", containsString("rel=\"last\"")));
     }
 
+    // ─── PATCH /customers/{id} ──────────────────────────────────────────────
+
+    @Test
+    void patch_updatesOnlyProvidedFields() throws Exception {
+        createCustomer("Original", "original@example.com");
+        Long id = customerRepository.findAll().getFirst().getId();
+
+        // Patch only the name — email should remain unchanged
+        mockMvc.perform(patch("/customers/{id}", id)
+                        .with(user("admin").roles("ADMIN"))
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"name\":\"Patched Name\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Patched Name"))
+                .andExpect(jsonPath("$.email").value("original@example.com"));
+    }
+
+    @Test
+    void patch_forbiddenForReader() throws Exception {
+        mockMvc.perform(patch("/customers/1")
+                        .with(user("viewer").roles("READER"))
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"name\":\"X\"}"))
+                .andExpect(status().isForbidden());
+    }
+
     // ─── Cache eviction ─────────────────────────────────────────────────────
 
     @Test

@@ -182,6 +182,29 @@ public class CustomerService {
         org.slf4j.MDC.remove("customerId");  // clean up MDC to avoid leaking across requests
     }
 
+    /**
+     * Partially updates a customer — only non-null, non-blank fields in the request are applied.
+     * The cache entry for this customer is evicted so the next {@link #findById} fetches fresh data.
+     *
+     * @throws NoSuchElementException if the customer does not exist
+     */
+    @CacheEvict(value = "customer-by-id", key = "#id")  // evict stale cache entry on partial write
+    public CustomerDto patch(Long id, PatchCustomerRequest request) {
+        Customer customer = repository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Customer not found: " + id));
+        // Apply only fields that are explicitly provided (non-null and non-blank)
+        if (request.name() != null && !request.name().isBlank()) {
+            customer.setName(request.name());
+        }
+        if (request.email() != null && !request.email().isBlank()) {
+            customer.setEmail(request.email());
+        }
+        Customer saved = repository.save(customer);
+        auditService.log(currentUser(), "CUSTOMER_PATCHED",
+                "id=" + id + " name=" + saved.getName(), null);
+        return toDto(saved);
+    }
+
     /** Returns the authenticated user's name from the security context, or "anonymous". */
     private String currentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
