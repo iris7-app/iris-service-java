@@ -11,6 +11,12 @@ spring:
     # Service name propagated to OpenTelemetry traces and Grafana dashboards
     name: customer-service
 
+  autoconfigure:
+    # spring-data-rest-hal-explorer is on the classpath for the HAL browser UI,
+    # but we don't use the full Spring Data REST layer — exclude SpringDoc's
+    # Data REST auto-config to avoid a missing RepositoryRestConfiguration bean.
+    exclude: org.springdoc.core.configuration.SpringDocDataRestConfiguration
+
   # ---------------------------------------------------------------------------
   # Database — PostgreSQL via Spring Data JPA + Flyway
   # ---------------------------------------------------------------------------
@@ -244,6 +250,8 @@ springdoc:
     enabled: true
   api-docs:
     enabled: true
+  # Disable Spring Data REST integration — we use spring-data-rest-hal-explorer
+  # for the HAL browser UI only, without the full Spring Data REST layer.
 
 # =============================================================================
 # Logging
