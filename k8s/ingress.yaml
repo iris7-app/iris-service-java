@@ -1,0 +1,70 @@
+# =============================================================================
+# Nginx Ingress — single entry point for frontend + backend
+#
+# Why a single Ingress on one hostname?
+# ─────────────────────────────────────
+# Angular (frontend) and Spring Boot (backend) are served from the SAME hostname.
+# The browser calls `/api/customers` — Nginx strips `/api` and proxies to the
+# backend. This eliminates CORS entirely: the browser never makes a cross-origin
+# request because it always talks to the same origin (e.g. https://app.example.com).
+#
+# Routing rules:
+#   /api/(.*) → customer-service:8080/$1    (backend — strip /api prefix)
+#   /(.*)     → customer-ui:80              (frontend — Angular SPA)
+#
+# Replace ${K8S_HOST} with your actual domain, e.g. app.example.com.
+# TLS certificate is managed by cert-manager with Let's Encrypt.
+#
+# Prerequisites:
+#   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+#   kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: customer-service-ingress
+  namespace: app
+  labels:
+    app.kubernetes.io/name: customer-service-ingress
+  annotations:
+    # ── Nginx Ingress Controller ────────────────────────────────────────────
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # Rewrite /api/customers → /customers (strip the /api prefix before proxying)
+    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+    # Increase timeouts for Kafka request-reply (default 60s may be too short)
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "90"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "90"
+    # Enable WebSocket upgrade headers (for /ws/** STOMP endpoint)
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    # ── TLS — cert-manager Let's Encrypt ────────────────────────────────────
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - "${K8S_HOST}"
+      secretName: customer-service-tls
+  rules:
+    - host: "${K8S_HOST}"
+      http:
+        paths:
+          # /api/(...) → backend (strip /api prefix via rewrite-target /$2)
+          # The regex captures everything after /api/ in group $2
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: customer-service
+                port:
+                  number: 8080
+          # All other paths → Angular frontend
+          - path: /()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: customer-ui
+                port:
+                  number: 80

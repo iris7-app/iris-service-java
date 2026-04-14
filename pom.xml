@@ -11,9 +11,9 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>customer-service</artifactId>
+    <artifactId>mirador</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>customer-service</name>
+    <name>mirador</name>
     <description>Spring Boot 4 reference application — observability, security, messaging, resilience</description>
 
     <properties>
@@ -364,6 +364,12 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>build-info</id>
+                        <goals><goal>build-info</goal></goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <!--
@@ -659,6 +665,74 @@
         <plugin>
             <artifactId>maven-resources-plugin</artifactId>
             <executions>
+                <!-- JaCoCo CSV coverage report — copied to classpath for QualityReportEndpoint -->
+                <execution>
+                    <id>copy-jacoco-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.reporting.outputDirectory}/jacoco</directory>
+                                <includes><include>jacoco.csv</include></includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- SpotBugs XML report — copied to classpath for QualityReportEndpoint -->
+                <execution>
+                    <id>copy-spotbugs-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <includes><include>spotbugsXml.xml</include></includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- Surefire XML test reports — copied to classpath for QualityReportEndpoint -->
+                <execution>
+                    <id>copy-surefire-reports</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports/surefire</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}/surefire-reports</directory>
+                                <includes><include>TEST-*.xml</include></includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- pom.xml — copied to classpath for QualityReportEndpoint dependencies section -->
+                <execution>
+                  <id>copy-pom</id>
+                  <phase>prepare-package</phase>
+                  <goals><goal>copy-resources</goal></goals>
+                  <configuration>
+                    <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                    <overwrite>true</overwrite>
+                    <resources>
+                      <resource>
+                        <directory>${project.basedir}</directory>
+                        <includes><include>pom.xml</include></includes>
+                        <filtering>false</filtering>
+                      </resource>
+                    </resources>
+                  </configuration>
+                </execution>
                 <execution>
                     <id>copy-test-reports-to-static</id>
                     <phase>verify</phase>

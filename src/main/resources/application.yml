@@ -9,7 +9,7 @@
 spring:
   application:
     # Service name propagated to OpenTelemetry traces and Grafana dashboards
-    name: customer-service
+    name: mirador
 
   autoconfigure:
     # spring-data-rest-hal-explorer is on the classpath for the HAL browser UI,
@@ -185,10 +185,12 @@ management:
         # env and configprops are excluded — they leak DB credentials, JWT secrets,
         # and full application configuration. Enable them only behind authentication.
         # Do NOT expose: shutdown, threaddump, heapdump in production without auth.
-        include: health,info,prometheus,metrics,beans,loggers,maintenance
+        include: health,info,prometheus,metrics,beans,loggers,maintenance,quality
 
   info:
     env:
+      enabled: true
+    build:
       enabled: true
 
   endpoint:

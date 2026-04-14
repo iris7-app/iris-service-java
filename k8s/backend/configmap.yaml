@@ -1,0 +1,62 @@
+# =============================================================================
+# ConfigMap — non-sensitive application configuration
+#
+# All values here are safe to store in Git (no credentials, no secrets).
+# Sensitive values (DB_PASSWORD, JWT_SECRET, KAFKA_PASSWORD, API_KEY, etc.)
+# are injected as a Kubernetes Secret created by the CI pipeline from
+# GitLab CI/CD masked variables. See deploy:gke job in .gitlab-ci.yml.
+#
+# Variables using ${VAR} syntax are substituted by `envsubst` in the CI before
+# applying (sed 's/${IMAGE_TAG}/.../g' or envsubst < configmap.yaml).
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: customer-service-config
+  namespace: app
+  labels:
+    app.kubernetes.io/name: customer-service
+    app.kubernetes.io/component: backend
+data:
+  # ── Database ──────────────────────────────────────────────────────────────
+  # PostgreSQL runs in the infra namespace; DNS resolves across namespaces:
+  # <service>.<namespace>.svc.cluster.local
+  DB_HOST:    "postgresql.infra.svc.cluster.local"
+  DB_PORT:    "5432"
+  DB_NAME:    "customer-service"
+  DB_USER:    "demo"
+
+  # ── Kafka ─────────────────────────────────────────────────────────────────
+  KAFKA_BOOTSTRAP_SERVERS: "kafka.infra.svc.cluster.local:9092"
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  REDIS_HOST: "redis.infra.svc.cluster.local"
+  REDIS_PORT: "6379"
+
+  # ── Ollama ────────────────────────────────────────────────────────────────
+  # Ollama runs as a separate Deployment (GPU node if available, or CPU-only).
+  # Comment out if not deploying Ollama in the cluster.
+  OLLAMA_BASE_URL: "http://ollama.infra.svc.cluster.local:11434"
+  OLLAMA_MODEL:    "llama3.2:1b"
+
+  # ── OpenTelemetry ─────────────────────────────────────────────────────────
+  # Grafana Agent / OTel Collector runs in the observability namespace and
+  # forwards traces to Tempo and logs to Loki.
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://grafana-agent.observability.svc.cluster.local:4318"
+
+  # ── Zipkin ────────────────────────────────────────────────────────────────
+  ZIPKIN_ENDPOINT: "http://grafana-agent.observability.svc.cluster.local:9411/api/v2/spans"
+
+  # ── Keycloak ──────────────────────────────────────────────────────────────
+  KEYCLOAK_URL: "http://keycloak.infra.svc.cluster.local:8080"
+
+  # ── CORS ──────────────────────────────────────────────────────────────────
+  # In k8s, Nginx Ingress routes /api/* → backend and / → frontend, both on
+  # the same public hostname. The browser never calls the backend directly,
+  # so CORS is effectively bypassed. This value is a safety net for tools
+  # like Swagger UI or Postman that call the backend directly.
+  # Replace with your actual domain, e.g. https://app.example.com
+  CORS_ALLOWED_ORIGINS: "https://${K8S_HOST}"
+
+  # ── Server ────────────────────────────────────────────────────────────────
+  SERVER_PORT: "8080"

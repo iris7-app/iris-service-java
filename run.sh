@@ -43,7 +43,7 @@ set -e
 
 MVNW="./mvnw"
 MAVEN="$MVNW --batch-mode --errors --no-transfer-progress"
-IMAGE="customer-service:local"
+IMAGE="mirador:local"
 
 # Ensure Docker is running for commands that need it
 ensure_docker() {
@@ -170,12 +170,12 @@ case "$1" in
     #   CPU  — itimer event (which methods burn CPU time)
     #   HEAP — alloc event (where memory is allocated, threshold 512KB)
     #   LOCK — lock event (where thread contention happens, threshold 10ms)
-    PYROSCOPE_APPLICATION_NAME=customer-service \
+    PYROSCOPE_APPLICATION_NAME=mirador \
     PYROSCOPE_SERVER_ADDRESS=${PYROSCOPE_SERVER_ADDRESS:-http://localhost:4040} \
     PYROSCOPE_PROFILER_EVENT=itimer \
     PYROSCOPE_PROFILER_ALLOC=512k \
     PYROSCOPE_PROFILER_LOCK=10ms \
-    PYROSCOPE_LABELS="service=customer-service,env=local" \
+    PYROSCOPE_LABELS="service=mirador,env=local" \
     PYROSCOPE_UPLOAD_INTERVAL=10s \
     $MVNW spring-boot:run -Dspring-boot.run.jvmArguments="-javaagent:$PYROSCOPE_JAR"
     ;;
@@ -206,7 +206,7 @@ case "$1" in
     ensure_docker
     echo "Restarting everything (clean)..."
     # Kill the running Spring app (target Java process only, not Docker)
-    pgrep -f 'CustomerServiceApplication' | xargs kill 2>/dev/null || true
+    pgrep -f 'MiradorApplication' | xargs kill 2>/dev/null || true
     pgrep -f 'spring-boot:run' | xargs kill 2>/dev/null || true
     # Stop all containers (both compose files)
     docker compose -f docker-compose.observability.yml down
@@ -229,7 +229,7 @@ case "$1" in
   nuke)
     ensure_docker
     echo "Full cleanup — removing containers, volumes, and build artifacts..."
-    pgrep -f 'CustomerServiceApplication' | xargs kill 2>/dev/null || true
+    pgrep -f 'MiradorApplication' | xargs kill 2>/dev/null || true
     pgrep -f 'spring-boot:run' | xargs kill 2>/dev/null || true
     docker compose down -v
     docker compose -f docker-compose.observability.yml down -v
@@ -248,7 +248,7 @@ case "$1" in
 
   stop)
     echo "Stopping everything..."
-    pgrep -f 'CustomerServiceApplication' | xargs kill 2>/dev/null || true
+    pgrep -f 'MiradorApplication' | xargs kill 2>/dev/null || true
     pgrep -f 'spring-boot:run' | xargs kill 2>/dev/null || true
     docker compose down
     docker compose -f docker-compose.observability.yml down
@@ -323,7 +323,7 @@ case "$1" in
   status)
     echo ""
     echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║                   customer-service status                   ║"
+    echo "║                   mirador status                   ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo ""
 
@@ -335,8 +335,8 @@ case "$1" in
     fi
 
     # Spring Boot app
-    if pgrep -f 'CustomerServiceApplication' >/dev/null 2>&1; then
-      echo "  Spring Boot app     ✅ running (PID $(pgrep -f 'CustomerServiceApplication' | head -1))"
+    if pgrep -f 'MiradorApplication' >/dev/null 2>&1; then
+      echo "  Spring Boot app     ✅ running (PID $(pgrep -f 'MiradorApplication' | head -1))"
     else
       echo "  Spring Boot app     ❌ not running"
     fi
