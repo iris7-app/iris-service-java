@@ -36,13 +36,40 @@
         <archunit.version>1.4.0</archunit.version> <!-- architecture rule enforcement in unit tests (disabled on Java 25 — see ArchitectureTest) -->
         <bucket4j.version>8.10.1</bucket4j.version>                 <!-- token-bucket rate limiting (in-memory, per IP) -->
         <resilience4j.version>2.3.0</resilience4j.version>          <!-- @CircuitBreaker / @Retry / @Bulkhead annotations -->
-        <spring-ai.version>1.0.0-M6</spring-ai.version>             <!-- milestone; not yet in BOM — remove repo override when GA ships -->
+        <!--
+          Spring AI 1.0.0-M6: CVE-2026-22730 (8.8 HIGH), CVE-2026-22729 (8.6 HIGH),
+          CVE-2022-27772 (7.8 HIGH), CVE-2023-20883 (7.5 HIGH), CVE-2018-1196 (5.9 MEDIUM).
+          Cannot upgrade to 1.0.0 GA: Spring AI 1.0.0 renamed the Ollama starter artifact
+          (spring-ai-ollama-spring-boot-starter → spring-ai-starter-model-ollama) and
+          reorganised autoconfigure modules. Migration requires updating the dependency
+          declaration and validating API compatibility. Blocked until migration is done.
+        -->
+        <spring-ai.version>1.0.0-M6</spring-ai.version>
         <datasource-micrometer.version>2.2.1</datasource-micrometer.version> <!-- JDBC DataSource observation bridge → query latency in Prometheus -->
-        <springdoc.version>3.0.2</springdoc.version>                <!-- OpenAPI 3 spec + Swagger UI at /swagger-ui.html -->
+        <!--
+          springdoc 3.0.2 bundles swagger-ui 5.32.0 which contains DOMPurify CVEs
+          (MEDIUM: mXSS re-contextualization, prototype-pollution XSS, predicate bypass).
+          These are internal to the dev-only Swagger UI page — not exploitable in prod.
+          Waiting for a springdoc release that upgrades its bundled swagger-ui past 5.32.
+        -->
+        <springdoc.version>3.0.2</springdoc.version>
         <pyroscope.version>2.1.2</pyroscope.version>                <!-- continuous profiling agent — pushes CPU/memory profiles to Pyroscope -->
         <testcontainers.version>1.21.4</testcontainers.version>     <!-- pinned to align kafka module with the core version -->
         <jjwt.version>0.12.6</jjwt.version>                        <!-- split into api/impl/jackson — see dependency block -->
         <shedlock.version>6.0.2</shedlock.version>                  <!-- split into spring/provider — see dependency block -->
+        <!--
+          Tomcat 11.0.20 (managed by spring-boot-starter-parent 4.0.5 BOM) has unfixed CVEs:
+          CVE-2026-34483 (7.5 HIGH), CVE-2026-34486 (7.5 HIGH), CVE-2026-34487 (7.5 HIGH),
+          CVE-2026-34500 (6.5 MEDIUM). Fix requires Tomcat 11.0.21+ which is not yet referenced
+          by the SB4 BOM. Override below when a fixed version is available in Maven Central:
+            <tomcat.version>11.0.21</tomcat.version>
+        -->
+        <!--
+          protobuf-java 4.32.0 (transitive via spring-boot-starter-opentelemetry → OTel SDK)
+          has CVE-2026-0994 (7.5 HIGH). No newer version is available in local Maven cache.
+          Override below when 4.33+ is available:
+            <google-protobuf.version>4.33.0</google-protobuf.version>
+        -->
     </properties>
 
     <!--
@@ -1342,7 +1369,7 @@
         </repository>
         <!--
           Spring Milestones — required for Spring AI milestone releases (1.0.0-M6).
-          Remove once Spring AI 1.0 GA is published to Maven Central.
+          Remove once Spring AI CVEs are resolved and the migration to 1.0.0 GA is done.
         -->
         <repository>
             <id>spring-milestones</id>
