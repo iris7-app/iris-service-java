@@ -59,6 +59,8 @@ services:
     environment:
       # Forward all application logs received via OTLP to Loki
       ENABLE_LOGS_ALL: "true"
+      # Set the provisioned demo dashboard as the Grafana home page
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /otel-lgtm/demo.json
     # Wait until Tempo's query API is ready before Grafana attempts datasource connection.
     # Tempo exposes /ready at port 3200; LGTM takes ~15-20s to start all internal services.
     healthcheck:
