@@ -1,5 +1,15 @@
 # Mirador Service — Claude Instructions
 
+## Claude workflow rules (apply to every session)
+
+- **Do not stop** between tasks — chain all pending work without asking "shall I continue?".
+- **Act directly** — read only what is strictly necessary, then make the change. No long exploration before acting.
+- **One commit per logical change** — do not batch unrelated fixes into one commit.
+- **Run the build after every change** (`./mvnw verify -q`) and fix errors before committing.
+- **Comments explain why**, not what. Write comments that a future Claude session with no conversation history can understand.
+- After significant feature work, **do a code review pass**: unused imports, broad catches, missing Javadoc, test gaps.
+- **Never modify files outside this project** unless explicitly asked.
+
 ## Project overview
 
 Spring Boot 4 + Java 25 backend API with full observability stack.
