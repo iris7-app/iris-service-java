@@ -741,6 +741,10 @@ deploy:gke:
   environment:
     name: production/gke
     url: "https://$K8S_HOST"
+  before_script:
+    # google/cloud-sdk:alpine ships without kubectl and gke-gcloud-auth-plugin.
+    # Install both so kubectl can authenticate to the GKE cluster via the plugin.
+    - gcloud components install kubectl gke-gcloud-auth-plugin --quiet
   script:
     # Write OIDC token to file; gcloud reads it via credentials config (WIF, no key file)
     - echo "$GCP_OIDC_TOKEN" > /tmp/gcp_oidc_token.txt
