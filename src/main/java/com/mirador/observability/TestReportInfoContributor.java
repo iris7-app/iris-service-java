@@ -9,8 +9,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import org.springframework.boot.actuate.info.Info;
 import org.springframework.boot.actuate.info.InfoContributor;
 import org.springframework.stereotype.Component;
@@ -30,6 +32,9 @@ import org.w3c.dom.Element;
 public class TestReportInfoContributor implements InfoContributor {
 
     private static final String REPORTS_DIR = "target/surefire-reports";
+    // Sonar java:S1192 — these keys appear in both per-suite maps and the totals map.
+    private static final String KEY_FAILURES = "failures";
+    private static final String KEY_ERRORS   = "errors";
     private static final DateTimeFormatter TS_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -55,9 +60,8 @@ public class TestReportInfoContributor implements InfoContributor {
         long lastModified = 0;
         List<Map<String, Object>> suites = new ArrayList<>();
 
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         try {
-            DocumentBuilder docBuilder = factory.newDocumentBuilder();
+            DocumentBuilder docBuilder = secureDocumentBuilder();
             for (File xml : xmlFiles) {
                 lastModified = Math.max(lastModified, xml.lastModified());
                 try {
@@ -84,8 +88,8 @@ public class TestReportInfoContributor implements InfoContributor {
                     Map<String, Object> suiteMap = new LinkedHashMap<>();
                     suiteMap.put("name", shortName);
                     suiteMap.put("tests", tests);
-                    suiteMap.put("failures", failures);
-                    suiteMap.put("errors", errors);
+                    suiteMap.put(KEY_FAILURES, failures);
+                    suiteMap.put(KEY_ERRORS, errors);
                     suiteMap.put("skipped", skipped);
                     suiteMap.put("time", String.format("%.3fs", time));
                     suites.add(suiteMap);
@@ -110,14 +114,29 @@ public class TestReportInfoContributor implements InfoContributor {
         result.put("status", allPassed ? "PASSED" : "FAILED");
         result.put("total", totalTests);
         result.put("passed", totalTests - totalFailures - totalErrors - totalSkipped);
-        result.put("failures", totalFailures);
-        result.put("errors", totalErrors);
+        result.put(KEY_FAILURES, totalFailures);
+        result.put(KEY_ERRORS, totalErrors);
         result.put("skipped", totalSkipped);
         result.put("time", String.format("%.2fs", totalTime));
         result.put("runAt", runAt);
         result.put("suites", suites);
 
         builder.withDetail("tests", result);
+    }
+
+    /**
+     * Returns a DocumentBuilder hardened against XXE attacks (SonarQube java:S2755).
+     * Disables DOCTYPE declarations so no external entities can be loaded.
+     */
+    private static DocumentBuilder secureDocumentBuilder() throws ParserConfigurationException {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+        factory.setExpandEntityReferences(false);
+        return factory.newDocumentBuilder();
     }
 
     private static int intAttr(Element el, String attr) {

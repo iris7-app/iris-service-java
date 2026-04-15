@@ -48,6 +48,10 @@ import java.util.Optional;
 @Service
 public class CustomerService {
 
+    // Sonar java:S1192 — MDC key and log fragment appear 6+ times each.
+    private static final String MDC_CUSTOMER_ID = "customerId";
+    private static final String LOG_NAME_FRAG   = " name=";
+
     private final CustomerRepository repository;
     private final RecentCustomerBuffer recentCustomerBuffer;
     private final CustomerEventPublisher eventPublisher;
@@ -120,7 +124,7 @@ public class CustomerService {
 
         Customer saved = repository.save(customer);
         // Enrich MDC so all subsequent log lines in this thread carry the new customer ID
-        org.slf4j.MDC.put("customerId", String.valueOf(saved.getId()));
+        org.slf4j.MDC.put(MDC_CUSTOMER_ID, String.valueOf(saved.getId()));
         CustomerDto dto = toDto(saved);
         recentCustomerBuffer.add(dto);
 
@@ -136,8 +140,8 @@ public class CustomerService {
         sseEmitterRegistry.send("customer", dto);
 
         auditService.log(currentUser(), "CUSTOMER_CREATED",
-                "id=" + saved.getId() + " name=" + saved.getName(), null);
-        org.slf4j.MDC.remove("customerId");  // clean up MDC to avoid leaking across requests
+                "id=" + saved.getId() + LOG_NAME_FRAG + saved.getName(), null);
+        org.slf4j.MDC.remove(MDC_CUSTOMER_ID);  // clean up MDC to avoid leaking across requests
         return dto;
     }
 
@@ -156,10 +160,10 @@ public class CustomerService {
         customer.setEmail(request.email());
         Customer saved = repository.save(customer);
         // Enrich MDC so the audit log line carries the customer ID for log correlation
-        org.slf4j.MDC.put("customerId", String.valueOf(saved.getId()));
+        org.slf4j.MDC.put(MDC_CUSTOMER_ID, String.valueOf(saved.getId()));
         auditService.log(currentUser(), "CUSTOMER_UPDATED",
-                "id=" + id + " name=" + saved.getName(), null);
-        org.slf4j.MDC.remove("customerId");  // clean up MDC to avoid leaking across requests
+                "id=" + id + LOG_NAME_FRAG + saved.getName(), null);
+        org.slf4j.MDC.remove(MDC_CUSTOMER_ID);  // clean up MDC to avoid leaking across requests
         return toDto(saved);
     }
 
@@ -176,10 +180,10 @@ public class CustomerService {
             throw new NoSuchElementException("Customer not found: " + id);
         }
         // Enrich MDC before deleteById so the audit log line carries the customer ID
-        org.slf4j.MDC.put("customerId", String.valueOf(id));
+        org.slf4j.MDC.put(MDC_CUSTOMER_ID, String.valueOf(id));
         repository.deleteById(id);
         auditService.log(currentUser(), "CUSTOMER_DELETED", "id=" + id, null);
-        org.slf4j.MDC.remove("customerId");  // clean up MDC to avoid leaking across requests
+        org.slf4j.MDC.remove(MDC_CUSTOMER_ID);  // clean up MDC to avoid leaking across requests
     }
 
     /**
@@ -201,7 +205,7 @@ public class CustomerService {
         }
         Customer saved = repository.save(customer);
         auditService.log(currentUser(), "CUSTOMER_PATCHED",
-                "id=" + id + " name=" + saved.getName(), null);
+                "id=" + id + LOG_NAME_FRAG + saved.getName(), null);
         return toDto(saved);
     }
 

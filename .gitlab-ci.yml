@@ -220,6 +220,7 @@ integration-test:
       junit: target/failsafe-reports/*.xml    # populates the "Tests" tab with integration test results
     paths:
       - target/site/jacoco-it/       # HTML integration coverage report (browsable in the job artifacts panel)
+      - target/site/jacoco-it/jacoco.xml  # IT coverage XML — read by sonar-analysis alongside target/site/jacoco/jacoco.xml
       - target/spotbugsXml.xml       # SpotBugs XML — parseable by GitLab Code Quality widget
       - target/reports/failsafe.html # HTML integration test report (browsable in the job artifacts panel)
     expire_in: 1 week
@@ -240,8 +241,10 @@ sonar-analysis:
       -XX:+EnableDynamicAgentLoading
       -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
   script:
-    # JaCoCo XML must exist — produced by mvn verify in the integration stage (via artifacts).
-    # sonar:sonar reads it from target/site/jacoco/jacoco.xml (set in sonar.coverage.jacoco.xmlReportPaths).
+    # target/jacoco-merged.xml (unit + IT combined) is produced by the report-merged JaCoCo execution
+    # in the integration-test stage and forwarded here via artifacts. sonar.coverage.jacoco.xmlReportPaths
+    # in pom.xml points to this file so integration test coverage (CustomerController, AuthController,
+    # messaging…) is included — without ITs only ~32% coverage would be reported instead of ~80%.
     - mvn $MAVEN_CLI_OPTS sonar:sonar
       -Dsonar.token="$SONAR_TOKEN"
       -Dsonar.host.url="$SONAR_HOST_URL"

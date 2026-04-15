@@ -38,6 +38,9 @@ import java.util.Map;
 @SecurityRequirements   // all demo endpoints are permit-all
 @RestController
 @RequestMapping("/demo/security")
+// NOTE FOR SONARQUBE: The security issues flagged in this class (SQL injection, XSS, duplicate
+// literals) are INTENTIONAL — they exist to demonstrate OWASP vulnerabilities in the Security Demo
+// tab of the UI. Do NOT fix them. Mark them as "Won't Fix" or "Accepted" in SonarQube.
 public class SecurityDemoController {
 
     private final JdbcTemplate jdbcTemplate;

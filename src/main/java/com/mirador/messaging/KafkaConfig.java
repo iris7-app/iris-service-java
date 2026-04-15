@@ -67,6 +67,11 @@ import java.util.Map;
 @EnableKafka
 public class KafkaConfig {
 
+    // Sonar java:S1192 — "peer.service" and "kafka" are repeated in all four observation
+    // customisers below. Centralised here to avoid the duplicate-literal CRITICAL.
+    private static final String PEER_SERVICE_KEY   = "peer.service";
+    private static final String PEER_SERVICE_KAFKA = "kafka";
+
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
@@ -108,7 +113,7 @@ public class KafkaConfig {
         template.setObservationConvention(new KafkaTemplateObservation.DefaultKafkaTemplateObservationConvention() {
             @Override
             public KeyValues getLowCardinalityKeyValues(KafkaRecordSenderContext ctx) {
-                return super.getLowCardinalityKeyValues(ctx).and(KeyValue.of("peer.service", "kafka"));
+                return super.getLowCardinalityKeyValues(ctx).and(KeyValue.of(PEER_SERVICE_KEY, PEER_SERVICE_KAFKA));
             }
         });
         return template;
@@ -133,7 +138,7 @@ public class KafkaConfig {
                 new KafkaListenerObservation.DefaultKafkaListenerObservationConvention() {
                     @Override
                     public KeyValues getLowCardinalityKeyValues(KafkaRecordReceiverContext ctx) {
-                        return super.getLowCardinalityKeyValues(ctx).and(KeyValue.of("peer.service", "kafka"));
+                        return super.getLowCardinalityKeyValues(ctx).and(KeyValue.of(PEER_SERVICE_KEY, PEER_SERVICE_KAFKA));
                     }
                 });
         return factory;
@@ -177,7 +182,7 @@ public class KafkaConfig {
         template.setObservationConvention(new KafkaTemplateObservation.DefaultKafkaTemplateObservationConvention() {
             @Override
             public KeyValues getLowCardinalityKeyValues(KafkaRecordSenderContext ctx) {
-                return super.getLowCardinalityKeyValues(ctx).and(KeyValue.of("peer.service", "kafka"));
+                return super.getLowCardinalityKeyValues(ctx).and(KeyValue.of(PEER_SERVICE_KEY, PEER_SERVICE_KAFKA));
             }
         });
         return template;
@@ -195,7 +200,7 @@ public class KafkaConfig {
         props.setObservationConvention(new KafkaListenerObservation.DefaultKafkaListenerObservationConvention() {
             @Override
             public KeyValues getLowCardinalityKeyValues(KafkaRecordReceiverContext ctx) {
-                return super.getLowCardinalityKeyValues(ctx).and(KeyValue.of("peer.service", "kafka"));
+                return super.getLowCardinalityKeyValues(ctx).and(KeyValue.of(PEER_SERVICE_KEY, PEER_SERVICE_KAFKA));
             }
         });
         return new ConcurrentMessageListenerContainer<>(replyConsumerFactory(), props);

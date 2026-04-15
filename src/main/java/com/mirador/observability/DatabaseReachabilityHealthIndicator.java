@@ -47,22 +47,19 @@ public class DatabaseReachabilityHealthIndicator implements HealthIndicator {
      * Executes {@code SELECT 1} and returns {@code UP} if the result is {@code 1},
      * {@code DOWN} with details otherwise.
      */
+    // Sonar java:S1192 — "database" key appears in every health detail map.
+    private static final String DETAIL_KEY = "database";
+
     @Override
     public Health health() {
         try {
             Integer result = jdbcTemplate.queryForObject("select 1", Integer.class);
             if (result != null && result == 1) {
-                return Health.up()
-                        .withDetail("database", "reachable")
-                        .build();
+                return Health.up().withDetail(DETAIL_KEY, "reachable").build();
             }
-            return Health.down()
-                    .withDetail("database", "unexpected response")
-                    .build();
+            return Health.down().withDetail(DETAIL_KEY, "unexpected response").build();
         } catch (Exception ex) {
-            return Health.down(ex)
-                    .withDetail("database", "unreachable")
-                    .build();
+            return Health.down(ex).withDetail(DETAIL_KEY, "unreachable").build();
         }
     }
 }

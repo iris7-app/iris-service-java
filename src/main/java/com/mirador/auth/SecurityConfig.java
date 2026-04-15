@@ -55,6 +55,10 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    // Sonar java:S1192 — centralise frequently-repeated string literals.
+    private static final String ROLE_ADMIN    = "ADMIN";
+    private static final String CUSTOMERS_API = "/customers/**";
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
 
@@ -96,7 +100,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator", "/actuator/health/**", "/actuator/info",
                                 "/actuator/prometheus", "/actuator/metrics/**",
                                 "/actuator/loggers", "/actuator/loggers/**").permitAll()
-                        .requestMatchers("/actuator/**").hasRole("ADMIN")             // heapdump, env, beans, etc. require ADMIN
+                        .requestMatchers("/actuator/**").hasRole(ROLE_ADMIN)          // heapdump, env, beans, etc. require ADMIN
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html").permitAll() // Swagger UI
                         .requestMatchers("/v3/api-docs/**").permitAll()               // OpenAPI spec
                         .requestMatchers("/ws/**").permitAll()                        // WebSocket STOMP endpoint
@@ -104,11 +108,11 @@ public class SecurityConfig {
                         //   ROLE_ADMIN  — full access (read, write, delete, admin endpoints)
                         //   ROLE_USER   — read + write; cannot delete (POST/PUT allowed)
                         //   ROLE_READER — read-only; falls through to anyRequest().authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/customers/**").hasRole("ADMIN")           // delete — ROLE_ADMIN only
-                        .requestMatchers(HttpMethod.POST, "/customers").hasAnyRole("ADMIN", "USER")     // create — ROLE_ADMIN or ROLE_USER
-                        .requestMatchers(HttpMethod.POST, "/customers/batch").hasAnyRole("ADMIN", "USER") // batch — ROLE_ADMIN or ROLE_USER
-                        .requestMatchers(HttpMethod.PUT, "/customers/**").hasAnyRole("ADMIN", "USER")    // update — ROLE_ADMIN or ROLE_USER
-                        .requestMatchers(HttpMethod.PATCH, "/customers/**").hasAnyRole("ADMIN", "USER")  // partial update — ROLE_ADMIN or ROLE_USER
+                        .requestMatchers(HttpMethod.DELETE, CUSTOMERS_API).hasRole(ROLE_ADMIN)           // delete — ROLE_ADMIN only
+                        .requestMatchers(HttpMethod.POST, "/customers").hasAnyRole(ROLE_ADMIN, "USER")   // create — ROLE_ADMIN or ROLE_USER
+                        .requestMatchers(HttpMethod.POST, "/customers/batch").hasAnyRole(ROLE_ADMIN, "USER") // batch
+                        .requestMatchers(HttpMethod.PUT, CUSTOMERS_API).hasAnyRole(ROLE_ADMIN, "USER")   // update
+                        .requestMatchers(HttpMethod.PATCH, CUSTOMERS_API).hasAnyRole(ROLE_ADMIN, "USER") // partial update
                         .anyRequest().authenticated()                                 // GET and all other endpoints: any authenticated user (incl. ROLE_READER)
                 )
                 // Return 401 (not a redirect to a login page) for missing or invalid tokens.

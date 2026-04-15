@@ -106,6 +106,12 @@ public class CustomerController {
 
     private static final Logger log = LoggerFactory.getLogger(CustomerController.class);
 
+    // Sonar java:S1192 — centralise repeated string literals.
+    // "endpoint" key used in every observation span for low-cardinality routing context.
+    private static final String KEY_ENDPOINT  = "endpoint";
+    // Error message prefix — appears in multiple orElseThrow() exception messages.
+    private static final String ERR_NOT_FOUND = "Customer not found: ";
+
     private final CustomerService service;
     private final RecentCustomerBuffer recentCustomerBuffer;
     private final AggregationService aggregationService;
@@ -215,7 +221,7 @@ public class CustomerController {
             @RequestParam(required = false) String search) {
         Pageable capped = capPageSize(pageable);
         Page<CustomerDto> page = Observation.createNotStarted("customer.find-all", observationRegistry)
-                .lowCardinalityKeyValue("endpoint", "/customers")
+                .lowCardinalityKeyValue(KEY_ENDPOINT, "/customers")
                 .observe(() -> customerFindAllTimer.record(() ->
                         search != null ? service.search(search, capped) : service.findAll(capped)));
         return withLinkHeaders(page, Map.of(
@@ -254,7 +260,7 @@ public class CustomerController {
             @RequestParam(required = false) String search) {
         Pageable capped = capPageSize(pageable);
         Page<CustomerDtoV2> page = Observation.createNotStarted("customer.find-all-v2", observationRegistry)
-                .lowCardinalityKeyValue("endpoint", "/customers")
+                .lowCardinalityKeyValue(KEY_ENDPOINT, "/customers")
                 .lowCardinalityKeyValue("version", "2")
                 .observe(() -> customerFindAllTimer.record(() ->
                         search != null ? service.searchV2(search, capped) : service.findAllV2(capped)));
@@ -289,7 +295,7 @@ public class CustomerController {
     @PostMapping
     public CustomerDto create(@Valid @RequestBody CreateCustomerRequest request) {
         return Observation.createNotStarted("customer.create", observationRegistry)
-                .lowCardinalityKeyValue("endpoint", "/customers")
+                .lowCardinalityKeyValue(KEY_ENDPOINT, "/customers")
                 .observe(() -> customerCreateTimer.record(() -> {
                     CustomerDto result = service.create(request);
                     customerCreatedCounter.increment();
@@ -313,7 +319,7 @@ public class CustomerController {
             @Parameter(description = "Customer ID", example = "42")
             @PathVariable Long id) {
         return service.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Customer not found: " + id));
+                .orElseThrow(() -> new NoSuchElementException(ERR_NOT_FOUND + id));
     }
 
     /**
@@ -409,7 +415,7 @@ public class CustomerController {
     @GetMapping("/recent")
     public List<CustomerDto> getRecent() {
         return Observation.createNotStarted("customer.recent", observationRegistry)
-                .lowCardinalityKeyValue("endpoint", "/customers/recent")
+                .lowCardinalityKeyValue(KEY_ENDPOINT, "/customers/recent")
                 .observe(recentCustomerBuffer::getRecent);
     }
 
@@ -446,7 +452,7 @@ public class CustomerController {
     @GetMapping("/aggregate")
     public AggregationService.AggregatedResponse aggregate() {
         return Observation.createNotStarted("customer.aggregate", observationRegistry)
-                .lowCardinalityKeyValue("endpoint", "/customers/aggregate")
+                .lowCardinalityKeyValue(KEY_ENDPOINT, "/customers/aggregate")
                 .observe(() -> customerAggregateTimer.record(aggregationService::aggregate));
     }
 
@@ -470,7 +476,7 @@ public class CustomerController {
     public java.util.Map<String, String> generateBio(
             @Parameter(description = "Customer ID", example = "3") @PathVariable Long id) {
         CustomerDto customer = service.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Customer not found: " + id));
+                .orElseThrow(() -> new NoSuchElementException(ERR_NOT_FOUND + id));
         return java.util.Map.of("bio", bioService.generateBio(customer));
     }
 
@@ -498,7 +504,7 @@ public class CustomerController {
     public List<TodoItem> getTodos(
             @Parameter(description = "Customer ID", example = "3") @PathVariable Long id) {
         service.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Customer not found: " + id));
+                .orElseThrow(() -> new NoSuchElementException(ERR_NOT_FOUND + id));
         return todoService.getTodos(id);
     }
 
@@ -535,10 +541,10 @@ public class CustomerController {
     public EnrichedCustomerDto enrich(
             @Parameter(description = "Customer ID", example = "3") @PathVariable Long id) {
         return Observation.createNotStarted("customer.enrich", observationRegistry)
-                .lowCardinalityKeyValue("endpoint", "/customers/{id}/enrich")
+                .lowCardinalityKeyValue(KEY_ENDPOINT, "/customers/{id}/enrich")
                 .observe(() -> customerEnrichTimer.record(() -> {
                     CustomerDto customer = service.findById(id)
-                            .orElseThrow(() -> new NoSuchElementException("Customer not found: " + id));
+                            .orElseThrow(() -> new NoSuchElementException(ERR_NOT_FOUND + id));
 
                     // Build the Kafka record with the customer ID as the message key (partitioning)
                     var record = new ProducerRecord<>(customerRequestTopic,
@@ -634,7 +640,7 @@ public class CustomerController {
     @PostMapping("/batch")
     public BatchImportResult batchCreate(@Valid @RequestBody List<CreateCustomerRequest> requests) {
         return Observation.createNotStarted("customer.batch-import", observationRegistry)
-                .lowCardinalityKeyValue("endpoint", "/customers/batch")
+                .lowCardinalityKeyValue(KEY_ENDPOINT, "/customers/batch")
                 .observe(() -> service.batchCreate(requests));
     }
 

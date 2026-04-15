@@ -41,8 +41,10 @@ class AuditServiceTest {
     void log_dbFailure_doesNotThrow() {
         when(jdbc.update(anyString(), any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("DB is down"));
-        // Should not propagate exception
-        service.log("bob", "CUSTOMER_CREATED", "id=1", "5.5.5.5");
+        // Assertion: the call must complete without throwing — audit failures must never
+        // bubble up to the caller (audit is fire-and-forget, not a business invariant).
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(
+                () -> service.log("bob", "CUSTOMER_CREATED", "id=1", "5.5.5.5"));
     }
 
     @Test

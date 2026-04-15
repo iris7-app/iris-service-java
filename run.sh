@@ -350,20 +350,22 @@ case "$1" in
     #   3. Generate a token at http://localhost:9000/account/security
     #   4. Set SONAR_TOKEN=<token> in .env
     #
-    # Runs mvn verify first to produce JaCoCo XML (required by Sonar for coverage).
-    # Skip ITs to keep it fast; Sonar reads unit-test coverage only.
+    # Runs mvn verify (unit + integration tests) to produce jacoco-merged.xml.
+    # Integration tests are NOT skipped — CustomerController, AuthController and
+    # messaging classes are only exercised by @SpringBootTest ITests. Skipping them
+    # would yield ~32% coverage instead of ~80%.
     if [ -z "$SONAR_TOKEN" ]; then
       echo "Error: SONAR_TOKEN is not set in .env."
       echo "Generate one at http://localhost:9000/account/security"
       exit 1
     fi
-    echo "Running tests + SonarQube analysis..."
-    $MAVEN verify -DskipITs -q
+    echo "Running tests + integration tests + SonarQube analysis (this takes ~3 min)..."
+    $MAVEN verify -q
     $MAVEN sonar:sonar \
       -Dsonar.token="$SONAR_TOKEN" \
       -Dsonar.host.url=http://localhost:9000
     echo ""
-    echo "  SonarQube report: http://localhost:9000/dashboard?id=mirador"
+    echo "  SonarQube report: http://localhost:9000/projects"
     ;;
 
   clean)

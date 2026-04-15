@@ -62,6 +62,9 @@ public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
+    // Sonar java:S1192 — "error" key appears in multiple response maps.
+    private static final String KEY_ERROR = "error";
+
     private final JwtTokenProvider jwtTokenProvider;
     private final LoginAttemptService loginAttemptService;
     private final AuditService auditService;
@@ -103,14 +106,14 @@ public class AuthController {
             @ApiResponse(responseCode = "429", description = "IP locked out after too many failures", content = @Content)
     })
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<Object> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String ip = extractIp(httpRequest);
 
         if (loginAttemptService.isBlocked(ip)) {
             log.warn("audit_login_blocked ip={} reason=brute_force_lockout", ip);
             auditService.log(request.username(), "LOGIN_BLOCKED", "Brute-force lockout", ip);
             return ResponseEntity.status(429)
-                    .body(Map.of("error", "Too many failed attempts. Try again later.",
+                    .body(Map.of(KEY_ERROR, "Too many failed attempts. Try again later.",
                                  "retryAfterMinutes", LoginAttemptService.LOCKOUT_MINUTES));
         }
 
@@ -125,7 +128,7 @@ public class AuthController {
             auditService.log(request.username(), "LOGIN_FAILED",
                     "User not found, " + remaining + " attempts remaining", ip);
             return ResponseEntity.status(401)
-                    .body(Map.of("error", "Invalid credentials", "remainingAttempts", remaining));
+                    .body(Map.of(KEY_ERROR, "Invalid credentials", "remainingAttempts", remaining));
         }
         // Verify submitted password against the stored BCrypt hash
         if (!passwordEncoder.matches(request.password(), userDetails.getPassword())) {
@@ -135,7 +138,7 @@ public class AuthController {
             auditService.log(request.username(), "LOGIN_FAILED",
                     "Invalid credentials, " + remaining + " attempts remaining", ip);
             return ResponseEntity.status(401)
-                    .body(Map.of("error", "Invalid credentials",
+                    .body(Map.of(KEY_ERROR, "Invalid credentials",
                                  "remainingAttempts", remaining));
         }
 
@@ -167,7 +170,7 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Refresh token expired or invalid", content = @Content)
     })
     @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(@Valid @RequestBody RefreshRequest request) {
+    public ResponseEntity<Object> refresh(@Valid @RequestBody RefreshRequest request) {
         try {
             var oldToken = jwtTokenProvider.validateRefreshToken(request.refreshToken());
             String username = oldToken.getUsername();
@@ -182,7 +185,7 @@ public class AuthController {
             auditService.log(username, "TOKEN_REFRESH", "Refresh token rotated", null);
             return ResponseEntity.ok(Map.of("accessToken", accessToken, "refreshToken", refreshToken));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(401).body(Map.of(KEY_ERROR, e.getMessage()));
         }
     }
 
@@ -201,7 +204,7 @@ public class AuthController {
                     + "Requires a valid Bearer token in the Authorization header.")
     @ApiResponse(responseCode = "200", description = "Logged out successfully")
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(
+    public ResponseEntity<Object> logout(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @AuthenticationPrincipal UserDetails principal) {
         // Blacklist the access token so it's rejected before its natural expiry
