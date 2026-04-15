@@ -1027,6 +1027,33 @@
                 </execution>
             </executions>
         </plugin>
+
+        <!-- Copy OWASP Dependency-Check HTML report into target/site/ after site generation.
+             dependency-check-maven 12.x throws AbstractMethodError in the Maven <reporting>
+             lifecycle (known upstream incompatibility), so the report cannot be generated
+             directly by `mvn site`. This workaround copies the HTML produced by `mvn verify`
+             into the site output directory so it appears alongside Surefire and JaCoCo.
+             failonerror=false: if `mvn site` is run without a prior `mvn verify`, the copy
+             is skipped silently rather than breaking the build. -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+                <execution>
+                    <id>copy-owasp-report-to-site</id>
+                    <phase>post-site</phase>
+                    <goals><goal>run</goal></goals>
+                    <configuration>
+                        <target>
+                            <copy file="${project.build.directory}/dependency-check-report.html"
+                                  tofile="${project.reporting.outputDirectory}/dependency-check-report.html"
+                                  failonerror="false" quiet="true"/>
+                        </target>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
         </plugins>
     </build>
 
@@ -1537,6 +1564,12 @@
 
             <!-- JXR omitted: fails to parse Java 25 syntax (ParseLock#doParse StackOverflowError).
                  Re-add when JXR 3.x adds Java 25 language support. -->
+
+            <!-- OWASP Dependency-Check: omitted from <reporting> because dependency-check-maven
+                 12.x does not implement the Maven site reporting interface (AbstractMethodError
+                 on MavenReport.generate). Instead, the report is copied into target/site/ by
+                 the maven-antrun-plugin post-site execution below. -->
+
         </plugins>
     </reporting>
 
