@@ -859,6 +859,9 @@
                 </excludedClasses>
                 <outputFormats>
                     <outputFormat>XML</outputFormat>
+                    <!-- HTML output: browseable at target/pit-reports/index.html
+                         and served via Maven site nginx at /pit-reports/index.html -->
+                    <outputFormat>HTML</outputFormat>
                 </outputFormats>
                 <timestampedReports>false</timestampedReports>
                 <mutators>
@@ -1074,6 +1077,26 @@
                             <copy file="${project.build.directory}/dependency-check-report.html"
                                   tofile="${project.reporting.outputDirectory}/dependency-check-report.html"
                                   failonerror="false" quiet="true"/>
+                        </target>
+                    </configuration>
+                </execution>
+                <!--
+                  Copy pitest HTML report into target/site/pit-reports/ so it is accessible
+                  via the Maven site nginx at http://localhost:8084/pit-reports/index.html.
+                  pitest generates the HTML directory tree in target/pit-reports/ during
+                  mvn verify -Preport. This runs post-site so target/site/ already exists.
+                -->
+                <execution>
+                    <id>copy-pitest-report-to-site</id>
+                    <phase>post-site</phase>
+                    <goals><goal>run</goal></goals>
+                    <configuration>
+                        <target>
+                            <copy todir="${project.reporting.outputDirectory}/pit-reports"
+                                  failonerror="false" quiet="true">
+                                <fileset dir="${project.build.directory}/pit-reports"
+                                         erroronmissingdir="false"/>
+                            </copy>
                         </target>
                     </configuration>
                 </execution>
