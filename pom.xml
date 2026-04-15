@@ -11,9 +11,9 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>customer-service</artifactId>
+    <artifactId>mirador</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>customer-service</name>
+    <name>mirador</name>
     <description>Spring Boot 4 reference application — observability, security, messaging, resilience</description>
 
     <properties>
@@ -36,21 +36,101 @@
         <archunit.version>1.4.0</archunit.version> <!-- architecture rule enforcement in unit tests (disabled on Java 25 — see ArchitectureTest) -->
         <bucket4j.version>8.10.1</bucket4j.version>                 <!-- token-bucket rate limiting (in-memory, per IP) -->
         <resilience4j.version>2.3.0</resilience4j.version>          <!-- @CircuitBreaker / @Retry / @Bulkhead annotations -->
-        <spring-ai.version>1.0.0-M6</spring-ai.version>             <!-- milestone; not yet in BOM — remove repo override when GA ships -->
+        <!--
+          Spring AI 1.0.0-M6: CVE-2026-22730 (8.8 HIGH), CVE-2026-22729 (8.6 HIGH),
+          CVE-2022-27772 (7.8 HIGH), CVE-2023-20883 (7.5 HIGH), CVE-2018-1196 (5.9 MEDIUM).
+          Cannot upgrade to 1.0.0 GA: Spring AI 1.0.0 renamed the Ollama starter artifact
+          (spring-ai-ollama-spring-boot-starter → spring-ai-starter-model-ollama) and
+          reorganised autoconfigure modules. Migration requires updating the dependency
+          declaration and validating API compatibility. Blocked until migration is done.
+        -->
+        <spring-ai.version>1.0.0-M6</spring-ai.version>
         <datasource-micrometer.version>2.2.1</datasource-micrometer.version> <!-- JDBC DataSource observation bridge → query latency in Prometheus -->
-        <springdoc.version>3.0.2</springdoc.version>                <!-- OpenAPI 3 spec + Swagger UI at /swagger-ui.html -->
+        <!--
+          springdoc 3.0.3 (upgraded from 3.0.2) — bundles swagger-ui 5.32.2 which patches
+          DOMPurify CVEs present in 5.32.0 (mXSS re-contextualization, prototype-pollution
+          XSS, predicate bypass — all MEDIUM, dev-only Swagger UI page).
+        -->
+        <springdoc.version>3.0.3</springdoc.version>
+        <pyroscope.version>2.1.2</pyroscope.version>                <!-- continuous profiling agent — pushes CPU/memory profiles to Pyroscope -->
         <testcontainers.version>1.21.4</testcontainers.version>     <!-- pinned to align kafka module with the core version -->
         <jjwt.version>0.12.6</jjwt.version>                        <!-- split into api/impl/jackson — see dependency block -->
         <shedlock.version>6.0.2</shedlock.version>                  <!-- split into spring/provider — see dependency block -->
+        <!--
+          Tomcat 11.0.21 (upgraded from 11.0.20 via spring-boot-starter-parent BOM override) —
+          fixes CVE-2026-34483 (7.5 HIGH), CVE-2026-34486 (7.5 HIGH), CVE-2026-34487 (7.5 HIGH),
+          CVE-2026-34500 (6.5 MEDIUM). 11.0.21 is the latest GA on Maven Central.
+        -->
+        <tomcat.version>11.0.21</tomcat.version>
+
+        <!--
+          SonarCloud analysis configuration (sonarcloud.io — free for public repos).
+          sonar.host.url  — overridden at runtime to https://sonarcloud.io (CI sets it via -D flag)
+          sonar.organization — required by SonarCloud; must match the org created at sonarcloud.io
+          sonar.token     — generate at https://sonarcloud.io/account/security
+                            Set SONAR_TOKEN in GitLab group CI/CD variables.
+          sonar.coverage.jacoco.xmlReportPaths — SonarCloud accepts multiple comma-separated
+            JaCoCo XML files and merges them. Providing both unit and IT reports gives Sonar
+            the full picture: CustomerController, AuthController, messaging classes etc. are
+            only exercised by @SpringBootTest ITests, not by pure unit tests.
+            Without jacoco-it.xml, Sonar would see ~32% coverage instead of ~80%.
+          sonar.exclusions — generated classes, config and shim code that skew metrics.
+          sonar.coverage.exclusions — mirrors JaCoCo <excludes>: Spring wiring, compat shims,
+            bootstrap classes and observability infrastructure that have no business logic.
+        -->
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.organization>mirador1</sonar.organization>
+        <sonar.projectKey>mirador1_mirador-service</sonar.projectKey>
+        <sonar.projectName>Mirador Service</sonar.projectName>
+        <sonar.coverage.jacoco.xmlReportPaths>
+            ${project.reporting.outputDirectory}/jacoco/jacoco.xml,
+            ${project.reporting.outputDirectory}/jacoco-it/jacoco.xml
+        </sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.exclusions>
+            **/compat/**,**/*.java17/**,**/*.java21/**,**/*.sb3/**,
+            **/generated-sources/**,**/target/**
+        </sonar.exclusions>
+        <sonar.cpd.exclusions>**/compat/**</sonar.cpd.exclusions>
+        <!--
+          Mirrors the JaCoCo <excludes> list so SonarQube computes coverage on the same
+          classes that the coverage gate checks — avoids false-low percentages from
+          infrastructure code that is intentionally untested.
+        -->
+        <sonar.coverage.exclusions>
+            org/springframework/**,
+            **/SecurityConfig.java,**/KeycloakConfig.java,
+            **/KafkaConfig.java,**/WebSocketConfig.java,
+            **/OpenApiConfig.java,**/HttpClientConfig.java,
+            **/ShedLockConfig.java,**/ObservabilityConfig.java,
+            **/QualityReportEndpoint.java,**/TestReportInfoContributor.java,
+            **/OtelLogbackInstaller.java,**/PyroscopeConfig.java,
+            **/MiradorApplication.java
+        </sonar.coverage.exclusions>
     </properties>
 
     <!--
       Force ASM 9.8 for ArchUnit.
       ArchUnit 1.4.x ships with ASM 9.7 which does not support Java 25 bytecode (class version 69).
       ASM 9.8 adds Java 25 support. This override propagates to ArchUnit's transitive dependency.
+
+      Force protobuf-java 4.34.1 (upgraded from 4.32.0) — CVE-2026-0994 (7.5 HIGH).
+      protobuf is transitive (spring-boot-starter-opentelemetry → OTel SDK → protobuf-java)
+      and not exposed as a property in the Spring Boot BOM, so it must be pinned here.
+      NOTE: CVE-2026-0994 persists on 4.34.1 — NVD does not yet list a patched version.
+      Kept at latest GA to minimise attack surface; revisit when NVD marks a version safe.
     -->
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>4.34.1</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java-util</artifactId>
+                <version>4.34.1</version>
+            </dependency>
             <dependency>
                 <groupId>org.ow2.asm</groupId>
                 <artifactId>asm</artifactId>
@@ -134,11 +214,10 @@
         </dependency>
 
         <!--
-          Observability stack — five complementary artifacts:
+          Observability stack — four complementary artifacts:
             actuator              → /actuator/health, /actuator/prometheus, etc.
             micrometer-prometheus → Prometheus registry: scrape at /actuator/prometheus
             opentelemetry         → OTLP trace + log export to Tempo / Loki via OTEL collector
-            opentelemetry-zipkin  → exports traces to Zipkin (alongside OTLP to Tempo)
             datasource-micrometer → instruments JDBC DataSource with Micrometer Observations
                                     (query count, latency histograms, slow-query detection)
         -->
@@ -146,16 +225,21 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- HATEOAS + HAL Explorer — browse /actuator endpoints visually in a browser -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-hateoas</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-rest-hal-explorer</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
         <!-- spring-boot-starter-opentelemetry: SB4-only, declared in sb4 profile below -->
         <!-- SB3 equivalent (micrometer-tracing-bridge-otel + opentelemetry-exporter-otlp) in sb3 profile -->
-        <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-exporter-zipkin</artifactId>
-        </dependency>
         <!-- OTLP log export: bridges Logback log events to OpenTelemetry pipeline (→ Loki via LGTM) -->
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>
@@ -166,6 +250,15 @@
             <groupId>net.ttddyy.observation</groupId>
             <artifactId>datasource-micrometer-spring-boot</artifactId>
             <version>${datasource-micrometer.version}</version>
+        </dependency>
+
+        <!-- Pyroscope — continuous profiling agent (CPU, alloc, wall clock).
+             Pushes JFR profiles to the Pyroscope server every 10s.
+             Requires no JVM -javaagent flag when using the embedded SDK. -->
+        <dependency>
+            <groupId>io.pyroscope</groupId>
+            <artifactId>agent</artifactId>
+            <version>${pyroscope.version}</version>
         </dependency>
 
         <!-- WebSocket — real-time notifications via STOMP over SockJS -->
@@ -233,6 +326,17 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Application-level entity cache — individual customer lookups (findById).
+             No overlap with Redis which handles the recent-customers ring buffer only. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
         </dependency>
 
         <!-- Bucket4j — in-memory token-bucket rate limiting (100 req/min per IP) -->
@@ -339,6 +443,12 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>build-info</id>
+                        <goals><goal>build-info</goal></goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <!--
@@ -350,6 +460,31 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <!--
+                  Spring Boot's parent POM injects JUnit 5 UID tracking via the deprecated
+                  'systemProperties' element in its 'default-test' execution. We override
+                  that execution here to:
+                    1. Replace 'systemProperties' with 'systemPropertyVariables' (non-deprecated)
+                    2. Keep the same tracking properties so JUnit behaviour is unchanged
+                  combine.self="override" on systemProperties clears the parent-injected list.
+                  See: https://issues.apache.org/jira/browse/SUREFIRE-2190
+                -->
+                <executions>
+                    <execution>
+                        <id>default-test</id>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/*ITest.java</exclude>
+                            </excludes>
+                            <!-- Suppress deprecated systemProperties from parent POM -->
+                            <systemProperties combine.self="override"/>
+                            <systemPropertyVariables>
+                                <junit.platform.listeners.uid.tracking.enabled>true</junit.platform.listeners.uid.tracking.enabled>
+                                <junit.platform.listeners.uid.tracking.output.dir>${project.build.directory}/test-ids</junit.platform.listeners.uid.tracking.output.dir>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </execution>
+                </executions>
                 <configuration>
                     <excludes>
                         <exclude>**/*ITest.java</exclude>
@@ -371,6 +506,11 @@
                     <includes>
                         <include>**/*ITest.java</include>
                     </includes>
+                    <!-- Same fix as surefire above — override deprecated systemProperties from parent POM -->
+                    <systemPropertyVariables>
+                        <junit.platform.listeners.uid.tracking.enabled>true</junit.platform.listeners.uid.tracking.enabled>
+                        <junit.platform.listeners.uid.tracking.output.dir>${project.build.directory}/test-ids</junit.platform.listeners.uid.tracking.output.dir>
+                    </systemPropertyVariables>
                 </configuration>
                 <executions>
                     <execution>
@@ -404,6 +544,49 @@
                      no version, even when the parent's pluginManagement already resolves it.
                      Version inherited from spring-boot-starter-parent pluginManagement. -->
                 <version>0.8.14</version>
+                <configuration>
+                    <excludes>
+                        <!--
+                          Classes excluded from coverage measurement — not business logic:
+
+                          1. Spring Boot 3 / Java 17-21 overlay classes (src/main/java/org/springframework/**):
+                             These are compatibility shims for the -Dsb3 / -Dcompat profiles. They are
+                             never loaded in the default SB4/Java25 build, so measuring their coverage
+                             would just punish the default profile. Exclude by package prefix.
+                        -->
+                        <exclude>org/springframework/**</exclude>
+                        <!--
+                          2. Pure Spring wiring — @Configuration / @Bean methods with no
+                             conditional logic. Coverage here would only test Spring internals,
+                             not application code. Excluded:
+                             SecurityConfig, KafkaConfig, OpenApiConfig, WebSocketConfig,
+                             ShedLockConfig, HttpClientConfig, ObservabilityConfig, KeycloakConfig
+                        -->
+                        <exclude>com/mirador/auth/SecurityConfig.class</exclude>
+                        <exclude>com/mirador/auth/KeycloakConfig.class</exclude>
+                        <exclude>com/mirador/messaging/KafkaConfig.class</exclude>
+                        <exclude>com/mirador/messaging/WebSocketConfig.class</exclude>
+                        <exclude>com/mirador/api/OpenApiConfig.class</exclude>
+                        <exclude>com/mirador/integration/HttpClientConfig.class</exclude>
+                        <exclude>com/mirador/resilience/ShedLockConfig.class</exclude>
+                        <exclude>com/mirador/observability/ObservabilityConfig.class</exclude>
+                        <!--
+                          3. Observability/tooling infrastructure — these classes read build artifacts
+                             (JaCoCo CSV, SpotBugs XML, OWASP JSON …) and expose them as JSON. They
+                             are heavily I/O-dependent and not business logic. Excluded:
+                             QualityReportEndpoint, TestReportInfoContributor, OtelLogbackInstaller,
+                             PyroscopeConfig (profiling agent init, not invoked without agent jar)
+                        -->
+                        <exclude>com/mirador/observability/QualityReportEndpoint.class</exclude>
+                        <exclude>com/mirador/observability/TestReportInfoContributor.class</exclude>
+                        <exclude>com/mirador/observability/OtelLogbackInstaller.class</exclude>
+                        <exclude>com/mirador/observability/PyroscopeConfig.class</exclude>
+                        <!--
+                          4. Application bootstrap
+                        -->
+                        <exclude>com/mirador/MiradorApplication.class</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
@@ -454,8 +637,8 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <!-- 60 %: conservative starting point, raise over time -->
-                                            <minimum>0.60</minimum>
+                                            <!-- 70 %: infrastructure/config excluded; see jacoco <excludes> above -->
+                                            <minimum>0.70</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
@@ -515,6 +698,8 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <!-- skip=true by default — enabled via -Preport to avoid slowing down regular builds -->
+                    <skip>true</skip>
                     <effort>Default</effort>
                     <threshold>Medium</threshold>
                     <!-- Documented false positives for Spring DI patterns — see spotbugs-exclude.xml -->
@@ -577,7 +762,397 @@
                 <assemblyAnalyzerEnabled>false</assemblyAnalyzerEnabled>
                 <!-- Disable OSS Index — requires paid credentials; NVD covers the same CVEs -->
                 <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
+                <!-- skip=true by default — enabled via -Preport to avoid slowing down regular builds -->
+                <skip>true</skip>
             </configuration>
+            <executions>
+                <!-- Bound to prepare-package so the generated JSON is available
+                     for the copy-resources execution (also at prepare-package).
+                     Maven runs executions within the same phase in declaration order,
+                     so OWASP check runs before the copy-owasp-report resources execution. -->
+                <execution>
+                    <id>dependency-check</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>check</goal></goals>
+                </execution>
+            </executions>
+        </plugin>
+        <!-- HTML test report: generated during mvn site at target/site/surefire-report.html.
+             Phase is "site" (not "verify") — report-only requires the Doxia site lifecycle
+             for skin resolution; running it at verify phase fails with "skin cannot be null". -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-report-plugin</artifactId>
+            <version>3.5.5</version>
+            <executions>
+                <execution>
+                    <id>test-report</id>
+                    <phase>site</phase>
+                    <goals>
+                        <goal>report</goal>            <!-- unit tests (site lifecycle) -->
+                        <goal>failsafe-report</goal>   <!-- integration tests (site lifecycle) -->
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <!--
+          maven-pmd-plugin — static code analysis (code smells, dead code, complexity).
+          failOnViolation=false so it never breaks the build; reports are copied to the
+          classpath by maven-resources-plugin for the /actuator/quality endpoint.
+          targetJdk=21 avoids PMD parser issues with Java 25 preview features.
+        -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-pmd-plugin</artifactId>
+            <version>3.26.0</version>
+            <configuration>
+                <skip>true</skip>
+                <failOnViolation>false</failOnViolation>
+                <printFailingErrors>false</printFailingErrors>
+                <targetJdk>21</targetJdk>
+                <outputDirectory>${project.build.directory}</outputDirectory>
+                <format>xml</format>
+                <includeTests>false</includeTests>
+                <!-- Custom ruleset excludes LawOfDemeter (StackOverflow on Java 25) -->
+                <rulesets>
+                    <ruleset>pmd-ruleset.xml</ruleset>
+                </rulesets>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>pmd-analyze</id>
+                    <phase>verify</phase>
+                    <goals>
+                        <goal>pmd</goal>
+                        <goal>cpd</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <!--
+          maven-checkstyle-plugin — code style enforcement.
+          Uses Google's style guide. failsOnError=false; report written to XML for
+          /actuator/quality.
+        -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-checkstyle-plugin</artifactId>
+            <version>3.6.0</version>
+            <configuration>
+                <skip>true</skip>
+                <failsOnError>false</failsOnError>
+                <failOnViolation>false</failOnViolation>
+                <consoleOutput>false</consoleOutput>
+                <outputFileFormat>xml</outputFileFormat>
+                <outputFile>${project.build.directory}/checkstyle-result.xml</outputFile>
+                <configLocation>google_checks.xml</configLocation>
+                <suppressionsLocation></suppressionsLocation>
+                <includeTestSourceDirectory>false</includeTestSourceDirectory>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>checkstyle-analyze</id>
+                    <phase>verify</phase>
+                    <goals>
+                        <goal>checkstyle</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <!--
+          pitest-maven — mutation testing. Skipped by default (long to run).
+          Run manually: mvn test-compile pitest:mutationCoverage
+          Reports in target/pit-reports/mutations.xml → copied to classpath.
+        -->
+        <plugin>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-maven</artifactId>
+            <!-- 1.23.x bundles ASM 9.8 which supports Java 25 class files (version 69) -->
+            <version>1.23.0</version>
+            <dependencies>
+                <dependency>
+                    <groupId>org.pitest</groupId>
+                    <artifactId>pitest-junit5-plugin</artifactId>
+                    <version>1.2.3</version>
+                </dependency>
+            </dependencies>
+            <configuration>
+                <skip>true</skip>
+                <targetClasses>
+                    <param>com.mirador.*</param>
+                </targetClasses>
+                <targetTests>
+                    <param>com.mirador.*</param>
+                </targetTests>
+                <!--
+                  Exclude compatibility shim classes that only exist on specific Java/SB versions.
+                  These are unreachable in the default Java 25 / SB4 test run and would show
+                  as "no coverage" mutations rather than meaningful quality gaps.
+                -->
+                <excludedClasses>
+                    <param>com.mirador.compat.*</param>
+                    <param>com.mirador.*.sb3.*</param>
+                    <param>com.mirador.*.java17.*</param>
+                    <param>com.mirador.*.java21.*</param>
+                </excludedClasses>
+                <outputFormats>
+                    <outputFormat>XML</outputFormat>
+                    <!-- HTML output: browseable at target/pit-reports/index.html
+                         and served via Maven site nginx at /pit-reports/index.html -->
+                    <outputFormat>HTML</outputFormat>
+                </outputFormats>
+                <timestampedReports>false</timestampedReports>
+                <mutators>
+                    <mutator>DEFAULTS</mutator>
+                </mutators>
+                <reportsDirectory>${project.build.directory}/pit-reports</reportsDirectory>
+                <!--
+                  pitest 1.23.0 bundles ASM 9.8 which supports Java 25 class files (version 69).
+                  No JVM override needed — MINION runs on the same Java 25 JVM as Maven so it
+                  can load both production and test classes compiled at class version 69.
+                -->
+            </configuration>
+        </plugin>
+        <!--
+          Copy HTML test reports into the JAR's static resources so Spring Boot serves them
+          at http://localhost:8080/reports/surefire.html and .../failsafe.html.
+          The Angular frontend embeds these as iframes (X-Frame-Options is relaxed for /reports/**).
+          This execution runs after surefire-report:report-only has generated the HTML files.
+        -->
+        <plugin>
+            <artifactId>maven-resources-plugin</artifactId>
+            <executions>
+                <!-- JaCoCo CSV coverage report — copied to classpath for QualityReportEndpoint -->
+                <execution>
+                    <id>copy-jacoco-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.reporting.outputDirectory}/jacoco</directory>
+                                <includes><include>jacoco.csv</include></includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- SpotBugs XML report — copied to classpath for QualityReportEndpoint -->
+                <execution>
+                    <id>copy-spotbugs-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <includes><include>spotbugsXml.xml</include></includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- Surefire XML test reports — copied to classpath for QualityReportEndpoint -->
+                <execution>
+                    <id>copy-surefire-reports</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports/surefire</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}/surefire-reports</directory>
+                                <includes><include>TEST-*.xml</include></includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- pom.xml — copied to classpath for QualityReportEndpoint dependencies section -->
+                <execution>
+                  <id>copy-pom</id>
+                  <phase>prepare-package</phase>
+                  <goals><goal>copy-resources</goal></goals>
+                  <configuration>
+                    <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                    <overwrite>true</overwrite>
+                    <resources>
+                      <resource>
+                        <directory>${project.basedir}</directory>
+                        <includes><include>pom.xml</include></includes>
+                        <filtering>false</filtering>
+                      </resource>
+                    </resources>
+                  </configuration>
+                </execution>
+                <!-- PMD XML report -->
+                <execution>
+                    <id>copy-pmd-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <includes>
+                                    <include>pmd.xml</include>
+                                    <include>cpd.xml</include>
+                                </includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- Checkstyle XML report -->
+                <execution>
+                    <id>copy-checkstyle-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <includes>
+                                    <include>checkstyle-result.xml</include>
+                                </includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!--
+                  OWASP Dependency Check JSON report.
+                  The last scan result is committed at src/main/resources/META-INF/build-reports/
+                  so it is always available in the JAR without re-running the 17-min scan.
+                  This execution overrides the committed version only when -Preport is active
+                  and OWASP has generated a fresh target/dependency-check-report.json.
+                  When skipped (default), Maven process-resources uses the committed file.
+                -->
+                <execution>
+                    <id>copy-owasp-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <includes>
+                                    <include>dependency-check-report.json</include>
+                                </includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <!-- Pitest mutation XML report -->
+                <execution>
+                    <id>copy-pitest-report</id>
+                    <phase>prepare-package</phase>
+                    <goals><goal>copy-resources</goal></goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/META-INF/build-reports/pit-reports</outputDirectory>
+                        <overwrite>true</overwrite>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}/pit-reports</directory>
+                                <includes>
+                                    <include>mutations.xml</include>
+                                </includes>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <execution>
+                    <id>copy-test-reports-to-static</id>
+                    <phase>verify</phase>
+                    <goals>
+                        <goal>copy-resources</goal>
+                    </goals>
+                    <configuration>
+                        <outputDirectory>${project.build.outputDirectory}/static/reports</outputDirectory>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}/reports</directory>
+                                <filtering>false</filtering>
+                            </resource>
+                        </resources>
+                        <overwrite>true</overwrite>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+
+        <!-- Copy OWASP Dependency-Check HTML report into target/site/ after site generation.
+             dependency-check-maven 12.x throws AbstractMethodError in the Maven <reporting>
+             lifecycle (known upstream incompatibility), so the report cannot be generated
+             directly by `mvn site`. This workaround copies the HTML produced by `mvn verify`
+             into the site output directory so it appears alongside Surefire and JaCoCo.
+             failonerror=false: if `mvn site` is run without a prior `mvn verify`, the copy
+             is skipped silently rather than breaking the build. -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+                <execution>
+                    <id>copy-owasp-report-to-site</id>
+                    <phase>post-site</phase>
+                    <goals><goal>run</goal></goals>
+                    <configuration>
+                        <target>
+                            <copy file="${project.build.directory}/dependency-check-report.html"
+                                  tofile="${project.reporting.outputDirectory}/dependency-check-report.html"
+                                  failonerror="false" quiet="true"/>
+                        </target>
+                    </configuration>
+                </execution>
+                <!--
+                  Copy pitest HTML report into target/site/pit-reports/ so it is accessible
+                  via the Maven site nginx at http://localhost:8084/pit-reports/index.html.
+                  pitest generates the HTML directory tree in target/pit-reports/ during
+                  mvn verify -Preport. This runs post-site so target/site/ already exists.
+                -->
+                <execution>
+                    <id>copy-pitest-report-to-site</id>
+                    <phase>post-site</phase>
+                    <goals><goal>run</goal></goals>
+                    <configuration>
+                        <target>
+                            <copy todir="${project.reporting.outputDirectory}/pit-reports"
+                                  failonerror="false" quiet="true">
+                                <fileset dir="${project.build.directory}/pit-reports"
+                                         erroronmissingdir="false"/>
+                            </copy>
+                        </target>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+
+        <!--
+          sonar-maven-plugin — sends analysis results to SonarQube.
+          Skipped by default; activated via -Preport or manually:
+            mvn verify sonar:sonar -Dsonar.token=<token>
+          The plugin reads pre-existing bytecode and report files — it does not recompile.
+          JaCoCo XML report must exist before sonar:sonar runs (produced by mvn verify).
+          Community Edition: single-branch analysis only (no PR decoration, no branch comparison).
+        -->
+        <plugin>
+            <groupId>org.sonarsource.scanner.maven</groupId>
+            <artifactId>sonar-maven-plugin</artifactId>
+            <version>5.1.0.4751</version>
         </plugin>
         </plugins>
     </build>
@@ -854,6 +1429,112 @@
                 </plugins>
             </build>
         </profile>
+
+        <!--
+          report profile — enables quality analysis tools that are skip=true by default.
+          Usage: mvn verify -Preport -DskipITs -Djacoco.skip=true
+          Generates: SpotBugs XML, OWASP CVE JSON/HTML, Checkstyle XML.
+          Note: PMD is excluded here — its type inference engine crashes on Java 25 code.
+                Run PMD on -Dcompat -Djava17 builds instead.
+          Pitest: mvn test-compile pitest:mutationCoverage -Preport
+          Intended to be run manually or via a daily CI schedule — NOT on every push.
+        -->
+        <profile>
+            <id>report</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                        <configuration>
+                            <skip>false</skip>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <configuration>
+                            <skip>false</skip>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <configuration>
+                            <skip>false</skip>
+                        </configuration>
+                        <!-- Bind to verify phase so mvn verify -Preport runs pitest automatically -->
+                        <executions>
+                            <execution>
+                                <id>pitest-verify</id>
+                                <phase>verify</phase>
+                                <goals><goal>mutationCoverage</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!--
+          report-static profile — enables PMD and Checkstyle for static analysis.
+          Both tools crash on Java 25 syntax (pattern matching when-guards), so this
+          profile must be combined with -Dcompat (Java 21) or -Dcompat -Djava17 (Java 17).
+
+          Usage:
+            mvn verify -Preport,report-static -Dcompat -DskipITs -Djacoco.skip=true
+              → SpotBugs + OWASP + PMD + Checkstyle on Java 21
+
+          PMD is compatible with Java ≤ 22; Checkstyle is compatible with Java ≤ 21.
+          Do NOT use with Java 25 — both tools crash on Java 25 syntax.
+        -->
+        <profile>
+            <id>report-static</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-pmd-plugin</artifactId>
+                        <configuration>
+                            <skip>false</skip>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-checkstyle-plugin</artifactId>
+                        <configuration>
+                            <skip>false</skip>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!--
+          java26 profile — targets Java 26 (short-term release, GA March 2026).
+          Activated via -Djava26 property.
+          Usage: mvn verify -Djava26                    → SB4 + Java 26
+                 mvn verify -Djava26 -Dcompat           → SB4 + Java 26 (compat source)
+
+          Prerequisites:
+            - Java 26 JDK must be installed and set as JAVA_HOME
+            - ASM 9.8+ may need an update to 9.9+ when Java 26 class files (version 70) are parsed by SpotBugs
+
+          Note: Java 26 does not introduce incompatible changes with Java 25 code.
+          The ScopedValue / StructuredConcurrency APIs used in this project are stable in Java 26.
+          Run: mvn verify -Djava26 to validate after installing Java 26 JDK.
+        -->
+        <profile>
+            <id>java26</id>
+            <activation>
+                <property>
+                    <name>java26</name>
+                </property>
+            </activation>
+            <properties>
+                <java.version>26</java.version>
+            </properties>
+        </profile>
     </profiles>
 
     <repositories>
@@ -866,7 +1547,7 @@
         </repository>
         <!--
           Spring Milestones — required for Spring AI milestone releases (1.0.0-M6).
-          Remove once Spring AI 1.0 GA is published to Maven Central.
+          Remove once Spring AI CVEs are resolved and the migration to 1.0.0 GA is done.
         -->
         <repository>
             <id>spring-milestones</id>
@@ -875,4 +1556,121 @@
             <snapshots><enabled>false</enabled></snapshots>
         </repository>
     </repositories>
+
+    <!--
+      Maven Site reporting — wires all quality plugins into the HTML site generated by `mvn site`.
+      Run: mvn site
+      Output: target/site/index.html
+
+      Reports included:
+        - Project info (dependencies, licenses, team, SCM, CI)
+        - Surefire + Failsafe test results
+        - JaCoCo code coverage (merged unit + integration)
+        - SpotBugs static analysis
+        - PMD static analysis + copy/paste detection
+        - Checkstyle style violations
+        - Javadoc API reference
+        - JXR cross-reference source (enables source links in PMD/Checkstyle reports)
+    -->
+    <reporting>
+        <plugins>
+            <!-- Standard project info pages -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-project-info-reports-plugin</artifactId>
+                <version>3.9.0</version>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>index</report>
+                            <report>summary</report>
+                            <report>dependencies</report>
+                            <report>dependency-management</report>
+                            <report>plugins</report>
+                            <report>plugin-management</report>
+                            <report>team</report>
+                            <report>licenses</report>
+                            <report>scm</report>
+                            <report>issue-management</report>
+                            <report>ci-management</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+
+            <!-- Unit + integration test results -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-report-plugin</artifactId>
+                <version>3.5.5</version>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>report-only</report>
+                            <report>failsafe-report-only</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+
+            <!-- JaCoCo code coverage — reads jacoco.exec produced during verify -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.14</version>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>report</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+
+            <!-- SpotBugs — reads spotbugsXml.xml produced during verify -->
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.8.6.4</version>
+            </plugin>
+
+            <!-- PMD and CPD omitted from site reporting — PMD 7.x crashes with StackOverflowError
+                 on some Java 25 pattern-matching constructs (known upstream issue). PMD results
+                 are already available at /actuator/quality (embedded XML in the JAR). -->
+
+            <!-- Checkstyle omitted from site reporting — its Antlr-based parser does not support
+                 Java 25 pattern guards (`case X e when ...`). Results available at /actuator/quality.
+                 Re-add when checkstyle-plugin bundles an Antlr grammar for Java 25. -->
+
+            <!-- Javadoc API reference -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.11.2</version>
+                <configuration>
+                    <!-- doclint=none: avoid failures on intentionally brief internal Javadoc -->
+                    <doclint>none</doclint>
+                    <failOnError>false</failOnError>
+                    <quiet>true</quiet>
+                </configuration>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>javadoc</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+
+            <!-- JXR omitted: fails to parse Java 25 syntax (ParseLock#doParse StackOverflowError).
+                 Re-add when JXR 3.x adds Java 25 language support. -->
+
+            <!-- OWASP Dependency-Check: omitted from <reporting> because dependency-check-maven
+                 12.x does not implement the Maven site reporting interface (AbstractMethodError
+                 on MavenReport.generate). Instead, the report is copied into target/site/ by
+                 the maven-antrun-plugin post-site execution below. -->
+
+        </plugins>
+    </reporting>
+
 </project>

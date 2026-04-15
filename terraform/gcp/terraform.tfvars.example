@@ -1,0 +1,25 @@
+# =============================================================================
+# terraform.tfvars.example — copy to terraform.tfvars and fill in your values
+#
+# terraform.tfvars is in .gitignore — never commit credentials or project IDs.
+# In CI, use TF_VAR_* environment variables instead of a tfvars file.
+# =============================================================================
+
+project_id   = "your-gcp-project-id"
+region       = "europe-west1"
+cluster_name = "mirador"
+app_host     = "mirador.yourdomain.com"
+
+db_name     = "mirador"
+db_user     = "demo"
+db_password = "CHANGE_ME_strong_password_here"
+db_tier     = "db-f1-micro"   # dev: db-f1-micro (~$7/mo) | prod: db-n1-standard-1 (~$50/mo)
+
+redis_tier           = "BASIC"   # dev: BASIC | prod: STANDARD_HA
+redis_memory_size_gb = 1
+
+# Confluent Cloud Kafka (optional — leave false to use in-cluster Kafka)
+confluent_kafka_enabled    = false
+confluent_cloud_api_key    = ""
+confluent_cloud_api_secret = ""
+confluent_environment_id   = ""

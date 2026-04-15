@@ -1,0 +1,45 @@
+# =============================================================================
+# HorizontalPodAutoscaler — auto-scale customer-service on CPU
+#
+# Scales between 1 and 5 replicas when CPU usage exceeds 70%.
+# With virtual threads (Project Loom), CPU is a better signal than thread count.
+#
+# Cooldown periods:
+#   scaleUp   — 30s: react quickly to traffic spikes
+#   scaleDown — 120s: avoid flapping when load fluctuates briefly
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: customer-service
+  namespace: app
+  labels:
+    app.kubernetes.io/name: customer-service
+    app.kubernetes.io/component: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: customer-service
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70    # scale up when average CPU across pods exceeds 70%
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30    # react quickly to traffic spikes
+      policies:
+        - type: Pods
+          value: 2                     # add at most 2 pods per scale event
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 120   # wait 2 min before scaling down (avoid flapping)
+      policies:
+        - type: Pods
+          value: 1                     # remove 1 pod at a time (graceful)
+          periodSeconds: 60

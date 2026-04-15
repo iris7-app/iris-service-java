@@ -1,0 +1,25 @@
+# =============================================================================
+# Service — ClusterIP for the Spring Boot backend
+#
+# ClusterIP is sufficient because external traffic reaches the backend only
+# through the Nginx Ingress (path: /api/*). Direct pod access is intentionally
+# not exposed outside the cluster.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: customer-service
+  namespace: app
+  labels:
+    app.kubernetes.io/name: customer-service
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: customer-service
+    app.kubernetes.io/component: backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP

@@ -1,14 +1,21 @@
-# Spring Boot 4 – Observable Customer Service
+![Mirador Service](banner.svg)
+
+![Java 25](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white) ![Spring Boot 4](https://img.shields.io/badge/Spring_Boot-4-6DB33F?logo=springio&logoColor=white) ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white) ![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-black?logo=apachekafka&logoColor=white) ![Redis](https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white) ![Angular 21](https://img.shields.io/badge/Angular-21-DD0031?logo=angular&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white) ![GitLab CI](https://img.shields.io/badge/GitLab_CI-FC6D26?logo=gitlab&logoColor=white) ![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-7F52FF?logo=opentelemetry&logoColor=white)
+
+# Mirador — Observable Customer API
 
 This project has one goal: demonstrate what it takes to diagnose an incident on a backend service.
 The stack is built around that scenario — not around the technologies themselves.
 
 ## Table of contents
 
-- [Architecture](#architecture)
+- [Architecture — dev (Docker Compose)](#architecture)
+- [Architecture — production (Kubernetes)](#architecture--production-kubernetes)
 - [Quick start](#quick-start)
 - [What this demonstrates](#what-this-demonstrates)
 - [Running locally](#running-locally)
+- [Local Kubernetes (kind)](#local-kubernetes-kind)
+- [CI/CD](#cicd)
 - [Screenshots](#screenshots)
 - [Detailed documentation](#detailed-documentation)
 
@@ -17,101 +24,111 @@ The stack is built around that scenario — not around the technologies themselv
 ## Architecture
 
 ```mermaid
-flowchart TB
-    Client(["HTTP client\n(curl / frontend)"])
+flowchart LR
+    Browser(["Browser / curl"])
 
-    subgraph App["customer-service  (Spring Boot 4 / JDK 25)"]
-        direction TB
-
-        subgraph Security["security — every request passes through here in order"]
-            RL["① RateLimitingFilter\nBucket4j · 100 req/min per IP · Redis token bucket"]
-            Idp["② IdempotencyFilter\nIdempotency-Key header · bounded LRU cache in Redis"]
-            Auth["③ JwtAuthenticationFilter\nvalidates built-in JWT  or  Keycloak JWKS token"]
-        end
-
-        subgraph Core["customer — main domain"]
-            CC["CustomerController\nREST endpoints · header-based API versioning"]
-            CS["CustomerService\nTransactional · publishes events · calls enrichment"]
-            Agg["AggregationService\nparallel virtual threads · intentional 200 ms latency"]
-            Buf["RecentCustomerBuffer\nRedis LPUSH+LTRIM ring buffer · last 10"]
-            Sched["CustomerStatsScheduler\n@Scheduled · ShedLock distributed lock"]
-        end
-
-        subgraph Messaging["messaging — Kafka"]
-            Pub["CustomerEventPublisher\nfire-and-forget · customer.created topic"]
-            Lst["CustomerEventListener\nconsumes customer.created · logs + metrics"]
-            Enr["CustomerEnrichHandler\nrequest-reply · @KafkaListener + @SendTo"]
-        end
-
-        subgraph Integration["integration — external calls"]
-            Bio["BioService\nSpring AI ChatClient · Ollama · circuit breaker fallback"]
-            Todo["TodoService\nHTTP Interface @HttpExchange · jsonplaceholder.typicode.com"]
-        end
-
-        subgraph Obs["observability — cross-cutting"]
-            Tr["TraceService + OTel\nOTLP export to Tempo + Zipkin"]
-            Hi["Health indicators\nDB · Kafka · Redis · Ollama"]
-            Ri["RequestIdFilter\nScopedValue request-ID propagation"]
-        end
+    subgraph SB["🔭 Mirador Service"]
+        F["🛡️ Filters\nRate limit · JWT · Idempotency"]
+        API["🔌 REST API"]
+        SVC["⚙️ Domain\n+ Scheduler"]
     end
 
-    subgraph Infra["infrastructure (Docker Compose)"]
-        PG[("PostgreSQL 17\nFlyway migrations V1–V4")]
-        KF[["Kafka (KRaft)\n3 topics: created · request · reply"]]
-        RD[("Redis\nrate limit buckets · idempotency cache · recent buffer")]
-        KC["Keycloak\nrealm-dev · 2 confidential clients"]
-        OL["Ollama\nlocal LLM — llama3.2"]
-        JP["jsonplaceholder.typicode.com\npublic mock REST API"]
+    subgraph Infra["🐳 Infrastructure"]
+        PG[("PostgreSQL")]
+        KF[["Kafka"]]
+        RD[("Redis")]
+        KC["Keycloak"]
+        OL["Ollama"]
     end
 
-    subgraph ObsStack["observability stack (Docker Compose)"]
-        PR["Prometheus"]
-        GR1["Grafana :3000"]
-        GR2["Grafana :3001 (OTel)"]
-        LK["Loki"]
-        TP["Tempo"]
-        ZK["Zipkin :9411"]
-        PY["Pyroscope :4040"]
-    end
+    OTEL["📡 OTel → Grafana\nTempo · Loki · Prometheus"]
 
-    subgraph AdminTools["admin & visualization tools"]
-        PGA["pgAdmin :5050"]
-        KUI["Kafka UI :9080"]
-        RIS["RedisInsight :5540"]
-    end
-
-    Client --> RL --> Idp --> Auth
-    Auth --> CC
-    CC --> CS
-    CS --> Agg & Buf & Pub
-    Agg --> Bio & Todo
-    Lst --> CS
-    Sched --> CS
-
-    CS <--> PG
-    Pub --> KF
-    KF --> Lst & Enr
-    Enr -.->|reply| KF
-    RL & Idp & Buf --> RD
-    Sched --> RD
-    Auth -.->|JWKS fetched once at startup| KC
-    Bio --> OL
-    Todo --> JP
-
-    Tr --> TP
-    Tr --> ZK
-    Ri & Hi & Tr -.->|metrics + spans| PR
-    PR --> GR1
-    TP & LK --> GR2
-    Tr -.->|structured logs| LK
-    PGA -.-> PG
-    KUI -.-> KF
-    RIS -.-> RD
+    Browser --> F --> API --> SVC
+    SVC <--> PG & KF & RD
+    SVC --> OL
+    F -.->|JWT verify| KC
+    SVC -.-> OTEL
 ```
 
 ---
 
+## Architecture — production (Kubernetes)
+
+When deployed to a Kubernetes cluster the two Docker images are served behind a single
+Nginx Ingress on one hostname — eliminating CORS entirely.
+
+```
+Internet (HTTPS — TLS via cert-manager)
+    │
+    ▼
+Nginx Ingress (ingress-nginx)
+  /api/** → mirador-service:8080   (Spring Boot 4, 2 replicas, HPA 1–5)
+  /**     → mirador-ui:80          (Angular 21 + Nginx, 2 replicas)
+    │
+    ▼
+namespace: infra
+  PostgreSQL 17  — StatefulSet, 10 Gi PVC, Flyway migrations
+  Redis 7        — Deployment, 128 MB, JWT blacklist + ring buffer
+  Kafka (KRaft)  — Deployment, topics: created / request / reply
+```
+
+> **Same-origin design**: the browser always calls `https://app.example.com/api/…`.
+> Nginx strips `/api` and proxies to the backend. No CORS headers needed.
+
+**CI deployment targets** (deploy stage in `.gitlab-ci.yml`):
+
+| Target | Trigger |
+|--------|---------|
+| GKE Autopilot | Auto on `main` push |
+| AWS EKS | Manual |
+| Azure AKS | Manual |
+| Google Cloud Run | Manual (serverless) |
+| Fly.io | Manual (PaaS) |
+| k3s / bare metal | Manual |
+
+---
+
 ## Quick start
+
+### Prerequisites
+
+| Tool | Version | Install |
+|---|---|---|
+| **Java** | 17 / 21 / 25 (default: 25) | [sdkman.io](https://sdkman.io) `sdk install java 25-open` |
+| **Docker Desktop** | 4.x | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) |
+| **Maven** | via `./mvnw` | bundled Maven Wrapper — no installation needed |
+| **Git** | any | pre-installed on most systems |
+
+> Multi-version support: Java 17/21/25 × Spring Boot 3/4 × Maven 3/4 — see Maven profiles in `pom.xml`.
+
+Optional (for frontend):
+
+| Tool | Version | Install |
+|---|---|---|
+| **Node.js** | 22 LTS | [nodejs.org](https://nodejs.org) or `nvm install 22` |
+| **npm** | 10 | bundled with Node 22 |
+
+---
+
+### First-time setup
+
+```bash
+git clone https://gitlab.com/benoit.besson/mirador-service.git && cd mirador-service
+bash run.sh all
+```
+
+That's it. Docker starts automatically. Sign in at http://localhost:8080/swagger-ui.html with **admin / admin**.
+
+> **With the Angular frontend** (second terminal):
+> ```bash
+> git clone https://gitlab.com/benoit.besson/mirador-ui.git && cd mirador-ui
+> bash run.sh
+> ```
+> UI at http://localhost:4200 — delegates infrastructure to the backend `run.sh`.
+
+---
+
+### Step-by-step (manual)
 
 ```bash
 # Start everything (Docker + observability + app)
@@ -148,7 +165,7 @@ curl -s -X POST http://localhost:8080/customers \
 
 | Capability | How it's implemented |
 |---|---|
-| Distributed tracing | OpenTelemetry → Tempo (OTLP) + Zipkin (dual export); DB spans via `datasource-micrometer` |
+| Distributed tracing | OpenTelemetry → Tempo (via LGTM on port 3001); DB spans via `datasource-micrometer` |
 | Metrics and latency histograms | Micrometer → Prometheus → Grafana (p50/p95/p99, custom counters) |
 | Structured logs correlated with traces | OTel log exporter → Loki, trace ID injected in every log line |
 | Health probes | Custom indicators for DB, Kafka, Redis, Ollama; liveness/readiness groups |
@@ -189,7 +206,6 @@ curl -s -X POST http://localhost:8080/customers \
 ./run.sh nuke           # full cleanup — containers, volumes, build artifacts
 ./run.sh status         # check status of all services
 ./run.sh simulate       # generate traffic (60 iterations, 2s pause)
-./run.sh app-profiled   # start app with Pyroscope profiling
 
 ./run.sh test           # unit tests (no Docker)
 ./run.sh integration    # integration tests (Testcontainers)
@@ -199,20 +215,66 @@ curl -s -X POST http://localhost:8080/customers \
 
 Pre-push hook (via lefthook) runs unit tests automatically before every `git push`.
 
-### Dashboards
+### Port reference
 
-| Dashboard | URL |
-|-----------|-----|
-| App / Swagger | http://localhost:8080/swagger-ui.html |
-| Grafana — HTTP | http://localhost:3000 |
-| Grafana — OTel | http://localhost:3001 |
-| Prometheus | http://localhost:9090 |
-| Zipkin | http://localhost:9411 |
-| Pyroscope | http://localhost:4040 |
-| pgAdmin | http://localhost:5050 (admin@demo.com / admin) |
-| Kafka UI | http://localhost:9080 |
-| RedisInsight | http://localhost:5540 |
-| Keycloak | http://localhost:9090 (admin / admin) |
+> **⚠️ Two runtime modes — two different API ports**
+>
+> | Mode | Frontend | API |
+> |------|----------|-----|
+> | **Docker Compose** (`./run.sh all`) | http://localhost:4200 (`ng serve`) | http://localhost:**8080** |
+> | **kind cluster** (`deploy-local.sh`) | http://localhost:**8090** (nginx-ingress) | http://localhost:**8090**/api |
+>
+> `ng serve` always targets port **8080** (local Spring Boot process).  
+> The kind cluster bundles everything behind **8090** — use the kind URL if the app is only running in Kubernetes.
+
+#### Application
+
+| Service | Port | URL |
+|---------|------|-----|
+| Spring Boot API (local) | 8080 | http://localhost:8080/swagger-ui.html |
+| Angular UI (`ng serve`) | 4200 | http://localhost:4200 → API on :8080 |
+| kind ingress — frontend + API | 8090 | http://localhost:8090 (HTTPS: 8443) |
+
+#### Data stores
+
+| Service | Port | Notes |
+|---------|------|-------|
+| PostgreSQL | 5432 | user: `demo` / pass: `demo` |
+| Redis | 6379 | |
+| Kafka (KRaft) | 9092 | PLAINTEXT\_HOST listener |
+| Ollama (LLM) | 11434 | llama3.2:1b — pulled on first start |
+| Keycloak | 9090 | admin / admin · realm: `mirador-service` |
+
+#### Admin tools
+
+| Service | Port | URL |
+|---------|------|-----|
+| pgAdmin | 5050 | http://localhost:5050 (no login) |
+| pgweb | 8081 | http://localhost:8081 |
+| Kafka UI | 9080 | http://localhost:9080 |
+| Redis Commander | 8082 | http://localhost:8082 |
+| RedisInsight | 5540 | http://localhost:5540 |
+| Maven Site (reports) | 8083 | http://localhost:8083 — run `mvn verify && mvn site` first |
+
+#### Observability
+
+| Service | Port | URL / Notes |
+|---------|------|-------------|
+| Grafana (standalone) | 3000 | http://localhost:3000 · Prometheus datasource |
+| Grafana LGTM | 3001 | http://localhost:3001 · **Tempo + Loki** datasources |
+| Tempo Explore | 3001 | http://localhost:3001/explore → select Tempo |
+| Tempo HTTP API | 3200 | `GET /api/traces/{traceId}` — direct trace lookup |
+| Prometheus | 9091 | http://localhost:9091 (9090 used by Keycloak) |
+| Loki (CORS proxy) | 3100 | Nginx proxy adding `Access-Control-Allow-Origin` |
+| OTLP HTTP collector | 4318 | Spring Boot sends traces + logs here |
+| Pyroscope | 4040 | http://localhost:4040 · CPU/memory flamegraphs |
+
+#### Infrastructure
+
+| Service | Port | Notes |
+|---------|------|-------|
+| Docker API proxy | 2375 | Filtered read-only Docker Engine API (CORS) |
+| GitLab Runner | — | Outbound HTTPS polling — no port exposed |
 
 ---
 
@@ -294,13 +356,76 @@ use standard Ant features supported by both Maven versions.
 
 ---
 
-## CI/CD
+## Local Kubernetes (kind)
 
-| Pipeline | Config | Trigger |
-|----------|--------|---------|
-| **GitLab CI** | `.gitlab-ci.yml` | MR push + main push |
-| **GitHub Actions** | `.github/workflows/ci.yml` | Push + PR |
+Spin up a full production-equivalent stack on your machine using
+[kind](https://kind.sigs.k8s.io/) (Kubernetes IN Docker). One command deploys
+Postgres, Redis, Kafka, the Spring Boot backend, and the Angular frontend.
 
 ```bash
-./run.sh verify   # local equivalent of the full CI pipeline
+# Prerequisites (once)
+brew install kind kubectl
+
+# Deploy everything (builds images, creates cluster, applies manifests)
+./scripts/deploy-local.sh
+
+# Re-deploy after a code change (skip the image rebuild)
+./scripts/deploy-local.sh --skip-build
+
+# Tear down
+./scripts/deploy-local.sh --delete
+```
+
+| Endpoint | URL |
+|----------|-----|
+| Frontend | http://localhost:8090 |
+| API | http://localhost:8090/api |
+| Swagger | http://localhost:8090/api/swagger-ui.html |
+| Health | http://localhost:8090/api/actuator/health |
+
+Credentials: `admin/admin` · `user/user` · `viewer/viewer`
+
+> **Note on macOS**: kind defaults to `kindest/node:v1.35.0` which has a kubelet
+> startup timeout on Docker Desktop. The config pins `v1.31.4` which is stable.
+
+---
+
+## CI/CD
+
+### GitLab pipeline stages
+
+| Stage | Jobs | Trigger |
+|-------|------|---------|
+| `lint` | Hadolint (Dockerfile) | Every push |
+| `test` | Unit tests, OWASP scan | Every push |
+| `integration` | Failsafe ITests (Testcontainers), SpotBugs, JaCoCo | Every push |
+| `package` | JAR + Docker image (`--cache-from` for fast rebuilds) | `main` + tags |
+| `compat` | 4 SB/Java combos | Manual / `RUN_COMPAT=true` |
+| `native` | GraalVM native image | Daily schedule (no variable) |
+| `reports` | Maven site + push to `reports/` branch | Daily schedule (`REPORT_PIPELINE=true`) |
+| `deploy` | 6 deployment targets (see above) | `main` |
+
+> **Report schedule setup**: in GitLab → CI/CD → Schedules, create a schedule at `0 2 * * *`
+> with variable `REPORT_PIPELINE=true` and create a project access token (Reporter role,
+> `write_repository` scope) saved as `GITLAB_REPORTS_TOKEN` CI variable.
+
+### Run CI jobs locally (free, no gitlab.com minutes)
+
+```bash
+# 1. Start the runner
+docker compose -f docker-compose.runner.yml up -d
+
+# 2. Register it (one-time — get the token from gitlab.com → Settings → CI/CD → Runners)
+./scripts/register-runner.sh glrt-xxxxxxxxxxxx
+```
+
+After registration every push triggers jobs on **your machine** instead of gitlab.com shared runners.
+
+| Pipeline | Config |
+|----------|--------|
+| GitLab CI | `.gitlab-ci.yml` |
+| GitHub Actions | `.github/workflows/ci.yml` |
+
+```bash
+./run.sh verify   # local equivalent of the full CI pipeline (no Docker needed)
 ```
