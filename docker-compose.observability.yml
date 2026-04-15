@@ -5,14 +5,12 @@
 #
 # Services:
 #
-# LGTM all-in-one (Grafana + Loki + Tempo + Mimir)             [port 3000]
-#   grafana/otel-lgtm bundles all LGTM components in a single container.
-#   Spring Boot sends traces and logs via OpenTelemetry OTLP (port 4318).
+# LGTM all-in-one (Grafana + Loki + Tempo + Mimir + Pyroscope)  [port 3000]
+#   grafana/otel-lgtm bundles the full observability backend in one container.
+#   Spring Boot sends traces and logs via OTLP (port 4318).
+#   The OTel Collector inside LGTM scrapes /actuator/prometheus every 15s → Mimir.
+#   Mimir Prometheus-compatible query API exposed at http://localhost:9091
 #   Grafana: http://localhost:3000
-#   Explore traces: http://localhost:3000/explore (select Tempo datasource)
-#
-# Prometheus — scrapes /actuator/prometheus every 15s            [port 9091]
-#   Access: http://localhost:9091
 #
 # cors-proxy — Nginx proxy adding CORS headers to Loki (:3100) and Docker API (:2375)
 # docker-proxy — read-only Docker Engine API for container status in the Angular UI
@@ -21,18 +19,22 @@
 services:
 
   # ---------------------------------------------------------------------------
-  # LGTM — Loki + Grafana + Tempo + Mimir (Prometheus-compatible)
+  # LGTM — Loki + Grafana + Tempo + Mimir + Pyroscope (all-in-one)
   #
   # This all-in-one container from Grafana Labs packages the entire
   # observability backend for development/demo use.
   #
   # Ports:
-  #   3000 (host) → 3000 (container): Grafana UI
-  #   4317: OTLP gRPC endpoint for traces and logs
-  #   4318: OTLP HTTP endpoint for traces and logs (used by Spring Boot)
+  #   3000: Grafana UI
+  #   4317: OTLP gRPC (traces, logs, metrics push)
+  #   4318: OTLP HTTP — Spring Boot sends traces and logs here
+  #   3200: Tempo HTTP query API — direct trace lookup by ID
+  #   9091→9090: Mimir Prometheus-compatible query API (replaces standalone Prometheus)
   #
-  # The app sends data via: management.opentelemetry.*.export.otlp.endpoint
-  # (set to http://localhost:4318 by default in application.yml)
+  # The OTel Collector inside this container scrapes /actuator/prometheus every 15s
+  # (spring-boot job in otelcol-override.yaml) and stores metrics in Mimir.
+  # extra_hosts maps host.docker.internal → host-gateway so the OTel Collector
+  # can reach the Spring Boot app running outside Docker.
   # ---------------------------------------------------------------------------
   lgtm:
     image: grafana/otel-lgtm:0.22.1
@@ -45,8 +47,11 @@ services:
       - "4317:4317"    # OTLP gRPC
       - "4318:4318"    # OTLP HTTP — Spring Boot sends traces and logs here
       - "3200:3200"    # Tempo HTTP query API — direct trace lookup by ID
-    depends_on:
-      - prometheus
+      - "9091:9090"    # Mimir query API (Prometheus-compatible) — replaces standalone Prometheus
+    extra_hosts:
+      # Allows the OTel Collector inside this container to scrape the Spring Boot app
+      # running on the host machine (outside Docker) via a stable hostname.
+      - "host.docker.internal:host-gateway"
     volumes:
       # Pre-provision a Grafana dashboard into the LGTM Grafana instance
       - ./infra/observability/grafana/dashboards-lgtm/dashboard-demo-lgtm.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/dashboard-demo-lgtm.yaml
@@ -66,30 +71,6 @@ services:
       timeout: 5s
       retries: 15
       start_period: 30s
-
-  # ---------------------------------------------------------------------------
-  # Prometheus — time-series metrics store
-  #
-  # Scrapes /actuator/prometheus on the Spring Boot application every 15s.
-  # Configured by infra/observability/prometheus.yml.
-  #
-  # extra_hosts: host.docker.internal → host-gateway
-  #   Allows Prometheus (running in Docker) to reach the Spring Boot application
-  #   running on the host machine (not in Docker) via a stable hostname.
-  # ---------------------------------------------------------------------------
-  prometheus:
-    image: prom/prometheus:v3.3.1
-    container_name: customerservice-prometheus
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-    ports:
-      - "9091:9090"    # Prometheus UI and API — http://localhost:9091 (9090 used by Keycloak)
-    extra_hosts:
-      # Make host machine accessible as "host.docker.internal" from within the container
-      - "host.docker.internal:host-gateway"
-    volumes:
-      # Mount the scrape config as read-only — Prometheus does not need to write it
-      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   # ---------------------------------------------------------------------------
   # Nginx CORS proxy for Loki
