@@ -9,17 +9,18 @@
 
 ## Pending — Reports & Documentation pipeline
 
-- [ ] **Scheduled CI report job** — dedicated GitLab scheduled pipeline (daily, not on every push)
-      that runs `mvn site post-site` + Compodoc and pushes the generated files to GitLab using a
-      dedicated project access token (Reporter role, API + write_repository scopes, 90-day expiry).
-      Job: `generate-reports` stage, pushes to a `reports/` branch, artifacts browsable in GitLab.
+- [x] **Scheduled CI report job** — generate-reports job exists in .gitlab-ci.yml (reports stage).
+      Runs only when REPORT_PIPELINE=true on schedule. Runs mvn verify + mvn site, pushes to
+      reports/ branch (orphan), exposes pipeline artifact (30 days).
+      TODO: create GitLab schedule in UI (CI/CD → Schedules, 02:00 UTC, REPORT_PIPELINE=true)
+      and GITLAB_REPORTS_TOKEN CI variable (project access token, Reporter + write_repository).
 - [ ] **Javadoc enrichment** — Javadoc is already in `<reporting>`, but add `@apiNote` / `@implNote`
       tags to non-obvious public methods so the generated site is useful, not just structural.
 
 ## Pending — Maven site integration in Angular UI
 
-- [ ] Alternative: add a dedicated Angular route `/quality/site` as a full-page iframe
-      (better UX than the embedded tab for large reports)
+- [x] Alternative: /quality/site full-page route added to mirador-ui. MavenSiteFullComponent
+      fills the viewport with maven site iframe + topbar. Link from quality page raw reports header.
 
 ## Pending — Maven site enrichments proposed but not implemented
 

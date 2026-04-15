@@ -37,6 +37,18 @@ public class KafkaHealthIndicator implements HealthIndicator {
         this.bootstrapServers = bootstrapServers;
     }
 
+    /**
+     * Connects to the Kafka cluster and returns UP with the cluster ID, or DOWN with the exception.
+     *
+     * @implNote A new {@link AdminClient} is created and closed on every invocation.
+     *           This is deliberate: a persistent AdminClient would hide transient connection
+     *           failures (a recovered client might still report UP for a broker that went DOWN
+     *           and came back). The overhead of re-connecting is acceptable for a health probe
+     *           that runs at most once every 10 seconds.
+     * @apiNote The 3-second timeout in {@code REQUEST_TIMEOUT_MS_CONFIG} applies per Kafka
+     *          request. The outer {@code get(5, TimeUnit.SECONDS)} provides a safety net so
+     *          the readiness probe never hangs indefinitely if the broker is completely unreachable.
+     */
     @Override
     public Health health() {
         try (AdminClient client = AdminClient.create(
