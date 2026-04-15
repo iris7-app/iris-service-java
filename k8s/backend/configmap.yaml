@@ -51,6 +51,10 @@ data:
   # Trailing slash is required — Auth0 includes it in the `iss` JWT claim.
   # JWKS URI is derived automatically: issuer + ".well-known/jwks.json"
   AUTH0_ISSUER_URI: "https://${AUTH0_DOMAIN}/"
+  # API identifier registered in Auth0 Dashboard → Applications → APIs.
+  # Used to validate the 'aud' claim in access tokens — prevents accepting
+  # tokens issued for a different API in the same Auth0 tenant.
+  AUTH0_AUDIENCE: "https://mirador-api"
 
   # ── CORS ──────────────────────────────────────────────────────────────────
   # In k8s, Nginx Ingress routes /api/* → backend and / → frontend, both on

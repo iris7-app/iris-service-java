@@ -4,9 +4,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.Nullable;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Provides the optional Keycloak {@link JwtDecoder} bean.
@@ -28,6 +36,12 @@ public class KeycloakConfig {
     @Value("${keycloak.issuer-uri:}")
     private String keycloakIssuerUri;
 
+    // Auth0 API identifier — used as the expected JWT audience claim.
+    // Auth0 access tokens include aud=[<API_IDENTIFIER>, <AUTH0_DOMAIN>/userinfo].
+    // When not configured (local/Keycloak mode), audience validation is skipped.
+    @Value("${auth0.audience:}")
+    private String auth0Audience;
+
     /**
      * Keycloak JWKS decoder. Validates token signatures against Keycloak's JWKS endpoint.
      *
@@ -48,11 +62,29 @@ public class KeycloakConfig {
         // Keycloak JWKS path is non-standard (/protocol/openid-connect/certs).
         // Auth0 and other OIDC providers expose JWKS at the standard /.well-known/jwks.json.
         // Detect provider by the Keycloak-specific /realms/ segment in the issuer URI.
-        String jwksUri = keycloakIssuerUri.contains("/realms/")
+        boolean isKeycloak = keycloakIssuerUri.contains("/realms/");
+        String jwksUri = isKeycloak
                 ? keycloakIssuerUri + "/protocol/openid-connect/certs"   // Keycloak
                 : keycloakIssuerUri + ".well-known/jwks.json";            // Auth0 / standard OIDC
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri).build();
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(keycloakIssuerUri));
+
+        // Start with the standard issuer + expiry + not-before validators
+        OAuth2TokenValidator<Jwt> validator = JwtValidators.createDefaultWithIssuer(keycloakIssuerUri);
+
+        // For Auth0: also validate the 'aud' claim to reject tokens issued for other APIs.
+        // Auth0 access tokens carry aud = ["https://mirador-api", "https://<domain>/userinfo"].
+        // Without audience validation, any Auth0 token from the same tenant would be accepted —
+        // even tokens meant for a different API hosted in the same Auth0 organization.
+        if (!isKeycloak && !auth0Audience.isBlank()) {
+            OAuth2TokenValidator<Jwt> audienceValidator =
+                    new JwtClaimValidator<Collection<String>>(
+                            JwtClaimNames.AUD,
+                            aud -> aud != null && aud.contains(auth0Audience)
+                    );
+            validator = new DelegatingOAuth2TokenValidator<>(validator, audienceValidator);
+        }
+
+        decoder.setJwtValidator(validator);
         return decoder;
     }
 }

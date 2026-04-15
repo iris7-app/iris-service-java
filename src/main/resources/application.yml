@@ -418,6 +418,13 @@ jwt:
 keycloak:
   issuer-uri: ${AUTH0_ISSUER_URI:${KEYCLOAK_URL:}/realms/customer-service}
 
+# Auth0 API identifier — must match the audience registered in Auth0 Dashboard → APIs.
+# When set, JWTs are validated for this audience claim (prevents accepting tokens
+# issued for a different API in the same Auth0 tenant).
+# Leave blank for Keycloak or built-in JWT mode (audience validation skipped).
+auth0:
+  audience: ${AUTH0_AUDIENCE:}
+
 # =============================================================================
 # Application-specific configuration
 # =============================================================================

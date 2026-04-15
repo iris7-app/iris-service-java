@@ -154,12 +154,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Populates the SecurityContext from a Keycloak-issued JWT.
+     * Populates the SecurityContext from a Keycloak or Auth0 JWT.
      *
-     * <p>Roles are extracted from the {@code realm_access.roles} claim, which Keycloak
-     * stores as a nested object: {@code {"realm_access": {"roles": ["ROLE_USER", "ROLE_ADMIN"]}}}.
-     * Each role string becomes a {@link SimpleGrantedAuthority} directly (the {@code ROLE_}
-     * prefix is already present in the Keycloak realm configuration).
+     * <h3>Role extraction strategy (provider-dependent)</h3>
+     * <ul>
+     *   <li><b>Keycloak</b>: roles come from {@code realm_access.roles} (nested claim).
+     *       The {@code ROLE_} prefix is already included in the realm role names.</li>
+     *   <li><b>Auth0</b>: roles come from a custom namespace claim
+     *       {@code https://mirador-api/roles} (set via an Auth0 Action / Rule).
+     *       Alternatively, falls back to {@code ROLE_USER} for authenticated users
+     *       when no role claim is present (Auth0 RBAC not yet configured).</li>
+     * </ul>
      *
      * [Spring Security / Spring Boot 4] — {@link JwtDecoder} bean, JWKS validation.
      */
@@ -174,7 +179,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Jwt jwt = keycloakJwtDecoder.decode(token);
             List<GrantedAuthority> authorities = new ArrayList<>();
 
-            // Extract roles from realm_access.roles (Keycloak's nested claim structure)
+            // Strategy 1: Keycloak — roles in realm_access.roles (e.g. "ROLE_ADMIN")
             Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
             if (realmAccess != null) {
                 Object rolesObj = realmAccess.get("roles");
@@ -187,15 +192,39 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
 
+            // Strategy 2: Auth0 — roles in custom namespace claim https://mirador-api/roles.
+            // Populated by an Auth0 Action that adds user roles to the access token.
+            // Format: ["ROLE_ADMIN", "ROLE_USER"] (same ROLE_ prefix as built-in tokens).
+            if (authorities.isEmpty()) {
+                List<?> auth0Roles = jwt.getClaimAsStringList("https://mirador-api/roles");
+                if (auth0Roles != null) {
+                    auth0Roles.stream()
+                            .filter(String.class::isInstance)
+                            .map(String.class::cast)
+                            .map(SimpleGrantedAuthority::new)
+                            .forEach(authorities::add);
+                }
+            }
+
+            // Strategy 3: Auth0 without RBAC configured — grant ROLE_USER as default.
+            // This allows any Auth0-authenticated user to read/write but not delete.
+            // TODO: configure Auth0 RBAC (assign roles in Auth0 Dashboard → User Management →
+            //   Roles) and add an Auth0 Action to embed them in the access token.
+            if (authorities.isEmpty()) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+                log.debug("No role claims found in external JWT for '{}' — defaulting to ROLE_USER",
+                        jwt.getSubject());
+            }
+
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     jwt.getSubject(), null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            log.debug("Authenticated subject '{}' via Keycloak JWT with roles {}",
+            log.debug("Authenticated subject '{}' via external JWT with roles {}",
                     jwt.getSubject(), authorities);
         } catch (JwtException e) {
             // Token is invalid (bad signature, expired, wrong issuer, etc.) — log at debug,
             // do not set SecurityContext, let Spring Security reject with 401/403 downstream
-            log.debug("Keycloak JWT validation failed: {}", e.getMessage());
+            log.debug("External JWT validation failed: {}", e.getMessage());
         }
     }
 
