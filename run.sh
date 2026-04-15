@@ -35,7 +35,7 @@
 #   package   build the fat JAR (run verify first)
 #   docker    build local JVM Docker image
 #   clean     wipe target/
-#   site      generate Maven quality reports and serve them at http://localhost:8083
+#   site      generate Maven quality reports and serve them at http://localhost:8084
 #             Runs: mvn verify && mvn site → starts the nginx maven-site container
 #             The site is regenerated daily in CI (REPORT_PIPELINE=true schedule)
 #
@@ -289,7 +289,7 @@ case "$1" in
     ;;
 
   site)
-    # Generate the full Maven quality report site and serve it via nginx on port 8083.
+    # Generate the full Maven quality report site and serve it via nginx on port 8084.
     #
     # Why this exists:
     #   The CI report schedule (REPORT_PIPELINE=true) generates the site daily and pushes
@@ -310,7 +310,7 @@ case "$1" in
     echo "Starting maven-site nginx container..."
     docker compose up -d maven-site
     echo ""
-    echo "  Maven Site  http://localhost:8083"
+    echo "  Maven Site  http://localhost:8084"
     echo "  Reports:    Surefire · Failsafe · JaCoCo · SpotBugs · Javadoc"
     echo ""
     echo "  To stop:    docker compose stop maven-site"
@@ -428,7 +428,7 @@ case "$1" in
     echo "  Grafana       http://localhost:3000  (incl. Pyroscope Explore Profiles)"
     echo "  Zipkin        http://localhost:9411"
     echo "  Prometheus    http://localhost:9091"
-    echo "  Maven Site    http://localhost:8083  (run './run.sh site' to generate)"
+    echo "  Maven Site    http://localhost:8084  (run './run.sh site' to generate)"
     echo "  GitLab (local) http://localhost:9081"
     echo ""
     ;;
@@ -467,7 +467,7 @@ case "$1" in
     echo "  package       build fat JAR — skips tests (run verify first)"
     echo "  docker        build local JVM Docker image tagged '$IMAGE'"
     echo "  security-check OWASP Dependency-Check (CVE scan)"
-    echo "  site          generate Maven reports + serve at http://localhost:8083"
+    echo "  site          generate Maven reports + serve at http://localhost:8084"
     echo "  clean         remove target/"
     echo "  install-tools install hadolint + lefthook via Homebrew"
     echo ""

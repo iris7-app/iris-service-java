@@ -327,7 +327,7 @@ services:
   #   mvn verify && mvn site
   #   docker compose up -d maven-site
   #
-  # Access: http://localhost:8083
+  # Access: http://localhost:8084
   # ---------------------------------------------------------------------------
   maven-site:
     image: nginx:1.27-alpine
@@ -338,7 +338,7 @@ services:
       - ./target/site:/usr/share/nginx/html:ro
       - ./infra/nginx/maven-site.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
-      - "8083:80"
+      - "8084:80"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/index.html"]
