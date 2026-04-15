@@ -83,13 +83,12 @@ These were proposed at 2026-04-14T20:56 in response to "d'autres idées pour ép
 
 ## Pending — Kubernetes & Cloud deployment (session 2026-04-15)
 
-- [~] **deploy:gke first run** — Fixes applied (MR !35+!36): kubectl+gke-gcloud-auth-plugin installed,
-      gettext (envsubst) installed, terraform entrypoint fixed. UI k8s/frontend/ manifests created in
-      mirador-ui (MR !8) with correct image reference (registry.gitlab.com/mirador1/mirador-ui:<sha>).
-      Service CI no longer deploys frontend (wrong SHA would be used).
-      Also fixed: TESTCONTAINERS_RYUK_DISABLED=true in .gitlab-ci.yml (Ryuk can't bind to
-      172.17.0.1 in DinD, caused integration-test failure; DinD cleanup handles resources anyway).
-      MR !36 pipeline #269 running. URL: https://mirador1.duckdns.org (cert-manager Let's Encrypt).
+- [~] **deploy:gke first run** — CI fixes applied: removed saas-linux-medium-amd64 from default
+      (quota exhaustion), integration-test now runs on local runner via socket binding (no DinD).
+      OIDC Workload Identity Federation applied to all GCP jobs (deploy:gke, terraform, cloud-run).
+      WIF pool gitlab-pool + provider gitlab-provider already exist in GCP. gitlab-ci-deployer SA
+      has roles/container.admin + storage.admin + iam.serviceAccountUser. GCP_SA_KEY removed.
+      Pipeline #280 running (MR !36). URL: https://mirador1.duckdns.org.
 - [ ] **HTTPS + cert-manager** — cert-manager installed + GKE Autopilot RBAC patches applied
       (k8s/gke/cert-manager-gke-fix.yaml + --leader-election-namespace=cert-manager).
       letsencrypt-prod ClusterIssuer READY=True. TLS cert will be issued on first deploy:gke
