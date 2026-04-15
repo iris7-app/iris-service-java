@@ -708,14 +708,16 @@ terraform-apply:
         --namespace=app --dry-run=client -o yaml | kubectl apply -f -
     - |
       # Apply all manifests — envsubst replaces ${K8S_HOST}, ${IMAGE_REGISTRY}, ${IMAGE_TAG},
-      # ${UI_IMAGE_TAG}, ${CORS_ALLOWED_ORIGINS} with CI variable values.
+      # ${CORS_ALLOWED_ORIGINS} with CI variable values.
       # GKE production skips k8s/infra/postgres.yaml — use Cloud SQL + Cloud SQL Auth Proxy instead.
       # For non-GKE targets (EKS, k3s) postgres.yaml provides an in-cluster PostgreSQL StatefulSet.
+      # NOTE: k8s/frontend/ manifests are NOT applied here — the frontend (mirador-ui) image is
+      # built and deployed by the mirador-ui CI pipeline (registry.gitlab.com/mirador1/mirador-ui).
+      # Applying them from the service pipeline would use the wrong image tag.
       for f in k8s/namespace.yaml \
                 k8s/infra/redis.yaml k8s/infra/kafka.yaml \
                 k8s/backend/configmap.yaml \
                 k8s/backend/deployment.yaml k8s/backend/service.yaml k8s/backend/hpa.yaml \
-                k8s/frontend/deployment.yaml k8s/frontend/service.yaml \
                 k8s/ingress.yaml; do
         [ -f "$f" ] && envsubst < "$f" | kubectl apply -f -
       done
