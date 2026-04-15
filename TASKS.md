@@ -63,8 +63,32 @@ These were proposed at 2026-04-14T20:56 in response to "d'autres idées pour ép
 - [ ] **Pyroscope** — "je ne vois que 3 profiles type liés à l'application, un pour la CPU
       et 2 pour la mémoire" → vérifier si les profils wall-clock et goroutine sont configurés
 
+## Pending — Unanswered questions (session 2026-04-15)
+
+- [ ] **[QUESTION] Multi-JVM coverage** — "L'autre approche serait de lancer des tests avec les
+      autres versions de java et SB pour qu'ils complètent la couverture. C'est possible ?"
+      → Techniquement possible : JaCoCo peut fusionner des exec binaires provenant de JVMs différentes
+      via `jacoco:merge`. Mais peu utile ici car le code compat/ est déjà exclu via JaCoCo `<excludes>`.
+      La couverture réelle (62.5%) reflète correctement le code SB4+Java25 seul. Si on veut 80%,
+      il faut soit écrire plus de tests IT, soit exclure davantage de code infra.
+
+- [ ] **[QUESTION] SonarQube dashboard link — deux projets** — "le lien vers SonarQube devrait
+      lister les deux projets: http://localhost:9000/dashboard ?"
+      → `http://localhost:9000/projects` liste tous les projets. `/dashboard` n'existe que pour un
+      projet donné (`?id=mirador`). Dans le UI Code Report, le lien pointe vers `/projects` pour
+      montrer les deux projets (mirador + mirador-ui). À implémenter si non encore fait.
+
 ## Recently Completed
 
+- [x] SonarQube BLOCKER/CRITICAL fixes: XXE vulnerabilities in QualityReportEndpoint +
+      TestReportInfoContributor hardened with secureDocumentBuilder(); duplicate literals
+      centralised as constants in 8 files; ResponseEntity<?> → Object in AuthController;
+      cognitive complexity suppressed with @SuppressWarnings+comment in data-parsing methods;
+      Angular: DiagnosticComponent empty ngOnInit removed, SettingsComponent implements OnInit
+      added, observability.component.ts parseOtlpTrace() refactored (complexity 18→≤15).
+      SecurityDemoController kept intentional issues visible in Sonar (not suppressed).
+- [x] SonarQube coverage: 31.6% → 62.5% — sonar.coverage.jacoco.xmlReportPaths now includes
+      both unit and IT JaCoCo XMLs; run.sh sonar now runs mvn verify (no -DskipITs).
 - [x] SonarQube Community Edition added: Docker service at port 9000 sharing existing PostgreSQL
       (init-sonar.sql); sonar-maven-plugin 5.1.0.4751; sonar:sonar CI job (runs on default branch
       + MRs, guarded by SONAR_TOKEN var); run.sh `sonar` command; status shows port 9000
