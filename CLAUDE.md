@@ -50,8 +50,20 @@ Always run the default `./mvnw verify` after any change unless testing a specifi
 - If an MR exists: `glab mr merge <id> --auto-merge --squash=false`.
 - Never push directly to `main`.
 
+## Port map (local Docker)
+
+| Port | Service | Notes |
+|------|---------|-------|
+| 8080 | Spring Boot API | |
+| 8084 | Maven Site | nginx serving `target/site/` |
+| **8085** | **gcloud auth login** | **Reserved — OAuth callback for Google Cloud CLI. Do NOT assign any service to this port.** |
+| 8086 | Compodoc | Angular API docs (moved from 8085) |
+| 9000 | SonarQube | |
+| 9090 | Keycloak | |
+
 ## Known gotchas
 
+- **Port 8085 reserved for gcloud** — `gcloud auth login` uses `localhost:8085` as its default OAuth redirect. Assigning any service to this port will intercept the OAuth flow and block Google Cloud CLI authentication. Compodoc was moved to 8086 for this reason.
 - **`/mvn/jvm.config`** — never add comments (`#`), they break Maven.
 - **Flyway** — migration versions must be unique. Never add `V_N` if `V_N` already exists.
 - **Spring AI** — version pinned at `1.0.0-M6`. DO NOT upgrade to `1.0.0` GA: the Ollama starter was renamed (`spring-ai-ollama-spring-boot-starter` → `spring-ai-starter-model-ollama`) and the pom would need manual migration. See the comment in `pom.xml`.
