@@ -320,20 +320,41 @@ case "$1" in
     echo "  To rebuild: ./run.sh site"
     ;;
 
+  sonar-setup)
+    # First-time SonarQube configuration on a fresh volume.
+    # Disables force-authentication so the dashboard is accessible without login (local dev only).
+    # Run once after `docker compose up -d sonarqube` when the volume is new.
+    ensure_docker
+    echo "Waiting for SonarQube to be ready..."
+    until curl -s http://localhost:9000/api/system/status | grep -q '"status":"UP"'; do
+      echo -n "."
+      sleep 5
+    done
+    echo " ready!"
+    ADMIN_PASS="${1:-admin}"
+    curl -s -X POST -u "admin:${ADMIN_PASS}" \
+      "http://localhost:9000/api/settings/set" \
+      -d "key=sonar.forceAuthentication&value=false" > /dev/null
+    echo "  Force authentication disabled — dashboard accessible without login."
+    echo "  SonarQube: http://localhost:9000"
+    echo ""
+    echo "  Next: generate a token at http://localhost:9000/account/security"
+    echo "  Then set SONAR_TOKEN=<token> in .env and run: ./run.sh sonar"
+    ;;
+
   sonar)
     # Run SonarQube analysis against the local Docker SonarQube instance (port 9000).
     # Prerequisites:
-    #   1. docker compose up -d sonarqube  (wait ~2 min for first startup)
-    #   2. Visit http://localhost:9000, log in (admin/admin), change password
-    #   3. Create a project manually OR let sonar:sonar auto-create it
-    #   4. Generate a token: My Account → Security → Generate Token
-    #   5. Set SONAR_TOKEN in .env
+    #   1. docker compose up -d sonarqube (wait ~2 min for first startup)
+    #   2. ./run.sh sonar-setup           (disables force-auth, one-time)
+    #   3. Generate a token at http://localhost:9000/account/security
+    #   4. Set SONAR_TOKEN=<token> in .env
     #
     # Runs mvn verify first to produce JaCoCo XML (required by Sonar for coverage).
     # Skip ITs to keep it fast; Sonar reads unit-test coverage only.
     if [ -z "$SONAR_TOKEN" ]; then
       echo "Error: SONAR_TOKEN is not set in .env."
-      echo "Generate one at http://localhost:9000 → My Account → Security → Generate Token"
+      echo "Generate one at http://localhost:9000/account/security"
       exit 1
     fi
     echo "Running tests + SonarQube analysis..."
@@ -405,7 +426,7 @@ case "$1" in
 
     echo ""
     echo "  ── Admin tools ─────────────────────────────────────────────"
-    for svc in pgadmin kafka-ui redisinsight maven-site; do
+    for svc in pgadmin kafka-ui redisinsight maven-site sonarqube compodoc; do
       STATUS=$(docker inspect -f '{{.State.Status}}' "$svc" 2>/dev/null || echo "missing")
       if [ "$STATUS" = "running" ]; then
         LABEL="✅ $STATUS"
@@ -498,6 +519,8 @@ case "$1" in
     echo "  docker        build local JVM Docker image tagged '$IMAGE'"
     echo "  security-check OWASP Dependency-Check (CVE scan)"
     echo "  site          generate Maven reports + serve at http://localhost:8084"
+    echo "  sonar-setup   first-time SonarQube config (disable force-auth)"
+    echo "  sonar         run SonarQube analysis (needs SONAR_TOKEN in .env)"
     echo "  clean         remove target/"
     echo "  install-tools install hadolint + lefthook via Homebrew"
     echo ""

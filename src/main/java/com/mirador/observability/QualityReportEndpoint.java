@@ -7,12 +7,18 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +27,7 @@ import java.util.Set;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.lang.management.ManagementFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
 import org.springframework.core.env.Environment;
@@ -76,6 +83,18 @@ public class QualityReportEndpoint {
     private static final String DEV_OWASP      = "target/dependency-check-report.json";
     private static final String DEV_PITEST     = "target/pit-reports/mutations.xml";
 
+    // SonarQube integration — defaults work for local Docker setup.
+    // Override via env vars: SONAR_HOST_URL, SONAR_PROJECT_KEY, SONAR_TOKEN.
+    @Value("${sonar.host.url:http://localhost:9000}")
+    private String sonarHostUrl;
+
+    @Value("${sonar.projectKey:mirador}")
+    private String sonarProjectKey;
+
+    // Token for SonarQube API calls — empty = anonymous access (works when forceAuth=false).
+    @Value("${sonar.token:}")
+    private String sonarToken;
+
     private final RequestMappingHandlerMapping requestMappingHandlerMapping;
     private final Environment environment;
 
@@ -96,6 +115,7 @@ public class QualityReportEndpoint {
         result.put("checkstyle",buildCheckstyleSection());
         result.put("owasp",     buildOwaspSection());
         result.put("pitest",    buildPitestSection());
+        result.put("sonar",     buildSonarSection());
         result.put("build", buildBuildSection());
         result.put("git", buildGitSection());
         result.put("api", buildApiSection());
@@ -895,6 +915,108 @@ public class QualityReportEndpoint {
         r.put("byMutator",    byMutator);
         r.put("survivingMutations", surviving);
         return r;
+    }
+
+    // -------------------------------------------------------------------------
+    // SonarQube section
+    // -------------------------------------------------------------------------
+
+    /**
+     * Fetches key quality metrics from the local SonarQube instance via its REST API.
+     *
+     * <p>Uses java.net.http.HttpClient (built-in since Java 11) with a 3-second timeout
+     * to avoid blocking the actuator endpoint when SonarQube is not running.
+     * If the token is empty and forceAuthentication is false, anonymous access works.
+     *
+     * @apiNote Metrics fetched: bugs, vulnerabilities, code_smells, coverage,
+     *          duplicated_lines_density, reliability_rating, security_rating,
+     *          sqale_rating (maintainability), ncloc (lines of code).
+     * @implNote Rating values are 1–5 (A–E); converted to letter grades here.
+     */
+    private Map<String, Object> buildSonarSection() {
+        String metricsKey = "bugs,vulnerabilities,code_smells,coverage,"
+                + "duplicated_lines_density,reliability_rating,security_rating,sqale_rating,ncloc";
+        String apiUrl = sonarHostUrl + "/api/measures/component"
+                + "?component=" + sonarProjectKey
+                + "&metricKeys=" + metricsKey;
+
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(3))
+                    .build();
+
+            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(apiUrl))
+                    .timeout(Duration.ofSeconds(5))
+                    .GET();
+
+            // Use Bearer token if configured, else anonymous (works when forceAuth=false)
+            if (sonarToken != null && !sonarToken.isBlank()) {
+                reqBuilder.header("Authorization", "Bearer " + sonarToken);
+            }
+
+            HttpResponse<String> resp = client.send(reqBuilder.build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            if (resp.statusCode() == 404) {
+                // Project key not found — analysis has not been run yet
+                return Map.of("available", false,
+                        "note", "Project '" + sonarProjectKey + "' not found — run ./run.sh sonar first");
+            }
+            if (resp.statusCode() != 200) {
+                return Map.of("available", false, "note", "HTTP " + resp.statusCode());
+            }
+
+            JsonNode root = MAPPER.readTree(resp.body());
+            JsonNode measures = root.path("component").path("measures");
+
+            Map<String, String> raw = new java.util.HashMap<>();
+            for (JsonNode m : measures) {
+                raw.put(m.path("metric").asText(), m.path("value").asText(""));
+            }
+
+            Map<String, Object> r = new LinkedHashMap<>();
+            r.put("available",             true);
+            r.put("projectKey",            sonarProjectKey);
+            r.put("url",                   sonarHostUrl + "/dashboard?id=" + sonarProjectKey);
+            r.put("bugs",                  parseIntOrNull(raw.get("bugs")));
+            r.put("vulnerabilities",       parseIntOrNull(raw.get("vulnerabilities")));
+            r.put("codeSmells",            parseIntOrNull(raw.get("code_smells")));
+            r.put("coverage",              parseDoubleOrNull(raw.get("coverage")));
+            r.put("duplications",          parseDoubleOrNull(raw.get("duplicated_lines_density")));
+            r.put("linesOfCode",           parseIntOrNull(raw.get("ncloc")));
+            r.put("reliabilityRating",     ratingLabel(raw.get("reliability_rating")));
+            r.put("securityRating",        ratingLabel(raw.get("security_rating")));
+            r.put("maintainabilityRating", ratingLabel(raw.get("sqale_rating")));
+            return r;
+
+        } catch (Exception e) {
+            return Map.of("available", false,
+                    "note", "SonarQube unreachable — start with: docker compose up -d sonarqube");
+        }
+    }
+
+    /** Converts a SonarQube numeric rating (1–5) to a letter grade (A–E). */
+    private static String ratingLabel(String value) {
+        if (value == null || value.isBlank()) return null;
+        return switch (value.trim()) {
+            case "1.0", "1" -> "A";
+            case "2.0", "2" -> "B";
+            case "3.0", "3" -> "C";
+            case "4.0", "4" -> "D";
+            case "5.0", "5" -> "E";
+            default -> value;
+        };
+    }
+
+    private static Integer parseIntOrNull(String v) {
+        if (v == null || v.isBlank()) return null;
+        try { return Integer.parseInt(v.trim()); } catch (NumberFormatException e) { return null; }
+    }
+
+    private static Double parseDoubleOrNull(String v) {
+        if (v == null || v.isBlank()) return null;
+        try { return round1(Double.parseDouble(v.trim())); } catch (NumberFormatException e) { return null; }
     }
 
     // -------------------------------------------------------------------------

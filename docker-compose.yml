@@ -356,7 +356,7 @@ services:
     # First startup: visit http://localhost:9000, login admin/admin, change password,
     # generate a project token, then set SONAR_TOKEN in .env.
     # Analysis: mvn verify sonar:sonar  OR  ./run.sh sonar
-    image: sonarqube:25.4-community
+    image: sonarqube:community
     container_name: sonarqube
     depends_on:
       db:
@@ -365,6 +365,11 @@ services:
       SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonar
       SONAR_JDBC_USERNAME: sonar
       SONAR_JDBC_PASSWORD: sonar
+      # Note: force-authentication is disabled via the SonarQube settings API (persisted in
+      # the sonarqube_data volume). This allows anonymous read access for local dev.
+      # To reconfigure on a fresh volume: run `./run.sh sonar-setup` or manually call:
+      #   curl -X POST -u admin:admin http://localhost:9000/api/settings/set \
+      #     -d "key=sonar.forceAuthentication&value=false"
     ports:
       - "9000:9000"
     volumes:
