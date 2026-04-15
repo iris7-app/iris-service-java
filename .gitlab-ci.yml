@@ -64,13 +64,9 @@ stages:
 default:
   image: maven:3.9.14-eclipse-temurin-25-noble   # JDK 25 + Maven 3.9 — mirrors the pom.xml java.version
   interruptible: true   # MR pipelines can be cancelled when a new commit is pushed
-  # Force all jobs to run on GitLab SaaS Linux runners.
-  # Without this, a locally-registered runner (e.g. Docker Desktop on Mac) may pick up jobs,
-  # causing networking failures: Mac Docker Desktop uses a VM-internal bridge that is not
-  # accessible from containers, breaking Testcontainers (172.17.0.1 unreachable) and
-  # DinD-based Docker builds (service alias 'docker' not DNS-resolvable).
-  tags:
-    - saas-linux-medium-amd64
+  # No global runner tag — jobs run on any available runner (local Mac runner or SaaS).
+  # Jobs that need DinD (docker-build, trivy) or Linux Docker networking (integration-test)
+  # carry their own `tags: [saas-linux-medium-amd64]` to target GitLab SaaS Linux runners.
 
 variables:
   # Keep the local Maven repo inside the project dir so it is cached across jobs
@@ -349,6 +345,10 @@ build-jar:
 docker-build:
   stage: package
   image: docker:28    # standalone Docker client — the DinD service provides the daemon
+  tags:
+    # DinD requires privileged mode, only available on GitLab SaaS Linux runners.
+    # Local Mac runner has privileged=false and cannot run DinD services.
+    - saas-linux-medium-amd64
   needs:
     - job: unit-test        # both test gates must pass before producing the image
     - job: integration-test
@@ -390,6 +390,9 @@ trivy:scan:
   # we track CVEs as informational; blocking releases on new CVEs creates friction.
   stage: package
   image: aquasec/trivy:latest
+  tags:
+    # DinD is used to pull the image for scanning — requires privileged mode.
+    - saas-linux-medium-amd64
   needs:
     - job: docker-build
   rules:
