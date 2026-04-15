@@ -50,6 +50,19 @@ Always run the default `./mvnw verify` after any change unless testing a specifi
 - If an MR exists: `glab mr merge <id> --auto-merge --squash=false`.
 - Never push directly to `main`.
 
+## GCP Production Environment
+
+| Resource | Value |
+|---|---|
+| Project ID | `project-8d6ea68c-33ac-412b-8aa` |
+| Project number | `32654862595` |
+| GKE cluster | `mirador-prod` (europe-west1) |
+| Ingress IP | `34.52.233.183` |
+| App URL | http://34.52.233.183 |
+| GCP Console | https://console.cloud.google.com/home/dashboard?project=project-8d6ea68c-33ac-412b-8aa |
+| WIF Provider | `projects/32654862595/locations/global/workloadIdentityPools/gitlab-pool/providers/gitlab-provider` |
+| CI Service Account | `gitlab-ci-deployer@project-8d6ea68c-33ac-412b-8aa.iam.gserviceaccount.com` |
+
 ## Port map (local Docker)
 
 | Port | Service | Notes |
