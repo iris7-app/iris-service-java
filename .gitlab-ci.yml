@@ -64,6 +64,13 @@ stages:
 default:
   image: maven:3.9.14-eclipse-temurin-25-noble   # JDK 25 + Maven 3.9 — mirrors the pom.xml java.version
   interruptible: true   # MR pipelines can be cancelled when a new commit is pushed
+  # Force all jobs to run on GitLab SaaS Linux runners.
+  # Without this, a locally-registered runner (e.g. Docker Desktop on Mac) may pick up jobs,
+  # causing networking failures: Mac Docker Desktop uses a VM-internal bridge that is not
+  # accessible from containers, breaking Testcontainers (172.17.0.1 unreachable) and
+  # DinD-based Docker builds (service alias 'docker' not DNS-resolvable).
+  tags:
+    - saas-linux-medium-amd64
 
 variables:
   # Keep the local Maven repo inside the project dir so it is cached across jobs
