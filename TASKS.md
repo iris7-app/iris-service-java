@@ -76,10 +76,10 @@ These were proposed at 2026-04-14T20:56 in response to "d'autres idées pour ép
 - [ ] **Cloud SQL Auth Proxy** — enable Workload Identity and add sidecar to backend Deployment
       (see k8s/gke/cloud-sql-proxy.yaml); set DB_HOST=127.0.0.1 in ConfigMap.
       Currently: postgres.yaml used (in-cluster PostgreSQL pod — not production-grade).
-- [ ] **Auth0 backend wiring** — update application.yml spring.security.oauth2.resourceserver
-      jwt.issuer-uri to Auth0 issuer (https://dev-ksxj46zlkhk2gcvo.us.auth0.com/).
-      Auth0 API created (https://mirador-api). Pending: configure backend SecurityConfig
-      to validate audience claim + update KEYCLOAK_URL env var in K8s ConfigMap.
+- [x] **Auth0 backend wiring** — Done: audience validation added to KeycloakConfig
+      (AUTH0_AUDIENCE=https://mirador-api in ConfigMap). Role extraction updated to support
+      Auth0 tokens: falls back to ROLE_USER when no realm_access.roles claim present.
+      TODO (optional): configure Auth0 RBAC + Action to embed roles in access token.
 - [ ] **Managed Kafka on GCP** — Google Cloud Managed Kafka (GA 2024, Kafka-compatible):
       set `kafka_enabled = true` in tfvars; see terraform/gcp/kafka.tf for migration steps.
 
