@@ -299,19 +299,22 @@ case "$1" in
     # What it generates (target/site/):
     #   Surefire test results · Failsafe integration test results
     #   JaCoCo coverage report · SpotBugs analysis · Javadoc
+    #   Mutation testing (PIT) report at target/site/pit-reports/index.html
     #   Project info: dependencies, licenses, team, source xref
+    #   Note: OWASP and pitest HTML are copied by the antrun post-site phase.
+    #   Without `post-site`, pit-reports/ and dependency-check-report.html won't appear.
     ensure_docker
     echo "Generating Maven quality reports (mvn verify + site)..."
     echo "  Step 1/2: mvn verify  (runs tests + collects JaCoCo/SpotBugs data)"
     $MAVEN verify -q
-    echo "  Step 2/2: mvn site    (generates HTML reports from test data)"
-    $MAVEN site -q
+    echo "  Step 2/2: mvn site post-site (generates HTML + copies OWASP/pitest reports into site/)"
+    $MAVEN site post-site -q
     echo ""
     echo "Starting maven-site nginx container..."
     docker compose up -d maven-site
     echo ""
     echo "  Maven Site  http://localhost:8084"
-    echo "  Reports:    Surefire · Failsafe · JaCoCo · SpotBugs · Javadoc"
+    echo "  Reports:    Surefire · Failsafe · JaCoCo · SpotBugs · Mutation Testing · Javadoc"
     echo ""
     echo "  To stop:    docker compose stop maven-site"
     echo "  To rebuild: ./run.sh site"
