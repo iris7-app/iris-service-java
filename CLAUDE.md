@@ -13,6 +13,7 @@
 ## Claude workflow rules (apply to every session)
 
 - **Do not stop** between tasks — chain all pending work without asking "shall I continue?".
+- **Regularly display the pending task list** — after completing a task, show what remains so the user can track progress without opening TASKS.md.
 - **Act directly** — read only what is strictly necessary, then make the change. No long exploration before acting.
 - **One commit per logical change** — do not batch unrelated fixes into one commit.
 - **Run the build after every change** (`./mvnw verify -q`) and fix errors before committing.
