@@ -775,12 +775,28 @@ public class QualityReportEndpoint {
     // Metrics section
     // -------------------------------------------------------------------------
 
+    /**
+     * Reads JaCoCo CSV to compute:
+     * <ul>
+     *   <li>Totals: class/method/line/complexity counts across the whole project.</li>
+     *   <li>Package-level summary sorted by complexity (for the Metrics tab).</li>
+     *   <li>Top-10 most complex classes (for the Cyclomatic Complexity view).</li>
+     * </ul>
+     *
+     * <p>JaCoCo CSV columns (0-indexed):
+     * GROUP(0), PACKAGE(1), CLASS(2), INSTRUCTION_MISSED(3), INSTRUCTION_COVERED(4),
+     * BRANCH_MISSED(5), BRANCH_COVERED(6), LINE_MISSED(7), LINE_COVERED(8),
+     * COMPLEXITY_MISSED(9), COMPLEXITY_COVERED(10), METHOD_MISSED(11), METHOD_COVERED(12)
+     */
     private Map<String, Object> buildMetricsSection() {
         InputStream is = loadResource(CP_JACOCO, DEV_JACOCO);
         if (is == null) return Map.of(K_AVAILABLE, false);
 
         long totalClasses = 0, totalMethods = 0, totalLines = 0, totalComplexity = 0;
         Map<String, long[]> pkgMetrics = new LinkedHashMap<>(); // [classes, lines, methods, complexity]
+        // Class-level complexity for top-10 view: Map<simpleClassName, complexity>
+        List<long[]> classComplexity = new ArrayList<>(); // [complexity, classNameIndex]
+        List<String> classNames = new ArrayList<>();
 
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
             String line;
@@ -805,11 +821,20 @@ public class QualityReportEndpoint {
                     totalLines      += lines;
                     totalComplexity += complexity;
 
+                    // Package-level aggregate
                     String pkg = cols[1].trim();
                     String[] parts = pkg.replace('/', '.').split("\\.");
                     String pkgShort = parts[parts.length - 1];
                     pkgMetrics.merge(pkgShort, new long[]{1, lines, methods, complexity},
                         (a, b) -> new long[]{a[0]+1, a[1]+b[1], a[2]+b[2], a[3]+b[3]});
+
+                    // Class-level record for top-10 most complex
+                    String rawClass = cols[2].trim();
+                    // Use simple class name (strip inner class separators like $1, $Companion)
+                    String simpleClass = rawClass.contains("$") ? rawClass.substring(0, rawClass.indexOf('$')) : rawClass;
+                    int idx = classNames.size();
+                    classNames.add(simpleClass);
+                    classComplexity.add(new long[]{complexity, idx});
                 } catch (NumberFormatException ignored) {}
             }
         } catch (IOException e) {
@@ -830,6 +855,20 @@ public class QualityReportEndpoint {
         // Sort by complexity desc (top 10 most complex packages first)
         packages.sort((a, b) -> Long.compare((Long)b.get(K_COMPLEXITY), (Long)a.get(K_COMPLEXITY)));
 
+        // Top-10 most complex classes — sorted desc, deduplicated by simple name (inner classes merged)
+        classComplexity.sort((a, b) -> Long.compare(b[0], a[0]));
+        List<Map<String,Object>> topComplex = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        for (long[] cc : classComplexity) {
+            String name = classNames.get((int) cc[1]);
+            if (seen.add(name) && topComplex.size() < 10) {
+                Map<String,Object> entry = new LinkedHashMap<>();
+                entry.put("class", name);
+                entry.put(K_COMPLEXITY, cc[0]);
+                topComplex.add(entry);
+            }
+        }
+
         Map<String,Object> r = new LinkedHashMap<>();
         r.put(K_AVAILABLE, true);
         r.put("totalClasses", totalClasses);
@@ -837,6 +876,8 @@ public class QualityReportEndpoint {
         r.put("totalLines", totalLines);
         r.put("totalComplexity", totalComplexity);
         r.put("packages", packages);
+        // Top-10 most complex classes by cyclomatic complexity (COMPLEXITY_MISSED + COMPLEXITY_COVERED)
+        r.put("topComplexClasses", topComplex);
         return r;
     }
 
