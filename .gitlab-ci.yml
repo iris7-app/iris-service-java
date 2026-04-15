@@ -679,14 +679,17 @@ build-native:
 #   terraform-plan   — always runs on main/MR to show what would change
 #   terraform-apply  — manual trigger only — provisions/updates GCP resources
 #
-# Required GitLab CI/CD variables (masked + protected):
-#   GCP_SA_KEY         base64-encoded service-account JSON with roles:
-#                        container.admin, cloudsql.admin, redis.admin,
-#                        iam.serviceAccountAdmin, compute.networkAdmin
+# Required GitLab CI/CD variables (group level — Settings → CI/CD → Variables):
+#   GCP_WIF_PROVIDER   WIF provider full resource name (set at group level)
+#   GCP_SERVICE_ACCOUNT service account email (set at group level)
 #   TF_VAR_project_id  GCP project ID
 #   TF_VAR_app_host    public hostname (e.g. mirador.example.com)
 #   TF_VAR_db_password Cloud SQL app user password (sensitive)
 #   TF_STATE_BUCKET    GCS bucket name for Terraform state
+#
+# Auth: OIDC Workload Identity Federation (no long-lived service account key).
+# The gitlab-ci-deployer SA needs: container.admin, cloudsql.admin, redis.admin,
+# iam.serviceAccountAdmin, compute.networkAdmin, storage.admin (for GCS state).
 
 .terraform-base:
   stage: infra
@@ -696,9 +699,28 @@ build-native:
     # shell execution (it would run "terraform sh -c ..." instead of "sh -c ...").
     # Override entrypoint so GitLab's default shell wrapper works correctly.
     entrypoint: [""]
+  id_tokens:
+    # GitLab generates a short-lived OIDC JWT for this job.
+    # GCP STS exchanges it for a temporary access token via Workload Identity Federation.
+    GCP_OIDC_TOKEN:
+      aud: "https://iam.googleapis.com/$GCP_WIF_PROVIDER"
   before_script:
-    - echo "$GCP_SA_KEY" | base64 -d > /tmp/sa.json
-    - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+    # Write the OIDC token to a file; the external_account credential config references it.
+    # Terraform's Google provider reads GOOGLE_APPLICATION_CREDENTIALS automatically —
+    # no gcloud needed; the provider handles STS exchange natively.
+    - echo "$GCP_OIDC_TOKEN" > /tmp/gcp_oidc_token.txt
+    - |
+      cat > /tmp/gcp_credentials.json <<EOF
+      {
+        "type": "external_account",
+        "audience": "//iam.googleapis.com/${GCP_WIF_PROVIDER}",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+        "token_url": "https://sts.googleapis.com/v1/token",
+        "credential_source": {"file": "/tmp/gcp_oidc_token.txt", "format": {"type": "text"}},
+        "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT}:generateAccessToken"
+      }
+      EOF
+    - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_credentials.json
     - cd terraform/gcp
     - terraform init
         -backend-config="bucket=${TF_STATE_BUCKET}"
@@ -748,16 +770,16 @@ terraform-apply:
 #
 # Provider         Image used              Required GitLab CI/CD variables
 # ──────────────── ─────────────────────── ────────────────────────────────────────────────────────
-# GKE Autopilot ✓  google/cloud-sdk:alpine GCP_SA_KEY¹, GCP_PROJECT, GKE_CLUSTER, GKE_REGION
+# GKE Autopilot ✓  google/cloud-sdk:alpine GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, GCP_PROJECT, GKE_CLUSTER, GKE_REGION
 # AWS EKS          alpine/k8s:1.30.2       AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, EKS_CLUSTER
 # Azure AKS        mcr.microsoft.com/azure-cli AZURE_APP_ID, AZURE_PASSWORD, AZURE_TENANT, AKS_RG, AKS_CLUSTER
-# Google Cloud Run google/cloud-sdk:alpine GCP_SA_KEY¹, GCP_PROJECT, GCP_REGION
+# Google Cloud Run google/cloud-sdk:alpine GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, GCP_PROJECT, GCP_REGION
 # Fly.io           flyio/flyctl:latest     FLY_API_TOKEN
-# k3s / bare metal bitnami/kubectl:latest  K8S_SERVER, K8S_TOKEN, K8S_CA_CERT²
+# k3s / bare metal bitnami/kubectl:latest  K8S_SERVER, K8S_TOKEN, K8S_CA_CERT¹
 #
 # All kubectl targets also need: K8S_HOST (public hostname), DB_PASSWORD
-# ¹ base64-encoded service-account JSON (roles/container.developer or roles/run.admin)
-# ² base64-encoded cluster CA certificate
+# GKE + Cloud Run use OIDC Workload Identity Federation — no long-lived SA key required.
+# ¹ base64-encoded cluster CA certificate
 #
 # Set variables in GitLab → Settings → CI/CD → Variables (masked + protected).
 # ──────────────────────────────────────────────────────────────────────────────
@@ -923,6 +945,9 @@ deploy:aks:
 deploy:cloud-run:
   stage: deploy
   image: google/cloud-sdk:alpine
+  id_tokens:
+    GCP_OIDC_TOKEN:
+      aud: "https://iam.googleapis.com/$GCP_WIF_PROVIDER"
   needs:
     - job: docker-build
       artifacts: false
@@ -935,11 +960,22 @@ deploy:cloud-run:
   environment:
     name: production/cloud-run
   script:
-    - echo "$GCP_SA_KEY" | base64 -d > /tmp/sa.json
-    - gcloud auth activate-service-account --key-file=/tmp/sa.json
+    - echo "$GCP_OIDC_TOKEN" > /tmp/gcp_oidc_token.txt
+    - |
+      cat > /tmp/gcp_credentials.json <<EOF
+      {
+        "type": "external_account",
+        "audience": "//iam.googleapis.com/${GCP_WIF_PROVIDER}",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+        "token_url": "https://sts.googleapis.com/v1/token",
+        "credential_source": {"file": "/tmp/gcp_oidc_token.txt", "format": {"type": "text"}},
+        "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT}:generateAccessToken"
+      }
+      EOF
+    - gcloud auth login --cred-file=/tmp/gcp_credentials.json --quiet
     - gcloud config set project "$GCP_PROJECT"
     - |
-      gcloud run deploy customer-service \
+      gcloud run deploy mirador-service \
         --image "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" \
         --region "${GCP_REGION:-europe-west1}" \
         --platform managed \
@@ -947,7 +983,7 @@ deploy:cloud-run:
         --port 8080 \
         --cpu 1 --memory 512Mi \
         --set-env-vars "SPRING_PROFILES_ACTIVE=cloud-run" \
-        --set-secrets "DB_PASSWORD=customer-service-db-password:latest" \
+        --set-secrets "DB_PASSWORD=mirador-db-password:latest" \
         --quiet
 
 # ── Fly.io — manual ───────────────────────────────────────────────────────────
