@@ -631,7 +631,7 @@ case "$1" in
     echo "  Grafana       http://localhost:3000  (Traces · Logs · Metrics · Profiles)"
     echo "  Mimir API     http://localhost:9091  (Prometheus-compatible metrics query)"
     echo "  Maven Site    http://localhost:8084  (run './run.sh site' to generate)"
-    echo "  Compodoc      http://localhost:8085  (run 'cd ../mirador-ui && npm run compodoc')"
+    echo "  Compodoc      http://localhost:8086  (run 'cd ../mirador-ui && npm run compodoc')"
     echo "  SonarQube     http://localhost:9000  (run './run.sh sonar' after setting SONAR_TOKEN in .env)"
     echo ""
     ;;
