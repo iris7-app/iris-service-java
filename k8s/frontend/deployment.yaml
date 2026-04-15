@@ -34,7 +34,7 @@ spec:
       terminationGracePeriodSeconds: 10   # Nginx drains quickly, no long-lived connections
       containers:
         - name: customer-ui
-          image: "${IMAGE_REGISTRY}/customer-observability-ui:${UI_IMAGE_TAG}"
+          image: "${IMAGE_REGISTRY}/frontend:${UI_IMAGE_TAG}"
           imagePullPolicy: Always
           ports:
             - name: http

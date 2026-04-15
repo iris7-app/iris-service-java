@@ -368,6 +368,203 @@ case "$1" in
     echo "  SonarQube report: http://localhost:9000/projects"
     ;;
 
+  # ─── Local Kubernetes test (kind) ──────────────────────────────────────────
+  # Deploys the full stack into a local kind cluster to validate K8s manifests
+  # before pushing to GKE. Requires: kind, kubectl, Docker.
+  #
+  # App URL after deploy: http://mirador.127.0.0.1.nip.io:8090
+  # nip.io resolves *.127.0.0.1.nip.io → 127.0.0.1 (no /etc/hosts needed).
+  k8s-local)
+    command -v kind >/dev/null 2>&1    || { echo "❌  kind not installed — run: brew install kind"; exit 1; }
+    command -v kubectl >/dev/null 2>&1 || { echo "❌  kubectl not installed — run: brew install kubectl"; exit 1; }
+    ensure_docker
+
+    KIND_CLUSTER="mirador"
+    K8S_HOST="mirador.127.0.0.1.nip.io"
+    # IMAGE_REGISTRY matches the ${IMAGE_REGISTRY}/backend:${IMAGE_TAG} pattern in manifests.
+    # For kind, no external registry is used — images are loaded directly via `kind load`.
+    export IMAGE_REGISTRY="mirador"
+    export IMAGE_TAG="local"
+    export UI_IMAGE_TAG="local"
+    export K8S_HOST
+    # HTTP for local (no TLS); production uses https:// set by the CI deploy job
+    export CORS_ALLOWED_ORIGINS="http://${K8S_HOST}:8090"
+    # Must match ${IMAGE_REGISTRY}/backend:${IMAGE_TAG} and ${IMAGE_REGISTRY}/frontend:${UI_IMAGE_TAG}
+    BE_IMAGE="mirador/backend:local"
+    FE_IMAGE="mirador/frontend:local"
+
+    # ── 1. Create cluster (idempotent) ────────────────────────────────────
+    if kind get clusters 2>/dev/null | grep -q "^${KIND_CLUSTER}$"; then
+      echo "Kind cluster '${KIND_CLUSTER}' already exists — reusing."
+    else
+      echo "Creating kind cluster '${KIND_CLUSTER}' (ports 8090+8443 → ingress)..."
+      kind create cluster --name "${KIND_CLUSTER}" --config k8s/kind-config.yaml
+    fi
+    kubectl config use-context "kind-${KIND_CLUSTER}"
+
+    # ── 2. Install nginx-ingress controller (kind-specific build) ─────────
+    echo "Installing nginx-ingress controller..."
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+    echo "Waiting for ingress controller pod to be ready (up to 120 s)..."
+    kubectl wait --namespace ingress-nginx \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=controller \
+      --timeout=120s
+
+    # ── 3. Build Docker images ────────────────────────────────────────────
+    echo "Building backend image ${BE_IMAGE}..."
+    docker build -t "${BE_IMAGE}" . -q
+    echo "Building frontend image ${FE_IMAGE}..."
+    docker build -t "${FE_IMAGE}" ../mirador-ui/ -q
+
+    # ── 4. Load images into kind (no external registry needed) ────────────
+    echo "Loading images into kind cluster (this copies layer tarballs)..."
+    kind load docker-image "${BE_IMAGE}" --name "${KIND_CLUSTER}"
+    kind load docker-image "${FE_IMAGE}" --name "${KIND_CLUSTER}"
+
+    # ── 5. Create namespaces ──────────────────────────────────────────────
+    kubectl create namespace app   --dry-run=client -o yaml | kubectl apply -f -
+    kubectl create namespace infra --dry-run=client -o yaml | kubectl apply -f -
+
+    # ── 6. Create secrets (use defaults if not set in environment) ────────
+    # These are LOCAL DEV ONLY values — never reuse in production.
+    DB_PASSWORD="${DB_PASSWORD:-localdev-pg-pass}"
+    JWT_SECRET="${JWT_SECRET:-localdev-jwt-secret-32charss!}"
+    API_KEY="${API_KEY:-localdev-api-key}"
+    kubectl create secret generic customer-service-secrets \
+      --from-literal=DB_PASSWORD="${DB_PASSWORD}" \
+      --from-literal=JWT_SECRET="${JWT_SECRET}" \
+      --from-literal=API_KEY="${API_KEY}" \
+      --namespace=app --dry-run=client -o yaml | kubectl apply -f -
+
+    # ── 7. Deploy infrastructure (PostgreSQL, Redis, Kafka) ───────────────
+    echo "Deploying infra (PostgreSQL, Redis, Kafka)..."
+    for f in k8s/namespace.yaml k8s/infra/postgres.yaml k8s/infra/redis.yaml k8s/infra/kafka.yaml; do
+      [ -f "$f" ] && envsubst < "$f" | kubectl apply -f -
+    done
+
+    # ── 8. Deploy backend ─────────────────────────────────────────────────
+    echo "Deploying backend..."
+    for f in k8s/backend/configmap.yaml k8s/backend/service.yaml k8s/backend/hpa.yaml; do
+      [ -f "$f" ] && envsubst < "$f" | kubectl apply -f -
+    done
+    # imagePullPolicy: IfNotPresent → use the locally-loaded image, do NOT try to pull
+    envsubst < k8s/backend/deployment.yaml \
+      | sed 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' \
+      | kubectl apply -f -
+
+    # ── 9. Deploy frontend ────────────────────────────────────────────────
+    echo "Deploying frontend..."
+    for f in k8s/frontend/service.yaml; do
+      [ -f "$f" ] && envsubst < "$f" | kubectl apply -f -
+    done
+    envsubst < k8s/frontend/deployment.yaml \
+      | sed 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' \
+      | kubectl apply -f -
+
+    # ── 10. Apply local ingress (HTTP, no TLS) ────────────────────────────
+    envsubst < k8s/local/ingress.yaml | kubectl apply -f -
+
+    # ── 11. Wait for rollouts ─────────────────────────────────────────────
+    echo "Waiting for infra pods..."
+    kubectl rollout status statefulset/postgresql -n infra --timeout=120s
+    kubectl rollout status deployment/kafka       -n infra --timeout=120s
+    kubectl rollout status deployment/redis       -n infra --timeout=120s
+    echo "Waiting for application pods (Flyway migrations run on first start)..."
+    kubectl rollout status deployment/customer-service -n app --timeout=300s
+    kubectl rollout status deployment/customer-ui      -n app --timeout=120s
+
+    echo ""
+    echo "✅  Local Kubernetes deployment complete!"
+    echo ""
+    echo "  App        http://${K8S_HOST}:8090"
+    echo "  Swagger    http://${K8S_HOST}:8090/api/swagger-ui.html"
+    echo "  Health     http://${K8S_HOST}:8090/api/actuator/health"
+    echo ""
+    echo "  kubectl get pods -n app"
+    echo "  kubectl get pods -n infra"
+    echo "  kubectl logs -n app deployment/customer-service -f"
+    echo ""
+    echo "  To delete the cluster: ./run.sh k8s-local-delete"
+    ;;
+
+  k8s-local-delete)
+    KIND_CLUSTER="mirador"
+    echo "Deleting kind cluster '${KIND_CLUSTER}' and all its resources..."
+    kind delete cluster --name "${KIND_CLUSTER}"
+    echo "Cluster deleted."
+    ;;
+
+  # ─── GCP infrastructure provisioning via Terraform ─────────────────────────
+  # Provisions GKE Autopilot + Cloud SQL + Memorystore (Redis) + VPC.
+  # Requires: gcloud CLI, Terraform ≥ 1.8, a GCP project, and credentials.
+  #
+  # One-time setup:
+  #   1. Install tools: brew install google-cloud-sdk terraform
+  #   2. Authenticate: gcloud auth application-default login
+  #   3. Set project: gcloud config set project <PROJECT_ID>
+  #   4. Enable APIs: ./run.sh gcp-enable-apis
+  #   5. Create TF state bucket: ./run.sh gcp-tf-bucket
+  #   6. Copy terraform/gcp/terraform.tfvars.example → terraform.tfvars and fill in values
+  #   7. ./run.sh tf-plan   (preview changes)
+  #   8. ./run.sh tf-apply  (apply changes)
+  gcp-enable-apis)
+    command -v gcloud >/dev/null 2>&1 || { echo "❌  gcloud not found — brew install google-cloud-sdk"; exit 1; }
+    PROJECT=$(gcloud config get-value project 2>/dev/null)
+    [ -z "$PROJECT" ] && { echo "❌  No GCP project set. Run: gcloud config set project <PROJECT_ID>"; exit 1; }
+    echo "Enabling required GCP APIs for project: ${PROJECT}"
+    gcloud services enable \
+      container.googleapis.com \
+      sqladmin.googleapis.com \
+      redis.googleapis.com \
+      servicenetworking.googleapis.com \
+      managedkafka.googleapis.com \
+      --project="${PROJECT}"
+    echo "✅  APIs enabled."
+    ;;
+
+  gcp-tf-bucket)
+    command -v gcloud >/dev/null 2>&1 || { echo "❌  gcloud not found — brew install google-cloud-sdk"; exit 1; }
+    command -v gsutil >/dev/null 2>&1 || { echo "❌  gsutil not found — part of google-cloud-sdk"; exit 1; }
+    PROJECT=$(gcloud config get-value project 2>/dev/null)
+    [ -z "$PROJECT" ] && { echo "❌  No GCP project set."; exit 1; }
+    REGION="${1:-europe-west1}"
+    BUCKET="${PROJECT}-tf-state"
+    echo "Creating Terraform state bucket: gs://${BUCKET} (region: ${REGION})"
+    gsutil mb -p "${PROJECT}" -l "${REGION}" "gs://${BUCKET}" 2>/dev/null || echo "Bucket already exists."
+    gsutil versioning set on "gs://${BUCKET}"
+    echo "✅  GCS bucket ready: gs://${BUCKET}"
+    ;;
+
+  tf-plan)
+    command -v terraform >/dev/null 2>&1 || { echo "❌  terraform not found — brew install terraform"; exit 1; }
+    cd terraform/gcp
+    [ ! -f terraform.tfvars ] && { echo "❌  terraform/gcp/terraform.tfvars not found. Copy from terraform.tfvars.example."; exit 1; }
+    PROJECT=$(grep project_id terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
+    terraform init -backend-config="bucket=${PROJECT}-tf-state" -backend-config="prefix=mirador/gcp" -input=false
+    terraform plan
+    ;;
+
+  tf-apply)
+    command -v terraform >/dev/null 2>&1 || { echo "❌  terraform not found — brew install terraform"; exit 1; }
+    cd terraform/gcp
+    [ ! -f terraform.tfvars ] && { echo "❌  terraform/gcp/terraform.tfvars not found."; exit 1; }
+    PROJECT=$(grep project_id terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
+    terraform init -backend-config="bucket=${PROJECT}-tf-state" -backend-config="prefix=mirador/gcp" -input=false
+    terraform apply
+    ;;
+
+  tf-destroy)
+    command -v terraform >/dev/null 2>&1 || { echo "❌  terraform not found"; exit 1; }
+    echo "⚠️  This will destroy all GCP infrastructure (GKE cluster, Cloud SQL, Redis)."
+    echo "    Press Ctrl+C to abort, or Enter to continue..."
+    read -r
+    cd terraform/gcp
+    PROJECT=$(grep project_id terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
+    terraform init -backend-config="bucket=${PROJECT}-tf-state" -backend-config="prefix=mirador/gcp" -input=false
+    terraform destroy
+    ;;
+
   clean)
     echo "Cleaning build artifacts..."
     $MAVEN clean
@@ -525,6 +722,17 @@ case "$1" in
     echo "  sonar         run SonarQube analysis (needs SONAR_TOKEN in .env)"
     echo "  clean         remove target/"
     echo "  install-tools install hadolint + lefthook via Homebrew"
+    echo ""
+    echo "Kubernetes:"
+    echo "  k8s-local        deploy full stack to local kind cluster (http://mirador.127.0.0.1.nip.io:8090)"
+    echo "  k8s-local-delete delete the local kind cluster"
+    echo ""
+    echo "GCP / Terraform:"
+    echo "  gcp-enable-apis  enable required GCP APIs (container, sqladmin, redis, managedkafka)"
+    echo "  gcp-tf-bucket    create GCS bucket for Terraform remote state"
+    echo "  tf-plan          terraform plan (preview infra changes)"
+    echo "  tf-apply         terraform apply (provision GKE + Cloud SQL + Redis)"
+    echo "  tf-destroy       terraform destroy (tear down all GCP infra)"
     echo ""
     ;;
 esac

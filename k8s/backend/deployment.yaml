@@ -49,7 +49,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: customer-service
-          image: "${IMAGE_REGISTRY}/customer-service:${IMAGE_TAG}"
+          image: "${IMAGE_REGISTRY}/backend:${IMAGE_TAG}"
           imagePullPolicy: Always
           ports:
             - name: http

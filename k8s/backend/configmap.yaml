@@ -55,8 +55,10 @@ data:
   # the same public hostname. The browser never calls the backend directly,
   # so CORS is effectively bypassed. This value is a safety net for tools
   # like Swagger UI or Postman that call the backend directly.
-  # Replace with your actual domain, e.g. https://app.example.com
-  CORS_ALLOWED_ORIGINS: "https://${K8S_HOST}"
+  # CORS_ALLOWED_ORIGINS is set by the deployment script:
+  #   GKE production:  https://${K8S_HOST}  (HTTPS, no port)
+  #   Local kind:      http://${K8S_HOST}:8090  (HTTP, port 8090)
+  CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS}"
 
   # ── Server ────────────────────────────────────────────────────────────────
   SERVER_PORT: "8080"

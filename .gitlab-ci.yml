@@ -56,6 +56,7 @@ stages:
   - native        # GraalVM AOT native-image build (native-build schedule only)
   - sonar         # SonarQube static analysis — runs after integration to read coverage data
   - reports       # Maven site + docs generation (report schedule only — REPORT_PIPELINE=true)
+  - infra         # Terraform plan/apply for GCP infrastructure (manual)
   - deploy        # Deploy to Kubernetes / PaaS (6 targets — see below)
 
 # ── shared defaults ────────────────────────────────────────────────────────────
@@ -322,17 +323,22 @@ docker-build:
       # --cache-from reuses unchanged layers (e.g. dependency download, JDK base),
       # cutting build time from ~5 min to ~30 s when only src/ changed.
       # `|| true` prevents failure on first run when no previous image exists.
-      docker pull "$CI_REGISTRY_IMAGE:$CI_DEFAULT_BRANCH" || true
+      # The backend image is pushed as a sub-image path:
+      #   $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA
+      # This matches ${IMAGE_REGISTRY}/backend:${IMAGE_TAG} in k8s/backend/deployment.yaml
+      # and allows a future frontend image at $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHA
+      # to share the same GitLab registry project.
+      docker pull "$CI_REGISTRY_IMAGE/backend:$CI_DEFAULT_BRANCH" || true
     - |
       docker build \
-        --cache-from "$CI_REGISTRY_IMAGE:$CI_DEFAULT_BRANCH" \
+        --cache-from "$CI_REGISTRY_IMAGE/backend:$CI_DEFAULT_BRANCH" \
         --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
         --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" \
-        -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" \
+        -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA" \
+        -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_REF_SLUG" \
         .
-    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
-    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
+    - docker push "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA"
+    - docker push "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_REF_SLUG"
 
 # ── stage: compat ─────────────────────────────────────────────────────────────
 #
@@ -573,6 +579,69 @@ build-native:
       echo "NATIVE_IMAGE_TAG=$CI_REGISTRY_IMAGE:native-$CI_COMMIT_SHA" > native-image.env
       echo "NATIVE_IMAGE_SLUG=$CI_REGISTRY_IMAGE:native-$CI_COMMIT_REF_SLUG" >> native-image.env
 
+# ── stage: infra (Terraform) ──────────────────────────────────────────────────
+#
+# Manages GCP infrastructure via Terraform:
+#   terraform-plan   — always runs on main/MR to show what would change
+#   terraform-apply  — manual trigger only — provisions/updates GCP resources
+#
+# Required GitLab CI/CD variables (masked + protected):
+#   GCP_SA_KEY         base64-encoded service-account JSON with roles:
+#                        container.admin, cloudsql.admin, redis.admin,
+#                        iam.serviceAccountAdmin, compute.networkAdmin
+#   TF_VAR_project_id  GCP project ID
+#   TF_VAR_app_host    public hostname (e.g. mirador.example.com)
+#   TF_VAR_db_password Cloud SQL app user password (sensitive)
+#   TF_STATE_BUCKET    GCS bucket name for Terraform state
+
+.terraform-base:
+  stage: infra
+  image: hashicorp/terraform:1.9   # pinned — Terraform is not backwards-compatible across majors
+  before_script:
+    - echo "$GCP_SA_KEY" | base64 -d > /tmp/sa.json
+    - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+    - cd terraform/gcp
+    - terraform init
+        -backend-config="bucket=${TF_STATE_BUCKET}"
+        -backend-config="prefix=mirador/gcp"
+        -input=false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# Show the Terraform execution plan — no changes applied.
+# Output is stored as an artifact so terraform-apply can use it.
+terraform-plan:
+  extends: .terraform-base
+  script:
+    - terraform plan
+        -var="project_id=${TF_VAR_project_id}"
+        -var="app_host=${TF_VAR_app_host}"
+        -var="db_password=${TF_VAR_db_password}"
+        -out=tfplan
+        -input=false
+  artifacts:
+    paths:
+      - terraform/gcp/tfplan
+    expire_in: 1 day   # plan is only valid for the pipeline that generated it
+
+# Apply the Terraform plan — manual trigger required (prevents accidental infra changes).
+terraform-apply:
+  extends: .terraform-base
+  script:
+    - terraform apply -input=false tfplan
+  needs:
+    - job: terraform-plan
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true   # infra failure must not block app deployment (deploy:gke handles errors)
+
 # ── stage: deploy ─────────────────────────────────────────────────────────────
 #
 # Six deployment targets — one auto (GKE Autopilot, default) + five manual.
@@ -597,31 +666,42 @@ build-native:
 # GitLab's `!reference` tag (expanded at pipeline parse time, not YAML merge).
 .kubectl-apply:
   script:
-    # Export substitution variables consumed by envsubst in the manifests
+    # Export substitution variables consumed by envsubst in the manifests.
+    # IMAGE_REGISTRY points to the registry sub-path so manifests resolve correctly:
+    #   ${IMAGE_REGISTRY}/backend:${IMAGE_TAG} → registry.gitlab.com/<group>/<project>/backend:<sha>
     - export IMAGE_REGISTRY="$CI_REGISTRY_IMAGE"
     - export IMAGE_TAG="$CI_COMMIT_SHA"
+    - export UI_IMAGE_TAG="$CI_COMMIT_SHA"   # frontend image tag (same SHA for monorepo)
+    - export CORS_ALLOWED_ORIGINS="https://${K8S_HOST}"   # production: HTTPS, no port
     - |
-      # Create namespaces (idempotent)
+      # Create namespaces (idempotent — safe to re-apply on every deploy)
       kubectl create namespace app   --dry-run=client -o yaml | kubectl apply -f -
       kubectl create namespace infra --dry-run=client -o yaml | kubectl apply -f -
     - |
-      # GitLab Container Registry pull secret — needed by EKS/AKS to pull the image
+      # GitLab Container Registry pull secret — needed by EKS/AKS/k3s to pull images.
+      # GKE Autopilot with Workload Identity can omit this; keeping it here for all targets.
       kubectl create secret docker-registry gitlab-registry \
         --docker-server="$CI_REGISTRY" \
         --docker-username="$CI_REGISTRY_USER" \
         --docker-password="$CI_REGISTRY_PASSWORD" \
         --namespace=app --dry-run=client -o yaml | kubectl apply -f -
     - |
-      # App secrets (DB password injected as env var in the deployment)
+      # App secrets — DB_PASSWORD, JWT_SECRET, API_KEY must be set as masked GitLab CI variables.
       kubectl create secret generic customer-service-secrets \
         --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+        --from-literal=JWT_SECRET="$JWT_SECRET" \
+        --from-literal=API_KEY="${API_KEY:-}" \
         --namespace=app --dry-run=client -o yaml | kubectl apply -f -
     - |
-      # Apply manifests — envsubst replaces ${K8S_HOST}, ${IMAGE_REGISTRY}, ${IMAGE_TAG}
+      # Apply all manifests — envsubst replaces ${K8S_HOST}, ${IMAGE_REGISTRY}, ${IMAGE_TAG},
+      # ${UI_IMAGE_TAG}, ${CORS_ALLOWED_ORIGINS} with CI variable values.
+      # GKE production skips k8s/infra/postgres.yaml — use Cloud SQL + Cloud SQL Auth Proxy instead.
+      # For non-GKE targets (EKS, k3s) postgres.yaml provides an in-cluster PostgreSQL StatefulSet.
       for f in k8s/namespace.yaml \
-                k8s/infra/postgres.yaml k8s/infra/redis.yaml \
-                k8s/backend/configmap.yaml k8s/backend/deployment.yaml \
-                k8s/backend/service.yaml k8s/backend/hpa.yaml \
+                k8s/infra/redis.yaml k8s/infra/kafka.yaml \
+                k8s/backend/configmap.yaml \
+                k8s/backend/deployment.yaml k8s/backend/service.yaml k8s/backend/hpa.yaml \
+                k8s/frontend/deployment.yaml k8s/frontend/service.yaml \
                 k8s/ingress.yaml; do
         [ -f "$f" ] && envsubst < "$f" | kubectl apply -f -
       done
