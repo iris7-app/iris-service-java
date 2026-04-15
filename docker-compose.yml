@@ -155,7 +155,8 @@ services:
       --import-realm
       --spi-realm-default-default-ssl-required=NONE
     environment:
-      # Admin console credentials
+      # LOCAL DEV ONLY — these credentials are intentionally public demo values.
+      # Keycloak is replaced by Auth0 in production; this container is never deployed.
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       # Disable HTTPS for local development
@@ -224,6 +225,7 @@ services:
       db:
         condition: service_healthy
     environment:
+      # LOCAL DEV ONLY — demo credentials, pgAdmin never exposed beyond localhost.
       PGADMIN_DEFAULT_EMAIL: admin@demo.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_LISTEN_PORT: 80
