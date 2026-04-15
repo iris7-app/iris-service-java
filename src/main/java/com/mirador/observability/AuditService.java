@@ -37,6 +37,19 @@ public class AuditService {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Asynchronously persists an audit event and logs it at INFO level.
+     *
+     * <p>The {@code @Async} annotation runs this on the shared Spring async thread pool
+     * so the calling request thread is not delayed by the INSERT. If the INSERT fails
+     * (DB unavailable, schema mismatch), the failure is logged at ERROR but silently
+     * swallowed — audit logging must never break the normal request path.
+     *
+     * @apiNote {@code ipAddress} may be {@code null} when the event originates from a
+     *          background task or internal method rather than an HTTP request.
+     * @implNote The INSERT uses {@code JdbcTemplate} (not JPA) to avoid triggering
+     *           Hibernate session management overhead on every audit write.
+     */
     @Async
     public void log(String userName, String action, String detail, String ipAddress) {
         log.info("audit_event user={} action={} detail={} ip={}", userName, action, detail, ipAddress);
