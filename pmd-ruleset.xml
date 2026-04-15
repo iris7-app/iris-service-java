@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!--
+  PMD ruleset for Mirador — based on standard categories but excludes rules
+  that cause StackOverflowError on Java 25 code (LawOfDemeter) or excessive
+  noise on Spring Boot patterns.
+-->
+<ruleset name="mirador-rules"
+    xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>Mirador custom PMD ruleset</description>
+
+    <rule ref="category/java/bestpractices.xml"/>
+
+    <!-- design.xml minus LawOfDemeter (StackOverflow on Java 25 deep call chains) -->
+    <rule ref="category/java/design.xml">
+        <exclude name="LawOfDemeter"/>
+        <exclude name="LoosePackageCoupling"/>
+    </rule>
+
+    <rule ref="category/java/errorprone.xml"/>
+    <rule ref="category/java/performance.xml"/>
+
+</ruleset>

@@ -1,0 +1,99 @@
+# =============================================================================
+# Kafka — single-node broker in KRaft mode (no ZooKeeper)
+#
+# Uses the official Apache Kafka image with KRaft (Kafka Raft Metadata mode),
+# available since Kafka 3.3. ZooKeeper is not required.
+#
+# For HA, replace with a StatefulSet (3 nodes) or a managed service:
+#   - Confluent Cloud, Amazon MSK, Azure Event Hubs (Kafka-compatible)
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: infra
+  labels:
+    app.kubernetes.io/name: kafka
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: kafka
+  ports:
+    - name: client
+      port: 9092
+      targetPort: 9092
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: infra
+  labels:
+    app.kubernetes.io/name: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: apache/kafka:3.8.0
+          ports:
+            - containerPort: 9092   # client
+            - containerPort: 9093   # controller (KRaft internal)
+          env:
+            # KRaft mode — this node acts as both broker and controller
+            - name: KAFKA_NODE_ID
+              value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: "broker,controller"
+            # Internal listener for clients + controller quorum
+            - name: KAFKA_LISTENERS
+              value: "PLAINTEXT://:9092,CONTROLLER://:9093"
+            # Advertise the in-cluster DNS name so clients inside the cluster connect correctly
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://kafka.infra.svc.cluster.local:9092"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "1@localhost:9093"
+            # Single-node: replication factor 1 (not suitable for production)
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1"
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "true"
+            - name: KAFKA_LOG_DIRS
+              value: "/var/lib/kafka/data"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          # TCP socket probe: avoids the advertised-listener resolution issue that
+          # occurs when using kafka-topics.sh inside the pod (the admin client tries
+          # to reach the advertised hostname, which is the K8s service DNS and is
+          # not reachable from loopback inside the container).
+          readinessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 30
+            periodSeconds: 15

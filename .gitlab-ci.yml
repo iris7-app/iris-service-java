@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# Pipeline overview — three separate lanes:
+# Pipeline overview — four separate lanes:
 #
 # ┌─ REGULAR pipeline (every MR push + main branch push) — fast lane ─────────┐
 # │   lint          Dockerfile linting (hadolint)                              │
@@ -8,11 +8,18 @@
 # │   package       build-jar + docker-build (main/tags only)                  │
 # └────────────────────────────────────────────────────────────────────────────┘
 #
-# ┌─ SCHEDULED pipeline (once per day, main branch only) — slow lane ─────────┐
+# ┌─ NATIVE schedule (once per day) — slow lane ───────────────────────────────┐
 # │   native        build-native — GraalVM AOT native image (5-15 min)        │
-# │                 skipped if Dockerfile.native, pom.xml, src/ unchanged      │
 # │                 Configure in GitLab: CI/CD > Schedules (e.g. 03:00 UTC)   │
 # │                 Also available as ▶ manual button in every pipeline        │
+# └────────────────────────────────────────────────────────────────────────────┘
+#
+# ┌─ REPORTS schedule (once per day, set REPORT_PIPELINE=true) ────────────────┐
+# │   reports       generate-reports — Maven site + push to reports/ branch    │
+# │                 Configure in GitLab: CI/CD > Schedules (e.g. 02:00 UTC),  │
+# │                 add variable REPORT_PIPELINE=true                          │
+# │                 Requires: GITLAB_REPORTS_TOKEN CI variable (project access │
+# │                 token — Reporter role, write_repository scope, 90-day exp) │
 # └────────────────────────────────────────────────────────────────────────────┘
 #
 # ┌─ MANUAL / ON-DEMAND compatibility matrix ──────────────────────────────────┐
@@ -26,7 +33,7 @@
 # │                 SB4+Java25 (the default) is already covered by unit-test.  │
 # └────────────────────────────────────────────────────────────────────────────┘
 #
-# Goal: code-review feedback in < 10 minutes; GraalVM only when it matters.
+# Goal: code-review feedback in < 10 minutes; heavy generation only on schedule.
 # ──────────────────────────────────────────────────────────────────────────────
 
 workflow:
@@ -34,8 +41,9 @@ workflow:
     # Regular pipelines: code-review feedback on MRs + artifact production on main.
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
-    # Scheduled pipelines: daily GraalVM native build (separate slow lane).
-    # Configure in GitLab → CI/CD → Schedules: run once per day at a low-traffic hour.
+    # Scheduled pipelines: two named schedules (native build + report generation).
+    # Configure each in GitLab → CI/CD → Schedules. The REPORT_PIPELINE variable
+    # distinguishes the report schedule from the native-build schedule.
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - when: never
 
@@ -45,7 +53,11 @@ stages:
   - integration   # Testcontainers ITests + SpotBugs + coverage gate — needs Docker
   - package       # Produce deployable artifacts — JAR + Docker image
   - compat        # On-demand compatibility matrix: SB3/SB4 × Java17/21/25
-  - native        # GraalVM AOT native-image build (main branch + tags only)
+  - native        # GraalVM AOT native-image build (native-build schedule only)
+  - sonar         # SonarQube static analysis — runs after integration to read coverage data
+  - reports       # Maven site + docs generation (report schedule only — REPORT_PIPELINE=true)
+  - infra         # Terraform plan/apply for GCP infrastructure (manual)
+  - deploy        # Deploy to Kubernetes / PaaS (6 targets — see below)
 
 # ── shared defaults ────────────────────────────────────────────────────────────
 
@@ -101,14 +113,16 @@ unit-test:
       when: never
     - when: on_success
   script:
+    # surefire-report:report-only removed — it requires maven-site skin config which GitLab
+    # runners don't have. GitLab reads JUnit XML directly from target/surefire-reports/*.xml.
     - mvn $MAVEN_CLI_OPTS test
   artifacts:
     when: always    # upload even on test failure so the JUnit report is always available for diagnosis
     reports:
       junit: target/surefire-reports/*.xml    # populates the "Tests" tab in the MR and pipeline view
     paths:
-      - target/jacoco.exec       # binary coverage data — forwarded to integration-test for JaCoCo merge
-      - target/site/jacoco/      # HTML unit coverage report (browsable in the job artifacts panel)
+      - target/jacoco.exec      # binary coverage data — forwarded to integration-test for JaCoCo merge
+      - target/site/jacoco/     # HTML unit coverage report (browsable in the job artifacts panel)
     expire_in: 1 week    # short-lived: only needed until the integration job completes and the MR is merged
 
 # GitLab SAST — static application security testing.
@@ -207,11 +221,62 @@ integration-test:
     reports:
       junit: target/failsafe-reports/*.xml    # populates the "Tests" tab with integration test results
     paths:
-      - target/site/jacoco-it/     # HTML integration coverage report (browsable in the job artifacts panel)
-      - target/spotbugsXml.xml     # SpotBugs XML — parseable by GitLab Code Quality widget
+      - target/site/jacoco-it/       # HTML integration coverage report (browsable in the job artifacts panel)
+      - target/site/jacoco-it/jacoco.xml  # IT coverage XML — read by sonar-analysis alongside target/site/jacoco/jacoco.xml
+      - target/spotbugsXml.xml       # SpotBugs XML — parseable by GitLab Code Quality widget
+      - target/reports/failsafe.html # HTML integration test report (browsable in the job artifacts panel)
     expire_in: 1 week
 
+# ── stage: sonar ──────────────────────────────────────────────────────────────
+
+# SonarCloud static analysis — runs after integration so JaCoCo XML is available.
+# SonarCloud is the SaaS version of SonarQube — free for public repos on sonarcloud.io.
+#
+# Prerequisites (one-time setup):
+#   1. Create org at https://sonarcloud.io (log in with GitLab → import mirador1 group)
+#   2. Import the mirador-service project
+#   3. Generate a token at https://sonarcloud.io/account/security
+#   4. Set SONAR_TOKEN in GitLab group CI/CD variables (mirador1 → Settings → CI/CD)
+#
+# sonar.organization and sonar.projectKey are set in pom.xml sonar properties.
+sonar-analysis:
+  stage: sonar
+  variables:
+    # Allow JVM to self-attach (Mockito byte-buddy requirement on Java 25)
+    MAVEN_OPTS: >-
+      -XX:+EnableDynamicAgentLoading
+      -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
+  script:
+    # target/jacoco-merged.xml (unit + IT combined) is produced by the report-merged JaCoCo execution
+    # in the integration-test stage and forwarded here via artifacts. sonar.coverage.jacoco.xmlReportPaths
+    # in pom.xml points to this file so integration test coverage (CustomerController, AuthController,
+    # messaging…) is included — without ITs only ~32% coverage would be reported instead of ~80%.
+    - mvn $MAVEN_CLI_OPTS sonar:sonar
+      -Dsonar.token="$SONAR_TOKEN"
+      -Dsonar.host.url="https://sonarcloud.io"
+  needs:
+    - job: integration-test
+      artifacts: true   # inherit target/ artifacts (JaCoCo XML, bytecode) from integration stage
+  rules:
+    # Run on default branch and MRs only — skip feature branches to avoid noise.
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    # Skip entirely if SONAR_TOKEN is not configured (avoids failing new environments)
+    - if: '$SONAR_TOKEN == null || $SONAR_TOKEN == ""'
+      when: never
+  allow_failure: true   # SonarCloud outage must not block deployments
+  cache:
+    key: "$CI_COMMIT_REF_SLUG"
+    paths:
+      - .m2/repository
+  timeout: 10 minutes
+
 # ── stage: package ────────────────────────────────────────────────────────────
+
+# Generate the Maven site with quality reports (Surefire, JaCoCo, SpotBugs, Javadoc).
+# Maven site generation — moved to the dedicated reports stage (REPORT_PIPELINE=true schedule).
+# Removed from the regular pipeline to keep push feedback fast (mvn site takes ~3 min).
+# The generate-reports job below does this + commits the result to the reports/ branch.
 
 # Build the executable Spring Boot fat JAR.
 # Tests are skipped here — they already passed in the test + integration stages.
@@ -259,16 +324,26 @@ docker-build:
   script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
     - |
-      # Two tags: SHA (immutable, used for deploys) + ref slug (moving, e.g. "main")
-      # Note: inline comments after \ break shell line continuation — keep them here.
+      # Pull the previous main image to seed the build cache.
+      # --cache-from reuses unchanged layers (e.g. dependency download, JDK base),
+      # cutting build time from ~5 min to ~30 s when only src/ changed.
+      # `|| true` prevents failure on first run when no previous image exists.
+      # The backend image is pushed as a sub-image path:
+      #   $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA
+      # This matches ${IMAGE_REGISTRY}/backend:${IMAGE_TAG} in k8s/backend/deployment.yaml
+      # and allows a future frontend image at $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHA
+      # to share the same GitLab registry project.
+      docker pull "$CI_REGISTRY_IMAGE/backend:$CI_DEFAULT_BRANCH" || true
+    - |
       docker build \
+        --cache-from "$CI_REGISTRY_IMAGE/backend:$CI_DEFAULT_BRANCH" \
         --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
         --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" \
-        -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" \
+        -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA" \
+        -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_REF_SLUG" \
         .
-    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
-    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
+    - docker push "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA"
+    - docker push "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_REF_SLUG"
 
 # ── stage: compat ─────────────────────────────────────────────────────────────
 #
@@ -362,6 +437,80 @@ compat-sb3-java17:
         - target/failsafe-reports/*.xml
     expire_in: 1 week
 
+# ── stage: reports ────────────────────────────────────────────────────────────
+
+# Generates the full quality report suite and pushes it to the `reports/` branch.
+#
+# Why a separate scheduled pipeline?
+#   `mvn site` + TypeDoc take ~3-5 minutes; running them on every push would double
+#   the pipeline time and block the fast-feedback loop for developers. Instead this
+#   job runs once a day (or on demand) so the reports are always fresh without
+#   slowing regular code-review pipelines.
+#
+# How to enable:
+#   1. In GitLab → Settings → CI/CD → Project Access Tokens, create a token with:
+#        Role: Reporter, Scopes: api + write_repository, Expiry: 90 days
+#      Save the token value as CI variable GITLAB_REPORTS_TOKEN (masked, protected).
+#   2. In GitLab → CI/CD → Schedules, add a new schedule:
+#        Description: "Daily report generation"
+#        Cron: 0 2 * * *   (02:00 UTC — low-traffic hour)
+#        Branch: main
+#        Variable: REPORT_PIPELINE = true
+#
+# What it generates:
+#   - Maven site: Surefire, Failsafe, JaCoCo, SpotBugs, Javadoc (target/site/)
+#   - These are pushed to the `reports/` branch as static files browsable via GitLab
+#     Pages or served by the optional nginx container in docker-compose.yml.
+#
+# TypeDoc (Angular/TypeScript docs) is a future addition tracked in TASKS.md —
+# the Angular frontend repo needs `typedoc` added to its package.json first.
+generate-reports:
+  stage: reports
+  # Only run on the dedicated report schedule (distinguished by REPORT_PIPELINE=true).
+  # NEVER runs on regular push pipelines or the native-build schedule.
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $REPORT_PIPELINE == "true"
+      when: on_success
+    - when: never
+  # No `needs:` — the reports schedule runs independently of regular pipeline jobs.
+  # The code on main is already tested by the regular pipeline; this job just generates docs.
+  script:
+    # Run tests first so JaCoCo + SpotBugs data files exist for the site reports.
+    # -q suppresses verbose output; the reports are what matter, not the build log.
+    - mvn $MAVEN_CLI_OPTS verify -q
+    # Generate the full Maven site (Surefire, Failsafe, JaCoCo, SpotBugs, Javadoc).
+    # PMD / Checkstyle / JXR are intentionally excluded — they crash on Java 25 pattern guards.
+    - mvn $MAVEN_CLI_OPTS site
+    # Push the generated site to the `reports/` branch so it is browsable in GitLab
+    # and can be served by the nginx container in docker-compose.yml.
+    # GITLAB_REPORTS_TOKEN must be a project access token (Reporter, write_repository).
+    - |
+      git config user.email "ci-reports@mirador-service"
+      git config user.name "CI Reports Bot"
+      # Create or reset the reports/ branch to an orphan (no history — keeps the branch small).
+      git fetch origin reports || true
+      git checkout -B reports origin/reports 2>/dev/null || git checkout --orphan reports
+      # Clear everything except the generated site and keep a README at the root.
+      git rm -rf . --quiet 2>/dev/null || true
+      cp -r target/site/* .
+      echo "# Mirador Service — Generated Reports" > README.md
+      echo "" >> README.md
+      echo "Generated: $(date -u '+%Y-%m-%d %H:%M UTC') from commit [\`${CI_COMMIT_SHORT_SHA}\`](${CI_PROJECT_URL}/-/commit/${CI_COMMIT_SHA}) on \`${CI_COMMIT_BRANCH}\`." >> README.md
+      echo "" >> README.md
+      echo "Browse: Surefire · Failsafe · JaCoCo · SpotBugs · Javadoc" >> README.md
+      git add -A
+      git diff --cached --quiet && echo "No changes to reports — skipping commit" && exit 0
+      git commit -m "chore(reports): regenerate quality site [skip ci]"
+      git remote set-url origin "https://ci-reports:${GITLAB_REPORTS_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+      git push origin reports
+  # Also expose the generated site as a pipeline artifact for direct browsing.
+  artifacts:
+    name: "reports-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - target/site/    # Full Maven site HTML — browsable via "Browse" in pipeline artifacts
+    expire_in: 30 days
+    when: always
+
 # ── stage: native ─────────────────────────────────────────────────────────────
 
 # Build a GraalVM native image and push it to the GitLab Container Registry.
@@ -397,11 +546,10 @@ build-native:
     - name: docker:28-dind
       alias: docker
   rules:
-    # Only on the daily scheduled pipeline AND only when native-relevant files changed.
-    # `changes:` compares against the previous pipeline on this branch.
-    # If nothing changed since the last build, the job is skipped (status: skipped),
-    # saving 5–15 minutes of CI time per day.
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    # Only on the native-build schedule (REPORT_PIPELINE must NOT be set).
+    # The report schedule sets REPORT_PIPELINE=true — that triggers generate-reports instead.
+    # `changes:` compares against the previous pipeline on this branch; skips if nothing changed.
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $REPORT_PIPELINE != "true"
       changes:
         - Dockerfile.native
         - pom.xml
@@ -435,3 +583,322 @@ build-native:
     - |
       echo "NATIVE_IMAGE_TAG=$CI_REGISTRY_IMAGE:native-$CI_COMMIT_SHA" > native-image.env
       echo "NATIVE_IMAGE_SLUG=$CI_REGISTRY_IMAGE:native-$CI_COMMIT_REF_SLUG" >> native-image.env
+
+# ── stage: infra (Terraform) ──────────────────────────────────────────────────
+#
+# Manages GCP infrastructure via Terraform:
+#   terraform-plan   — always runs on main/MR to show what would change
+#   terraform-apply  — manual trigger only — provisions/updates GCP resources
+#
+# Required GitLab CI/CD variables (masked + protected):
+#   GCP_SA_KEY         base64-encoded service-account JSON with roles:
+#                        container.admin, cloudsql.admin, redis.admin,
+#                        iam.serviceAccountAdmin, compute.networkAdmin
+#   TF_VAR_project_id  GCP project ID
+#   TF_VAR_app_host    public hostname (e.g. mirador.example.com)
+#   TF_VAR_db_password Cloud SQL app user password (sensitive)
+#   TF_STATE_BUCKET    GCS bucket name for Terraform state
+
+.terraform-base:
+  stage: infra
+  image: hashicorp/terraform:1.9   # pinned — Terraform is not backwards-compatible across majors
+  before_script:
+    - echo "$GCP_SA_KEY" | base64 -d > /tmp/sa.json
+    - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+    - cd terraform/gcp
+    - terraform init
+        -backend-config="bucket=${TF_STATE_BUCKET}"
+        -backend-config="prefix=mirador/gcp"
+        -input=false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# Show the Terraform execution plan — no changes applied.
+# Output is stored as an artifact so terraform-apply can use it.
+terraform-plan:
+  extends: .terraform-base
+  allow_failure: true   # Terraform state bucket may not exist yet; must not block deploy:gke
+  script:
+    - terraform plan
+        -var="project_id=${TF_VAR_project_id}"
+        -var="app_host=${TF_VAR_app_host}"
+        -var="db_password=${TF_VAR_db_password}"
+        -out=tfplan
+        -input=false
+  artifacts:
+    paths:
+      - terraform/gcp/tfplan
+    expire_in: 1 day   # plan is only valid for the pipeline that generated it
+
+# Apply the Terraform plan — manual trigger required (prevents accidental infra changes).
+terraform-apply:
+  extends: .terraform-base
+  script:
+    - terraform apply -input=false tfplan
+  needs:
+    - job: terraform-plan
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true   # infra failure must not block app deployment (deploy:gke handles errors)
+
+# ── stage: deploy ─────────────────────────────────────────────────────────────
+#
+# Six deployment targets — one auto (GKE Autopilot, default) + five manual.
+#
+# Provider         Image used              Required GitLab CI/CD variables
+# ──────────────── ─────────────────────── ────────────────────────────────────────────────────────
+# GKE Autopilot ✓  google/cloud-sdk:alpine GCP_SA_KEY¹, GCP_PROJECT, GKE_CLUSTER, GKE_REGION
+# AWS EKS          alpine/k8s:1.30.2       AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, EKS_CLUSTER
+# Azure AKS        mcr.microsoft.com/azure-cli AZURE_APP_ID, AZURE_PASSWORD, AZURE_TENANT, AKS_RG, AKS_CLUSTER
+# Google Cloud Run google/cloud-sdk:alpine GCP_SA_KEY¹, GCP_PROJECT, GCP_REGION
+# Fly.io           flyio/flyctl:latest     FLY_API_TOKEN
+# k3s / bare metal bitnami/kubectl:latest  K8S_SERVER, K8S_TOKEN, K8S_CA_CERT²
+#
+# All kubectl targets also need: K8S_HOST (public hostname), DB_PASSWORD
+# ¹ base64-encoded service-account JSON (roles/container.developer or roles/run.admin)
+# ² base64-encoded cluster CA certificate
+#
+# Set variables in GitLab → Settings → CI/CD → Variables (masked + protected).
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Common kubectl apply fragment — reused by GKE, EKS, AKS, and k3s jobs via
+# GitLab's `!reference` tag (expanded at pipeline parse time, not YAML merge).
+.kubectl-apply:
+  script:
+    # Export substitution variables consumed by envsubst in the manifests.
+    # IMAGE_REGISTRY points to the registry sub-path so manifests resolve correctly:
+    #   ${IMAGE_REGISTRY}/backend:${IMAGE_TAG} → registry.gitlab.com/<group>/<project>/backend:<sha>
+    - export IMAGE_REGISTRY="$CI_REGISTRY_IMAGE"
+    - export IMAGE_TAG="$CI_COMMIT_SHA"
+    - export UI_IMAGE_TAG="$CI_COMMIT_SHA"   # frontend image tag (same SHA for monorepo)
+    - export CORS_ALLOWED_ORIGINS="https://${K8S_HOST}"   # production: HTTPS, no port
+    - |
+      # Create namespaces (idempotent — safe to re-apply on every deploy)
+      kubectl create namespace app   --dry-run=client -o yaml | kubectl apply -f -
+      kubectl create namespace infra --dry-run=client -o yaml | kubectl apply -f -
+    - |
+      # GitLab Container Registry pull secret — needed by EKS/AKS/k3s to pull images.
+      # GKE Autopilot with Workload Identity can omit this; keeping it here for all targets.
+      kubectl create secret docker-registry gitlab-registry \
+        --docker-server="$CI_REGISTRY" \
+        --docker-username="$CI_REGISTRY_USER" \
+        --docker-password="$CI_REGISTRY_PASSWORD" \
+        --namespace=app --dry-run=client -o yaml | kubectl apply -f -
+    - |
+      # App secrets — masked GitLab CI group variables injected into K8s.
+      # GRAFANA_OTLP_AUTH = base64(instanceId:apiToken) for Grafana Cloud direct OTLP push.
+      kubectl create secret generic customer-service-secrets \
+        --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+        --from-literal=JWT_SECRET="$JWT_SECRET" \
+        --from-literal=API_KEY="${API_KEY:-}" \
+        --from-literal=OTEL_EXPORTER_OTLP_AUTH="${GRAFANA_OTLP_AUTH:-}" \
+        --from-literal=GITLAB_API_TOKEN="${GITLAB_API_TOKEN:-}" \
+        --namespace=app --dry-run=client -o yaml | kubectl apply -f -
+    - |
+      # Apply all manifests — envsubst replaces ${K8S_HOST}, ${IMAGE_REGISTRY}, ${IMAGE_TAG},
+      # ${UI_IMAGE_TAG}, ${CORS_ALLOWED_ORIGINS} with CI variable values.
+      # GKE production skips k8s/infra/postgres.yaml — use Cloud SQL + Cloud SQL Auth Proxy instead.
+      # For non-GKE targets (EKS, k3s) postgres.yaml provides an in-cluster PostgreSQL StatefulSet.
+      for f in k8s/namespace.yaml \
+                k8s/infra/redis.yaml k8s/infra/kafka.yaml \
+                k8s/backend/configmap.yaml \
+                k8s/backend/deployment.yaml k8s/backend/service.yaml k8s/backend/hpa.yaml \
+                k8s/frontend/deployment.yaml k8s/frontend/service.yaml \
+                k8s/ingress.yaml; do
+        [ -f "$f" ] && envsubst < "$f" | kubectl apply -f -
+      done
+    # Wait for the rolling update to complete (180 s timeout)
+    - kubectl rollout status deployment/customer-service -n app --timeout=180s
+
+# ── GKE Autopilot — DEFAULT production (runs automatically on main) ───────────
+#
+# Uses Workload Identity Federation (WIF) — no service account key file needed.
+# GitLab CI generates a short-lived OIDC token; GCP STS exchanges it for a
+# Google access token bound to the gitlab-ci-deployer service account.
+# Required group variables: GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT,
+#                            GCP_PROJECT, GKE_CLUSTER, GKE_REGION, K8S_HOST
+deploy:gke:
+  stage: deploy
+  image: google/cloud-sdk:alpine
+  id_tokens:
+    # GitLab generates a JWT token for this job; audience must match the WIF provider.
+    GCP_OIDC_TOKEN:
+      aud: "https://iam.googleapis.com/$GCP_WIF_PROVIDER"
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH   # auto on every main push
+  environment:
+    name: production/gke
+    url: "https://$K8S_HOST"
+  script:
+    # Write OIDC token to file; gcloud reads it via credentials config (WIF, no key file)
+    - echo "$GCP_OIDC_TOKEN" > /tmp/gcp_oidc_token.txt
+    - |
+      cat > /tmp/gcp_credentials.json <<EOF
+      {
+        "type": "external_account",
+        "audience": "//iam.googleapis.com/${GCP_WIF_PROVIDER}",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+        "token_url": "https://sts.googleapis.com/v1/token",
+        "credential_source": {"file": "/tmp/gcp_oidc_token.txt", "format": {"type": "text"}},
+        "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT}:generateAccessToken"
+      }
+      EOF
+    - gcloud auth login --cred-file=/tmp/gcp_credentials.json --quiet
+    - gcloud container clusters get-credentials "$GKE_CLUSTER"
+        --region "$GKE_REGION" --project "$GCP_PROJECT"
+    - !reference [.kubectl-apply, script]
+
+# ── AWS EKS — manual ──────────────────────────────────────────────────────────
+#
+# Elastic Kubernetes Service: managed control plane, self-managed node groups
+# or Fargate (serverless nodes). Uses the AWS credentials in the CI variables
+# to update the local kubeconfig via `aws eks update-kubeconfig`.
+deploy:eks:
+  stage: deploy
+  image: alpine/k8s:1.30.2   # kubectl + aws-cli + helm in a single Alpine image
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  environment:
+    name: production/eks
+    url: "https://$K8S_HOST"
+  script:
+    - aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
+    - !reference [.kubectl-apply, script]
+
+# ── Azure AKS — manual ────────────────────────────────────────────────────────
+#
+# Azure Kubernetes Service: managed control plane with optional Virtual Nodes
+# (serverless node pools backed by Azure Container Instances).
+# Uses a service principal for non-interactive auth.
+deploy:aks:
+  stage: deploy
+  image: mcr.microsoft.com/azure-cli:latest
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  environment:
+    name: production/aks
+    url: "https://$K8S_HOST"
+  before_script:
+    - az aks install-cli --only-show-errors   # installs kubectl
+  script:
+    - az login --service-principal -u "$AZURE_APP_ID" -p "$AZURE_PASSWORD"
+        --tenant "$AZURE_TENANT" --output none
+    - az aks get-credentials --resource-group "$AKS_RG" --name "$AKS_CLUSTER"
+    - !reference [.kubectl-apply, script]
+
+# ── Google Cloud Run — manual ─────────────────────────────────────────────────
+#
+# Fully serverless: no cluster, no nodes, no ingress. Scales to zero when idle.
+# Best for: demos, low-traffic environments, cost-sensitive deployments.
+# Limitation: no persistent volumes → PostgreSQL must be Cloud SQL (or external).
+# DB_PASSWORD is read from Secret Manager (not a k8s secret).
+deploy:cloud-run:
+  stage: deploy
+  image: google/cloud-sdk:alpine
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  environment:
+    name: production/cloud-run
+  script:
+    - echo "$GCP_SA_KEY" | base64 -d > /tmp/sa.json
+    - gcloud auth activate-service-account --key-file=/tmp/sa.json
+    - gcloud config set project "$GCP_PROJECT"
+    - |
+      gcloud run deploy customer-service \
+        --image "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" \
+        --region "${GCP_REGION:-europe-west1}" \
+        --platform managed \
+        --allow-unauthenticated \
+        --port 8080 \
+        --cpu 1 --memory 512Mi \
+        --set-env-vars "SPRING_PROFILES_ACTIVE=cloud-run" \
+        --set-secrets "DB_PASSWORD=customer-service-db-password:latest" \
+        --quiet
+
+# ── Fly.io — manual ───────────────────────────────────────────────────────────
+#
+# PaaS with global anycast routing. The simplest deploy — no cluster to manage.
+# Requires a fly.toml at the project root (see: fly launch --no-deploy).
+# Best for: demos, side projects, quick staging environments.
+deploy:fly:
+  stage: deploy
+  image: flyio/flyctl:latest
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  environment:
+    name: production/fly
+  script:
+    - flyctl auth token "$FLY_API_TOKEN"
+    - flyctl deploy --image "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" --remote-only
+
+# ── k3s / self-hosted — manual ─────────────────────────────────────────────────
+#
+# Generic kubectl deploy to any cluster (k3s, kubeadm, Hetzner Cloud,
+# OVHcloud Managed Kubernetes, bare metal, Raspberry Pi…).
+# Provide the cluster API URL, a service-account token with deploy rights,
+# and the cluster CA cert (all base64-encoded) as CI variables.
+deploy:k3s:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  needs:
+    - job: docker-build
+      artifacts: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  environment:
+    name: production/k3s
+    url: "https://$K8S_HOST"
+  script:
+    - |
+      # Build kubeconfig from CI variables (no kubeconfig file in the runner)
+      kubectl config set-cluster self-hosted \
+        --server="$K8S_SERVER" \
+        --certificate-authority=<(echo "$K8S_CA_CERT" | base64 -d)
+      kubectl config set-credentials ci-runner --token="$K8S_TOKEN"
+      kubectl config set-context default --cluster=self-hosted --user=ci-runner
+      kubectl config use-context default
+    - !reference [.kubectl-apply, script]

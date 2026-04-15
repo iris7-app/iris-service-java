@@ -9,7 +9,13 @@
 spring:
   application:
     # Service name propagated to OpenTelemetry traces and Grafana dashboards
-    name: customer-service
+    name: mirador
+
+  autoconfigure:
+    # spring-data-rest-hal-explorer is on the classpath for the HAL browser UI,
+    # but we don't use the full Spring Data REST layer — exclude SpringDoc's
+    # Data REST auto-config to avoid a missing RepositoryRestConfiguration bean.
+    exclude: org.springdoc.core.configuration.SpringDocDataRestConfiguration
 
   # ---------------------------------------------------------------------------
   # Database — PostgreSQL via Spring Data JPA + Flyway
@@ -19,6 +25,13 @@ spring:
     url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:customer-service}}
     username: ${DB_USER:demo}
     password: ${DB_PASSWORD:demo}
+    hikari:
+      # 20 connections handles ~200 concurrent VTs (10x oversubscription rule for short OLTP queries)
+      maximum-pool-size: 20
+      minimum-idle: 5              # keep 5 connections warm during idle periods
+      connection-timeout: 20000    # 20s: max wait for a connection from the pool
+      idle-timeout: 600000         # 10min: close connections idle more than 10 minutes
+      max-lifetime: 1800000        # 30min: rotate connections to prevent stale/broken ones
 
   jpa:
     hibernate:
@@ -69,6 +82,18 @@ spring:
       port: ${REDIS_PORT:6379}
 
   # ---------------------------------------------------------------------------
+  # Caffeine — application-level entity cache (L1, in-process)
+  # Caches individual customer lookups (findById) for 5 minutes / 1000 entries max.
+  # No overlap with Redis: Redis handles the recent-customers ring buffer (10 items),
+  # while Caffeine caches arbitrary entity fetches transparently via @Cacheable.
+  # ---------------------------------------------------------------------------
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=5m,recordStats  # recordStats: expose hit/miss ratio to Micrometer
+    cache-names: customer-by-id
+
+  # ---------------------------------------------------------------------------
   # Spring AI — Ollama (local LLM)                              [Spring AI 1.0]
   # Ollama must be running locally (or via Docker) before calling /customers/{id}/bio.
   # Model is downloaded automatically by the docker-compose entrypoint.
@@ -77,7 +102,7 @@ spring:
     ollama:
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
       chat:
-        model: ${OLLAMA_MODEL:llama3.2}
+        model: ${OLLAMA_MODEL:llama3.2:1b}
         options:
           # Higher temperature = more creative/varied responses (0.0 = deterministic)
           temperature: 0.7
@@ -160,10 +185,12 @@ management:
         # env and configprops are excluded — they leak DB credentials, JWT secrets,
         # and full application configuration. Enable them only behind authentication.
         # Do NOT expose: shutdown, threaddump, heapdump in production without auth.
-        include: health,info,prometheus,metrics,beans,loggers
+        include: health,info,prometheus,metrics,beans,loggers,maintenance,quality
 
   info:
     env:
+      enabled: true
+    build:
       enabled: true
 
   endpoint:
@@ -188,11 +215,18 @@ management:
 
   # ---------------------------------------------------------------------------
   # OpenTelemetry — distributed tracing + log export
-  # Traces are sent to Tempo (via LGTM stack) and logs to Loki.
-  # OTLP endpoint defaults to local LGTM container (docker-compose.observability.yml).
+  #
+  # Local dev:  OTEL_EXPORTER_OTLP_ENDPOINT defaults to the LGTM container at :4318.
+  #             No auth header needed — local LGTM accepts anonymous traffic.
+  #
+  # Production (GKE): OTEL_EXPORTER_OTLP_ENDPOINT points to the in-cluster OTel
+  #             Collector DaemonSet (opentelemetry-kube-stack Helm chart, namespace
+  #             opentelemetry-operator-system). The collector holds the Grafana Cloud
+  #             credentials (grafana-cloud-auth K8s Secret) and forwards all signals
+  #             to Grafana Cloud. No auth header needed in this application.
   # ---------------------------------------------------------------------------
   tracing:
-    # 100% sampling — capture every trace. In production, use 0.1 (10%) to reduce overhead.
+    # 100% sampling locally. Production uses OTEL_TRACES_SAMPLER_ARG=0.1 (10%) via env var.
     sampling:
       probability: 1.0
 
@@ -205,14 +239,19 @@ management:
       export:
         otlp:
           endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
-          transport: http   # HTTP/protobuf (use grpc for lower overhead in production)
+          transport: http
+          # Authorization header is NOT set here to avoid sending "Basic " (empty credentials)
+          # to the local LGTM container. In production, the K8s Deployment injects:
+          #   MANAGEMENT_TRACING_EXPORT_OTLP_HEADERS_AUTHORIZATION = "Basic <base64-token>"
+          # which Spring Boot's relaxed binding maps to this headers map automatically.
     logging:
       export:
         otlp:
-          # Exports structured logs directly to Loki via the OpenTelemetry collector
+          # Exports structured logs to Grafana Cloud Loki (prod) or local LGTM Loki (dev).
           enabled: true
           endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs
           transport: http
+          # Same pattern as tracing above — Authorization injected via K8s env var in prod only.
 
   # Exemplars: links Prometheus metric data points to specific Tempo trace IDs.
   # In Grafana, clicking a metric spike jumps straight to the matching trace.
@@ -227,13 +266,6 @@ management:
         # to be attached to histogram data points by the Micrometer/OTel bridge.
         http.server.requests: true
 
-  # ---------------------------------------------------------------------------
-  # Zipkin — dual trace export (alongside OTLP → Tempo)
-  # Zipkin UI: http://localhost:9411
-  # ---------------------------------------------------------------------------
-  zipkin:
-    endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
-
 # =============================================================================
 # SpringDoc / OpenAPI / Swagger UI
 # API documentation available at: http://localhost:8080/swagger-ui.html
@@ -244,6 +276,8 @@ springdoc:
     enabled: true
   api-docs:
     enabled: true
+  # Disable Spring Data REST integration — we use spring-data-rest-hal-explorer
+  # for the HAL browser UI only, without the full Spring Data REST layer.
 
 # =============================================================================
 # Logging
@@ -287,7 +321,7 @@ info:
     - "Kafka async events + request-reply enrich"
     - "Redis ring buffer (recent customers)"
     - "AI bio generation (Ollama / Spring AI)"
-    - "Distributed tracing (OpenTelemetry → Zipkin + Tempo)"
+    - "Distributed tracing (OpenTelemetry → Tempo via LGTM)"
     - "Structured logging (OTLP → Loki)"
     - "Prometheus metrics + Grafana dashboards"
 
@@ -365,20 +399,31 @@ jwt:
   secret: ${JWT_SECRET:dev-secret-key-minimum-32-characters}
 
 # =============================================================================
-# Keycloak — OAuth2 resource server (optional)
+# JWT issuer — OAuth2 resource server (optional)
 #
-# When KEYCLOAK_URL is set, the app validates JWTs issued by Keycloak in
-# addition to its own JWTs (POST /auth/login mode).
+# Supports two providers (mutually exclusive, AUTH0_DOMAIN takes priority):
 #
-# Set KEYCLOAK_URL to the Keycloak base URL, e.g.:
-#   KEYCLOAK_URL=http://keycloak:8080
-# The issuer URI resolves to: <KEYCLOAK_URL>/realms/customer-service
+#   Auth0 (production):
+#     Set AUTH0_DOMAIN=dev-ksxj46zlkhk2gcvo.us.auth0.com
+#     Issuer URI → https://<AUTH0_DOMAIN>/  (trailing slash required by Auth0)
+#     JWKS URI   → https://<AUTH0_DOMAIN>/.well-known/jwks.json
 #
-# The realm is auto-imported from infra/keycloak/realm-dev.json on first start.
-# Leave KEYCLOAK_URL unset (default) to run without Keycloak.
+#   Keycloak (local dev):
+#     Set KEYCLOAK_URL=http://keycloak:8080
+#     Issuer URI → <KEYCLOAK_URL>/realms/customer-service
+#     JWKS URI   → <KEYCLOAK_URL>/realms/customer-service/protocol/openid-connect/certs
+#
+#   Neither set → app runs in local JWT-only mode (POST /auth/login issues its own tokens).
 # =============================================================================
 keycloak:
-  issuer-uri: ${KEYCLOAK_URL:}/realms/customer-service
+  issuer-uri: ${AUTH0_ISSUER_URI:${KEYCLOAK_URL:}/realms/customer-service}
+
+# Auth0 API identifier — must match the audience registered in Auth0 Dashboard → APIs.
+# When set, JWTs are validated for this audience claim (prevents accepting tokens
+# issued for a different API in the same Auth0 tenant).
+# Leave blank for Keycloak or built-in JWT mode (audience validation skipped).
+auth0:
+  audience: ${AUTH0_AUDIENCE:}
 
 # =============================================================================
 # Application-specific configuration

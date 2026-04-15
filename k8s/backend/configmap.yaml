@@ -1,0 +1,77 @@
+# =============================================================================
+# ConfigMap — non-sensitive application configuration
+#
+# All values here are safe to store in Git (no credentials, no secrets).
+# Sensitive values (DB_PASSWORD, JWT_SECRET, KAFKA_PASSWORD, API_KEY, etc.)
+# are injected as a Kubernetes Secret created by the CI pipeline from
+# GitLab CI/CD masked variables. See deploy:gke job in .gitlab-ci.yml.
+#
+# Variables using ${VAR} syntax are substituted by `envsubst` in the CI before
+# applying (sed 's/${IMAGE_TAG}/.../g' or envsubst < configmap.yaml).
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: customer-service-config
+  namespace: app
+  labels:
+    app.kubernetes.io/name: customer-service
+    app.kubernetes.io/component: backend
+data:
+  # ── Database ──────────────────────────────────────────────────────────────
+  # PostgreSQL runs in the infra namespace; DNS resolves across namespaces:
+  # <service>.<namespace>.svc.cluster.local
+  DB_HOST:    "postgresql.infra.svc.cluster.local"
+  DB_PORT:    "5432"
+  DB_NAME:    "customer-service"
+  DB_USER:    "demo"
+
+  # ── Kafka ─────────────────────────────────────────────────────────────────
+  KAFKA_BOOTSTRAP_SERVERS: "kafka.infra.svc.cluster.local:9092"
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  REDIS_HOST: "redis.infra.svc.cluster.local"
+  REDIS_PORT: "6379"
+
+  # ── Ollama ────────────────────────────────────────────────────────────────
+  # Ollama runs as a separate Deployment (GPU node if available, or CPU-only).
+  # Comment out if not deploying Ollama in the cluster.
+  OLLAMA_BASE_URL: "http://ollama.infra.svc.cluster.local:11434"
+  OLLAMA_MODEL:    "llama3.2:1b"
+
+  # ── OpenTelemetry → Grafana Cloud (direct OTLP/HTTP) ──────────────────────
+  # Spring Boot sends traces + logs directly to Grafana Cloud OTLP gateway.
+  # The in-cluster DaemonSet collector (opentelemetry-kube-stack) was rejected by
+  # GKE Autopilot (hostPath volumes not allowed). Direct push is simpler.
+  # OTEL_EXPORTER_OTLP_AUTH (Basic base64(instanceId:token)) is in the K8s Secret.
+  OTEL_EXPORTER_OTLP_ENDPOINT: "${GRAFANA_OTLP_ENDPOINT}"
+
+  # ── Auth0 (OAuth2/OIDC) ───────────────────────────────────────────────────
+  # AUTH0_ISSUER_URI takes priority over KEYCLOAK_URL in application.yml.
+  # Trailing slash is required — Auth0 includes it in the `iss` JWT claim.
+  # JWKS URI is derived automatically: issuer + ".well-known/jwks.json"
+  AUTH0_ISSUER_URI: "https://${AUTH0_DOMAIN}/"
+  # API identifier registered in Auth0 Dashboard → Applications → APIs.
+  # Used to validate the 'aud' claim in access tokens — prevents accepting
+  # tokens issued for a different API in the same Auth0 tenant.
+  AUTH0_AUDIENCE: "https://mirador-api"
+
+  # ── CORS ──────────────────────────────────────────────────────────────────
+  # In k8s, Nginx Ingress routes /api/* → backend and / → frontend, both on
+  # the same public hostname. The browser never calls the backend directly,
+  # so CORS is effectively bypassed. This value is a safety net for tools
+  # like Swagger UI or Postman that call the backend directly.
+  # CORS_ALLOWED_ORIGINS is set by the deployment script:
+  #   GKE production:  https://${K8S_HOST}  (HTTPS, no port)
+  #   Local kind:      http://${K8S_HOST}:8090  (HTTP, port 8090)
+  CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS}"
+
+  # ── GitLab pipeline history ────────────────────────────────────────────────
+  # Used by /actuator/quality to show the last 10 pipelines for the project.
+  # GITLAB_PROJECT_ID is the numeric project ID (Settings → General → Project ID).
+  # GITLAB_API_TOKEN (read_api scope) is injected from K8s Secret — not here.
+  GITLAB_PROJECT_ID: "81014529"       # mirador-service project ID on gitlab.com
+  GITLAB_HOST_URL:   "https://gitlab.com"
+
+  # ── Server ────────────────────────────────────────────────────────────────
+  SERVER_PORT: "8080"
