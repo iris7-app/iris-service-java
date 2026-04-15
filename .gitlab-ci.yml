@@ -224,6 +224,11 @@ include:
 # The unit-test artifact (target/jacoco.exec) is pulled automatically via `needs`.
 integration-test:
   stage: integration
+  tags:
+    # Force this job to run on GitLab SaaS Linux runners, not on local dev runners.
+    # On Mac (Docker Desktop), 172.17.0.1 is unreachable from containers; the SaaS
+    # Linux runners use native Docker where bridge networking works correctly.
+    - saas-linux-medium-amd64
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
