@@ -158,11 +158,14 @@ public class QualityReportEndpoint {
 
     private final RequestMappingHandlerMapping requestMappingHandlerMapping;
     private final Environment environment;
+    private final StartupTimeTracker startupTimeTracker;
 
     public QualityReportEndpoint(RequestMappingHandlerMapping requestMappingHandlerMapping,
-                                 Environment environment) {
+                                 Environment environment,
+                                 StartupTimeTracker startupTimeTracker) {
         this.requestMappingHandlerMapping = requestMappingHandlerMapping;
         this.environment = environment;
+        this.startupTimeTracker = startupTimeTracker;
     }
 
     /**
@@ -1237,6 +1240,14 @@ public class QualityReportEndpoint {
         r.put("startedAt", java.time.Instant.ofEpochMilli(startMs)
                 .atZone(java.time.ZoneId.systemDefault())
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+        // Spring Boot startup duration — time from JVM launch to ApplicationReady event.
+        // Matches "Started MiradorApplication in X.XXX seconds" in the boot log.
+        long startupMs = startupTimeTracker.getStartupDurationMs();
+        if (startupMs > 0) {
+            r.put("startupDurationMs", startupMs);
+            r.put("startupDurationSeconds", startupMs / 1000.0);
+        }
 
         // JAR layer sizes — read BOOT-INF/layers.idx from the running JAR
         r.put("jarLayers", buildJarLayersSection());
