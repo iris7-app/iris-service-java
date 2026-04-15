@@ -58,6 +58,10 @@ services:
       - ./infra/observability/grafana/dashboards-lgtm/demo.json:/otel-lgtm/demo.json
       # Override OTEL collector config (Tempo-only pipeline, CORS allowed)
       - ./infra/observability/otelcol-override.yaml:/otel-lgtm/otelcol-config.yaml:ro
+      # Override Grafana datasource provisioning — fixes Tempo→Loki trace-to-logs query:
+      # trace_id is a Loki stream label so the lookup must use {trace_id="<id>"},
+      # not the default line-filter syntax (| trace_id = "<id>") shipped by otel-lgtm.
+      - ./infra/observability/grafana/provisioning/datasources.yaml:/otel-lgtm/grafana/conf/provisioning/datasources/grafana-datasources.yaml:ro
     environment:
       # Forward all application logs received via OTLP to Loki
       ENABLE_LOGS_ALL: "true"
