@@ -47,11 +47,10 @@ data:
   OTEL_EXPORTER_OTLP_ENDPOINT: "${GRAFANA_OTLP_ENDPOINT}"
 
   # ── Auth0 (OAuth2/OIDC) ───────────────────────────────────────────────────
-  # Auth0 replaces the local Keycloak container. The Spring Security OAuth2
-  # Resource Server only needs the issuer URI — all other OIDC discovery is
-  # automatic via /.well-known/openid-configuration.
-  # AUTH0_DOMAIN is set as a non-sensitive CI group variable (e.g. mirador.eu.auth0.com).
-  KEYCLOAK_URL: "https://${AUTH0_DOMAIN}"
+  # AUTH0_ISSUER_URI takes priority over KEYCLOAK_URL in application.yml.
+  # Trailing slash is required — Auth0 includes it in the `iss` JWT claim.
+  # JWKS URI is derived automatically: issuer + ".well-known/jwks.json"
+  AUTH0_ISSUER_URI: "https://${AUTH0_DOMAIN}/"
 
   # ── CORS ──────────────────────────────────────────────────────────────────
   # In k8s, Nginx Ingress routes /api/* → backend and / → frontend, both on

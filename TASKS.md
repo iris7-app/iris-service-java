@@ -65,24 +65,20 @@ These were proposed at 2026-04-14T20:56 in response to "d'autres idées pour ép
 
 ## Pending — Kubernetes & Cloud deployment (session 2026-04-15)
 
-- [~] **Local Kubernetes test** — `./run.sh k8s-local` implemented: kind cluster (port 8090),
-      nginx-ingress, builds backend+frontend images, loads into kind, applies all manifests,
-      waits for rollout. App at http://mirador.127.0.0.1.nip.io:8090. Needs a real test run.
-- [ ] **GKE Autopilot deployment — next steps**:
-      1. Install gcloud + Terraform: `brew install google-cloud-sdk terraform`
-      2. Create GCP project, enable APIs: `./run.sh gcp-enable-apis`
-      3. Create Terraform state bucket: `./run.sh gcp-tf-bucket`
-      4. Fill in `terraform/gcp/terraform.tfvars` (copy from .example)
-      5. Preview infra: `./run.sh tf-plan`
-      6. Apply infra: `./run.sh tf-apply` (provisions GKE Autopilot + Cloud SQL + Redis)
-      7. Deploy app: push to main → CI `deploy:gke` job triggers automatically
-- [ ] **Managed Kafka on GCP** — Google Cloud Managed Kafka (GA 2024, Kafka-compatible):
-      set `kafka_enabled = true` in tfvars; see terraform/gcp/kafka.tf for migration steps.
-      Alternative: Cloud Pub/Sub (serverless, cheaper, but requires code changes — not Kafka API).
+- [ ] **deploy:gke first run** — MR !33 pipeline must pass (terraform-plan + sonar now
+      allow_failure). Once merged to main, deploy:gke triggers automatically and pushes
+      the app to GKE at http://mirador1.duckdns.org.
+- [ ] **HTTPS + cert-manager** — install cert-manager on GKE cluster (already in k8s/ingress.yaml),
+      configure letsencrypt-prod ClusterIssuer. Currently HTTP only.
 - [ ] **Cloud SQL Auth Proxy** — enable Workload Identity and add sidecar to backend Deployment
       (see k8s/gke/cloud-sql-proxy.yaml); set DB_HOST=127.0.0.1 in ConfigMap.
-- [ ] **HTTPS + cert-manager** — install cert-manager on GKE cluster (already in k8s/ingress.yaml),
-      configure letsencrypt-prod ClusterIssuer, set K8S_HOST to real domain.
+      Currently: postgres.yaml used (in-cluster PostgreSQL pod — not production-grade).
+- [ ] **Auth0 backend wiring** — update application.yml spring.security.oauth2.resourceserver
+      jwt.issuer-uri to Auth0 issuer (https://dev-ksxj46zlkhk2gcvo.us.auth0.com/).
+      Auth0 API created (https://mirador-api). Pending: configure backend SecurityConfig
+      to validate audience claim + update KEYCLOAK_URL env var in K8s ConfigMap.
+- [ ] **Managed Kafka on GCP** — Google Cloud Managed Kafka (GA 2024, Kafka-compatible):
+      set `kafka_enabled = true` in tfvars; see terraform/gcp/kafka.tf for migration steps.
 
 ## Pending — Unanswered questions (session 2026-04-15)
 
@@ -101,7 +97,19 @@ These were proposed at 2026-04-14T20:56 in response to "d'autres idées pour ép
 
 ## Recently Completed
 
-- [x] K8s local test: kind-config.yaml, local/ingress.yaml, run.sh k8s-local command;
+- [x] Auth0 Angular SDK integrated (session 2026-04-15): @auth0/auth0-angular@2.x, provideAuth0
+      in app.config.ts, Auth0BridgeService syncs token→AuthService, login page Auth0 button.
+      Auth0 app: dev-ksxj46zlkhk2gcvo.us.auth0.com, clientId DZKCwZ9dqAk3dOtVdDfc2rLJOenxidX6.
+      Auth0 API registered: https://mirador-api. CI vars: AUTH0_DOMAIN, AUTH0_CLIENT_ID.
+- [x] Grafana Cloud wired (session 2026-04-15): direct OTLP/HTTP push (DaemonSet rejected by
+      GKE Autopilot hostPath). application.yml: Authorization Basic header via OTEL_EXPORTER_OTLP_AUTH.
+      K8s Secret: GRAFANA_OTLP_AUTH injected from CI masked var. Grafana instance: mirador (1597084),
+      region prod-eu-west-2. OTel kube-stack Helm chart installed but operator-only (no DaemonSet).
+- [x] DuckDNS domain: mirador1.duckdns.org → 34.52.233.183. K8S_HOST CI var updated.
+- [x] GCP project display name set to "Mirador" via gcloud.
+- [x] SonarCloud migration: sonar.organization=mirador1, projectKey mirador1_mirador-service,
+      host.url https://sonarcloud.io. Pipeline: sonar-analysis allow_failure:true.
+- [x] K8s local test: kind-config.yaml, local/ingress.yaml, run.sh k8s-local command; kind-config.yaml, local/ingress.yaml, run.sh k8s-local command;
       Terraform GCP infra: VPC, GKE Autopilot, Cloud SQL PostgreSQL 17, Memorystore Redis,
       Google Cloud Managed Kafka (kafka.tf), Cloud SQL Auth Proxy (Workload Identity),
       CI infra stage (terraform-plan + terraform-apply), run.sh gcp/tf-* commands.

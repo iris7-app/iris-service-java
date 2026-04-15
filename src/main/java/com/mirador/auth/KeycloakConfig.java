@@ -45,8 +45,12 @@ public class KeycloakConfig {
         if (keycloakIssuerUri.isBlank()) {
             return null;
         }
-        // Construct JWKS URI directly — avoids the /.well-known/openid-configuration HTTP call at startup
-        String jwksUri = keycloakIssuerUri + "/protocol/openid-connect/certs";
+        // Keycloak JWKS path is non-standard (/protocol/openid-connect/certs).
+        // Auth0 and other OIDC providers expose JWKS at the standard /.well-known/jwks.json.
+        // Detect provider by the Keycloak-specific /realms/ segment in the issuer URI.
+        String jwksUri = keycloakIssuerUri.contains("/realms/")
+                ? keycloakIssuerUri + "/protocol/openid-connect/certs"   // Keycloak
+                : keycloakIssuerUri + ".well-known/jwks.json";            // Auth0 / standard OIDC
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri).build();
         decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(keycloakIssuerUri));
         return decoder;

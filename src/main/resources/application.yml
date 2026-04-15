@@ -400,20 +400,24 @@ jwt:
   secret: ${JWT_SECRET:dev-secret-key-minimum-32-characters}
 
 # =============================================================================
-# Keycloak — OAuth2 resource server (optional)
+# JWT issuer — OAuth2 resource server (optional)
 #
-# When KEYCLOAK_URL is set, the app validates JWTs issued by Keycloak in
-# addition to its own JWTs (POST /auth/login mode).
+# Supports two providers (mutually exclusive, AUTH0_DOMAIN takes priority):
 #
-# Set KEYCLOAK_URL to the Keycloak base URL, e.g.:
-#   KEYCLOAK_URL=http://keycloak:8080
-# The issuer URI resolves to: <KEYCLOAK_URL>/realms/customer-service
+#   Auth0 (production):
+#     Set AUTH0_DOMAIN=dev-ksxj46zlkhk2gcvo.us.auth0.com
+#     Issuer URI → https://<AUTH0_DOMAIN>/  (trailing slash required by Auth0)
+#     JWKS URI   → https://<AUTH0_DOMAIN>/.well-known/jwks.json
 #
-# The realm is auto-imported from infra/keycloak/realm-dev.json on first start.
-# Leave KEYCLOAK_URL unset (default) to run without Keycloak.
+#   Keycloak (local dev):
+#     Set KEYCLOAK_URL=http://keycloak:8080
+#     Issuer URI → <KEYCLOAK_URL>/realms/customer-service
+#     JWKS URI   → <KEYCLOAK_URL>/realms/customer-service/protocol/openid-connect/certs
+#
+#   Neither set → app runs in local JWT-only mode (POST /auth/login issues its own tokens).
 # =============================================================================
 keycloak:
-  issuer-uri: ${KEYCLOAK_URL:}/realms/customer-service
+  issuer-uri: ${AUTH0_ISSUER_URI:${KEYCLOAK_URL:}/realms/customer-service}
 
 # =============================================================================
 # Application-specific configuration
