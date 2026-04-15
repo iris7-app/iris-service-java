@@ -441,6 +441,21 @@ public class QualityReportEndpoint {
 
     private Map<String, Object> buildGitSection() {
         try {
+            // Fetch remote URL first so it can be shown as a link in the frontend.
+            String remoteUrl = null;
+            try {
+                Process remoteProc = new ProcessBuilder("git", "remote", "get-url", "origin")
+                        .directory(new File("."))
+                        .redirectErrorStream(true)
+                        .start();
+                try (BufferedReader br = new BufferedReader(
+                        new InputStreamReader(remoteProc.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line = br.readLine();
+                    if (line != null && !line.isBlank()) remoteUrl = line.trim();
+                }
+                remoteProc.waitFor();
+            } catch (Exception ignored) { /* remote URL is optional */ }
+
             Process proc = new ProcessBuilder("git", "log", "--no-merges", "-15",
                     "--format=%h|%an|%ai|%s")
                     .directory(new File("."))
@@ -465,6 +480,7 @@ public class QualityReportEndpoint {
             proc.waitFor();
             Map<String,Object> r = new LinkedHashMap<>();
             r.put("available", !commits.isEmpty());
+            if (remoteUrl != null) r.put("remoteUrl", remoteUrl);
             r.put("commits", commits);
             return r;
         } catch (Exception e) {
