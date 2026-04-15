@@ -237,11 +237,27 @@ public class JwtTokenProvider {
         return refreshToken;
     }
 
+    /**
+     * Deletes a single refresh token — called after a successful token rotation
+     * (the old token is deleted; {@link #generateRefreshToken} creates a new one).
+     *
+     * @implNote Called within the same transaction as {@link #generateRefreshToken} to
+     *           ensure the old token disappears atomically with the new one.
+     */
     @Transactional
     public void deleteRefreshToken(RefreshToken token) {
         refreshTokenRepository.delete(token);
     }
 
+    /**
+     * Deletes all refresh tokens for a user — used on logout-all-devices.
+     * After this call, existing refresh tokens from any device will be rejected
+     * by {@link #validateRefreshToken}, forcing re-authentication everywhere.
+     *
+     * @apiNote The corresponding access tokens (JWTs) continue to be valid until they
+     *          expire (max 15 min). Use {@link #blacklistToken} to invalidate them immediately
+     *          if stronger security is required.
+     */
     @Transactional
     public void deleteRefreshTokensByUsername(String username) {
         refreshTokenRepository.deleteByUsername(username);

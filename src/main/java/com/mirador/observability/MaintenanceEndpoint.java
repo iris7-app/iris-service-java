@@ -33,6 +33,19 @@ public class MaintenanceEndpoint {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Runs the requested database maintenance operation and returns duration + status.
+     *
+     * <p>Allowed values for {@code operation}: {@code vacuum}, {@code vacuumFull},
+     * {@code vacuumVerbose}. Throws {@link IllegalArgumentException} for unknown values.
+     *
+     * @implNote VACUUM cannot execute inside a transaction block (PostgreSQL restriction).
+     *           {@code JdbcTemplate.execute()} uses auto-commit implicitly, which satisfies
+     *           this constraint without requiring explicit transaction management.
+     * @apiNote VACUUM FULL acquires an exclusive lock on each table it processes.
+     *          Schedule it during maintenance windows on production. VACUUM ANALYZE
+     *          (the default) is safe to run during normal operation.
+     */
     @WriteOperation
     public Map<String, Object> run(String operation) {
         Map<String, Object> result = new LinkedHashMap<>();

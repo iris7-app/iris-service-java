@@ -25,6 +25,14 @@ public class LoginAttemptService {
 
     private final ConcurrentHashMap<String, AttemptRecord> attempts = new ConcurrentHashMap<>();
 
+    /**
+     * Returns {@code true} if the IP is currently locked out (within its lockout window).
+     *
+     * <p>As a side effect, expired lockout records are removed from memory on this call to
+     * avoid unbounded map growth for clients that stop retrying after being locked out.
+     *
+     * @param ip the client IP address from the request (X-Forwarded-For or RemoteAddr)
+     */
     public boolean isBlocked(String ip) {
         AttemptRecord record = attempts.get(ip);
         if (record == null) return false;
@@ -32,12 +40,22 @@ public class LoginAttemptService {
             return true;
         }
         if (record.lockedUntil != null && Instant.now().isAfter(record.lockedUntil)) {
+            // Auto-expire: remove the record when the lockout window has passed
             attempts.remove(ip);
             return false;
         }
         return false;
     }
 
+    /**
+     * Records a failed login attempt for an IP address.
+     *
+     * <p>Automatically triggers a lockout (logged at WARN) when {@value #MAX_ATTEMPTS}
+     * consecutive failures are recorded within the window.
+     *
+     * @apiNote This method is called on every failed authentication attempt, including attempts
+     *          on non-existent usernames (to prevent username enumeration via timing differences).
+     */
     public void recordFailure(String ip) {
         attempts.compute(ip, (key, existing) -> {
             if (existing == null) {
@@ -53,10 +71,22 @@ public class LoginAttemptService {
         });
     }
 
+    /**
+     * Clears all recorded failures for an IP on successful login.
+     * Ensures a successful login resets the counter for legitimate users who
+     * mistyped their password a few times before getting it right.
+     */
     public void recordSuccess(String ip) {
         attempts.remove(ip);
     }
 
+    /**
+     * Returns the number of attempts remaining before the IP is locked out.
+     * Returns {@value #MAX_ATTEMPTS} for IPs with no recorded failures.
+     *
+     * <p>This value is included in {@code 401} responses so clients can display
+     * "2 attempts remaining" warnings to legitimate users.
+     */
     public int getRemainingAttempts(String ip) {
         AttemptRecord record = attempts.get(ip);
         if (record == null) return MAX_ATTEMPTS;
