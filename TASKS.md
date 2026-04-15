@@ -63,6 +63,17 @@ These were proposed at 2026-04-14T20:56 in response to "d'autres idées pour ép
 - [ ] **Pyroscope** — "je ne vois que 3 profiles type liés à l'application, un pour la CPU
       et 2 pour la mémoire" → vérifier si les profils wall-clock et goroutine sont configurés
 
+## Pending — Kubernetes & Cloud deployment (session 2026-04-15)
+
+- [ ] **Local Kubernetes test** — deploy mirador-service to a local K8s cluster (minikube or kind)
+      to validate the manifest structure before pushing to cloud. Steps: Helm chart or raw manifests,
+      local image registry, health probe wiring, ConfigMap/Secret management.
+- [ ] **Google Cloud Autopilot deployment** — deploy to GKE Autopilot cluster. Steps include:
+      GCP project + Artifact Registry setup, `gcloud auth configure-docker`, push image,
+      GKE Autopilot cluster creation, kubectl apply manifests (Deployment, Service, Ingress),
+      Cloud SQL (PostgreSQL) + Memorystore (Redis) integration, Cloud Pub/Sub or Kafka on GCP,
+      HTTPS via GKE-managed certificate, and monitoring via Google Cloud Observability.
+
 ## Pending — Unanswered questions (session 2026-04-15)
 
 - [ ] **[QUESTION] Multi-JVM coverage** — "L'autre approche serait de lancer des tests avec les
@@ -80,6 +91,10 @@ These were proposed at 2026-04-14T20:56 in response to "d'autres idées pour ép
 
 ## Recently Completed
 
+- [x] SonarQube CRITICAL fixes (round 2): remaining S1192 constants added to CustomerController
+      (PATH_CUSTOMERS), OllamaHealthIndicator (DETAIL_ENDPOINT), TestReportInfoContributor
+      (KEY_AVAILABLE/TESTS/SKIPPED); S3776 suppression added to buildPmdSection() and
+      buildCheckstyleSection(); K_TESTS/K_SKIPPED used in QualityReportEndpoint buildTestsSection.
 - [x] SonarQube BLOCKER/CRITICAL fixes: XXE vulnerabilities in QualityReportEndpoint +
       TestReportInfoContributor hardened with secureDocumentBuilder(); duplicate literals
       centralised as constants in 8 files; ResponseEntity<?> → Object in AuthController;
