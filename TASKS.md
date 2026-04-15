@@ -10,24 +10,14 @@
 ## Pending — Reports & Documentation pipeline
 
 - [ ] **Scheduled CI report job** — dedicated GitLab scheduled pipeline (daily, not on every push)
-      that runs `mvn site` + TypeDoc + Javadoc and pushes the generated files to GitLab using a
+      that runs `mvn site post-site` + Compodoc and pushes the generated files to GitLab using a
       dedicated project access token (Reporter role, API + write_repository scopes, 90-day expiry).
       Job: `generate-reports` stage, pushes to a `reports/` branch, artifacts browsable in GitLab.
-- [ ] **Static Maven site server** — add an `nginx` container to `docker-compose.yml` that serves
-      `target/site/` at port 8083. The backend generates the site; nginx serves it independently.
-      Add a `maven-site` entry in the port reference table in README.
-- [ ] **TypeDoc** — generate TypeScript API docs from JSDoc comments in Angular services.
-      Add `typedoc` to `package.json`, run `typedoc --entryPointStrategy expand src/app` in the
-      scheduled CI job, publish output alongside the Maven site.
 - [ ] **Javadoc enrichment** — Javadoc is already in `<reporting>`, but add `@apiNote` / `@implNote`
       tags to non-obvious public methods so the generated site is useful, not just structural.
 
 ## Pending — Maven site integration in Angular UI
 
-- [x] Serve the Maven site from Spring Boot: `MavenSiteConfig` serves `target/site/` at
-      `/maven-site/` (dev: `file:target/site/`, prod: `classpath:/static/maven-site/`)
-- [x] Angular quality page: "Maven Site" tab with iframe; Runtime tab with active profiles,
-      uptime, JAR layers
 - [ ] Alternative: add a dedicated Angular route `/quality/site` as a full-page iframe
       (better UX than the embedded tab for large reports)
 
@@ -75,14 +65,18 @@ These were proposed at 2026-04-14T20:56 in response to "d'autres idées pour ép
 
 ## Recently Completed
 
+- [x] Pitest upgraded to 1.23.0 (ASM 9.8 supports Java 25 class files v69); MINION Java 21 override
+      removed — test classes compiled at v69 now load correctly; 71% mutation test strength
+- [x] Compodoc Angular API docs: npm run compodoc → docs/compodoc/; nginx at port 8085;
+      link in quality page raw reports section; compodocUrl in EnvService
+- [x] GitLab link in quality page header (from /actuator/quality git.remoteUrl);
+      commit hashes clickable via commitUrl() helper
+- [x] Pitest HTML report in Maven site: outputFormat HTML added; antrun post-site copies
+      pit-reports/ to target/site/pit-reports/; run.sh fixed to use `mvn site post-site`
+- [x] Maven site project-reports.html now accessible at http://localhost:8084
+- [x] Maven site href bindings fixed (literal {} → [href] attribute binding)
 - [x] Runtime section in /actuator/quality: active profiles, uptime, JAR layers (BOOT-INF/layers.idx)
 - [x] MavenSiteConfig: serves target/site/ at /maven-site/; SecurityConfig permits /maven-site/**
 - [x] README architecture diagram simplified (Mermaid dev + Kubernetes ASCII)
 - [x] Maven site: <reporting> section generates Surefire, JaCoCo, SpotBugs, Javadoc;
       `maven-site` job added to GitLab CI; artifact published as pipeline artifact
-- [x] CVE upgrades: Tomcat 11.0.21, springdoc 3.0.3 / swagger-ui 5.32.2, protobuf 4.34.1
-- [x] OWASP dependency check embedded in JAR + `report` CI profile
-- [x] Quality page tabbed: Overview / Tests / Static Analysis / Security (OWASP) / Mutation / Build
-- [x] Health: Keycloak + Ollama → UNKNOWN when not running (no longer breaks UP)
-- [x] IdempotencyFilter: cache 2xx (not just 200), store (status, body) pair
-- [x] CustomerStatsSchedulerTest, QualityReportEndpoint constructor injection
