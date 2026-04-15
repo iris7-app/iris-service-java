@@ -432,6 +432,7 @@ case "$1" in
     echo "  Zipkin        http://localhost:9411"
     echo "  Prometheus    http://localhost:9091"
     echo "  Maven Site    http://localhost:8084  (run './run.sh site' to generate)"
+    echo "  Compodoc      http://localhost:8085  (run 'cd ../mirador-ui && npm run compodoc' to generate)"
     echo "  GitLab (local) http://localhost:9081"
     echo ""
     ;;
