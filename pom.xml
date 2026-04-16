@@ -37,9 +37,9 @@
         -->
         <java.version>25</java.version>          <!-- virtual threads (Loom) + pattern matching + record patterns -->
         <lombok.version>1.18.44</lombok.version>   <!-- generates @Getter/@Setter/@Builder boilerplate at compile time -->
-        <archunit.version>1.4.0</archunit.version> <!-- architecture rule enforcement in unit tests (disabled on Java 25 — see ArchitectureTest) -->
+        <archunit.version>1.4.1</archunit.version> <!-- architecture rule enforcement in unit tests (disabled on Java 25 — see ArchitectureTest) -->
         <bucket4j.version>8.10.1</bucket4j.version>                 <!-- token-bucket rate limiting (in-memory, per IP) -->
-        <resilience4j.version>2.3.0</resilience4j.version>          <!-- @CircuitBreaker / @Retry / @Bulkhead annotations -->
+        <resilience4j.version>2.4.0</resilience4j.version>          <!-- @CircuitBreaker / @Retry / @Bulkhead annotations -->
         <!--
           Spring AI 1.0.0-M6: CVE-2026-22730 (8.8 HIGH), CVE-2026-22729 (8.6 HIGH),
           CVE-2022-27772 (7.8 HIGH), CVE-2023-20883 (7.5 HIGH), CVE-2018-1196 (5.9 MEDIUM).
@@ -56,9 +56,9 @@
           XSS, predicate bypass — all MEDIUM, dev-only Swagger UI page).
         -->
         <springdoc.version>3.0.3</springdoc.version>
-        <pyroscope.version>2.1.2</pyroscope.version>                <!-- continuous profiling agent — pushes CPU/memory profiles to Pyroscope -->
+        <pyroscope.version>2.5.2</pyroscope.version>                <!-- continuous profiling agent — pushes CPU/memory profiles to Pyroscope -->
         <testcontainers.version>1.21.4</testcontainers.version>     <!-- pinned to align kafka module with the core version -->
-        <jjwt.version>0.12.6</jjwt.version>                        <!-- split into api/impl/jackson — see dependency block -->
+        <jjwt.version>0.13.0</jjwt.version>                        <!-- split into api/impl/jackson — see dependency block -->
         <shedlock.version>6.0.2</shedlock.version>                  <!-- split into spring/provider — see dependency block -->
         <!--
           Tomcat 11.0.21 (upgraded from 11.0.20 via spring-boot-starter-parent BOM override) —
@@ -84,12 +84,12 @@
         <spring-boot-sb3.version>3.4.5</spring-boot-sb3.version>
 
         <!-- Maven build plugins -->
-        <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
-        <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
+        <maven-antrun-plugin.version>3.2.0</maven-antrun-plugin.version>
+        <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
         <maven-jxr-plugin.version>3.6.0</maven-jxr-plugin.version>
         <maven-project-info-reports-plugin.version>3.9.0</maven-project-info-reports-plugin.version>
         <maven-surefire-report-plugin.version>3.5.5</maven-surefire-report-plugin.version>
-        <license-maven-plugin.version>2.5.0</license-maven-plugin.version>
+        <license-maven-plugin.version>2.7.1</license-maven-plugin.version>
 
         <!-- Coverage, mutation, and quality analyzers -->
         <jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
@@ -97,24 +97,25 @@
         <pitest-junit5-plugin.version>1.2.3</pitest-junit5-plugin.version>
 
         <!-- Static analyzers (note: pmd-core + pmd-java share the same version) -->
-        <spotbugs-maven-plugin.version>4.8.6.4</spotbugs-maven-plugin.version>
-        <findsecbugs-plugin.version>1.13.0</findsecbugs-plugin.version>
-        <maven-pmd-plugin.version>3.26.0</maven-pmd-plugin.version>
-        <pmd.version>7.20.0</pmd.version>
+        <spotbugs-maven-plugin.version>4.9.8.3</spotbugs-maven-plugin.version>
+        <findsecbugs-plugin.version>1.14.0</findsecbugs-plugin.version>
+        <maven-pmd-plugin.version>3.28.0</maven-pmd-plugin.version>
+        <pmd.version>7.23.0</pmd.version>
         <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
         <checkstyle.version>10.26.1</checkstyle.version>
 
         <!-- SCA + SAST + Sonar -->
-        <dependency-check-maven.version>12.1.1</dependency-check-maven.version>
-        <sonar-maven-plugin.version>5.1.0.4751</sonar-maven-plugin.version>
+        <dependency-check-maven.version>12.2.1</dependency-check-maven.version>
+        <sonar-maven-plugin.version>5.5.0.6356</sonar-maven-plugin.version>
 
-        <!-- Bytecode manipulation (ASM) — pinned to 9.8 for Java 25 class-file version 69 support;
-             pulled in by SpotBugs and also overridden at the top-level dependency block. -->
-        <asm.version>9.8</asm.version>
+        <!-- Bytecode manipulation (ASM) — 9.9.1 adds Java 26 class-file version 70 support
+             and retains Java 25 (version 69) compatibility. Pulled in by SpotBugs and
+             overridden at the top-level dependency block. -->
+        <asm.version>9.9.1</asm.version>
 
         <!-- Non-BOM application dependencies -->
         <protobuf.version>4.34.1</protobuf.version>
-        <opentelemetry-appender.version>2.16.0-alpha</opentelemetry-appender.version>
+        <opentelemetry-appender.version>2.26.1-alpha</opentelemetry-appender.version>
         <testcontainers-keycloak.version>3.5.0</testcontainers-keycloak.version>
 
         <!--
