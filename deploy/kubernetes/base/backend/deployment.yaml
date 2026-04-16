@@ -8,6 +8,8 @@
 #   - Readiness probe: /actuator/health/readiness (DB + Kafka + Redis)
 #   - Graceful termination: 30s for in-flight requests to complete
 #   - Non-root user (UID 1000) from the Dockerfile
+#   - topologySpreadConstraints: spread replicas across ≥2 zones (HA)
+#   - restricted PodSecurity profile: drop ALL capabilities, runAsNonRoot
 #
 # The image tag ${IMAGE_TAG} is substituted by envsubst in the CI deploy job.
 # =============================================================================
@@ -47,14 +49,53 @@ spec:
     spec:
       # 30s grace period allows in-flight requests and Kafka consumers to finish
       terminationGracePeriodSeconds: 30
+      # ── Pod-level security context ─────────────────────────────────────
+      # Enforces the "restricted" PodSecurity standard even if the namespace
+      # PodSecurity admission label isn't present (defense in depth).
+      # Required by GKE Autopilot in strict mode anyway.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      # ── Zone-level HA — spread replicas across availability zones ─────
+      # maxSkew: 1 means no two zones can have more than a 1-pod difference.
+      # whenUnsatisfiable: ScheduleAnyway — if only one zone has capacity
+      # at rollout time, still schedule. DoNotSchedule would block rollouts
+      # on single-zone kind / eks-single-az clusters.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: mirador
+              app.kubernetes.io/component: backend
       containers:
         - name: mirador
           image: "${IMAGE_REGISTRY}/backend:${IMAGE_TAG}"
           imagePullPolicy: Always
+          # Container-level security context. Every field here is a CKS
+          # audit checkpoint: no privileged, no root, no caps, no writable FS.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
           ports:
             - name: http
               containerPort: 8080
               protocol: TCP
+          # Read-only root FS needs writable mounts for JVM tempfiles + logs.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /var/log/app
           # Non-sensitive config from ConfigMap
           envFrom:
             - configMapRef:
@@ -136,3 +177,13 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 5
             failureThreshold: 60    # up to 5 min for first boot (60 × 5s)
+      volumes:
+        # emptyDir-backed tmpfs for JVM tempfiles. Node-local, cleared on pod exit.
+        - name: tmp
+          emptyDir:
+            sizeLimit: 128Mi
+        # Logs can also go to stdout; this volume is for tools that can only
+        # write to a file (e.g., some JFR dumps).
+        - name: logs
+          emptyDir:
+            sizeLimit: 256Mi

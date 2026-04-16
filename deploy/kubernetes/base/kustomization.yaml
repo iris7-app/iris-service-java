@@ -14,11 +14,13 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
+  - networkpolicies.yaml
   - ingress.yaml
   - backend/configmap.yaml
   - backend/deployment.yaml
   - backend/service.yaml
   - backend/hpa.yaml
+  - backend/poddisruptionbudget.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml
   - stateful/kafka.yaml
