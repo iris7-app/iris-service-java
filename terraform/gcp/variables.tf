@@ -25,7 +25,10 @@ variable "region" {
 variable "cluster_name" {
   description = "Name of the GKE Autopilot cluster"
   type        = string
-  default     = "mirador"
+  default     = "mirador-prod"
+  # Matches the GKE_CLUSTER CI variable so deploy:gke can fetch credentials
+  # with `gcloud container clusters get-credentials $GKE_CLUSTER` without
+  # needing a separate TF_VAR_cluster_name override.
 }
 
 variable "db_name" {
