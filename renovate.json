@@ -41,24 +41,24 @@
     },
     {
       "description": "Group all Spring Boot artifacts — they must upgrade together.",
-      "matchPackagePatterns": ["^org\\.springframework\\.boot:"],
       "groupName": "Spring Boot",
-      "separateMinorPatch": true
+      "separateMinorPatch": true,
+      "matchPackageNames": ["/^org\\.springframework\\.boot:/"]
     },
     {
       "description": "Group all Micrometer / OTel artifacts — transitive compatibility.",
-      "matchPackagePatterns": [
-        "^io\\.micrometer:",
-        "^io\\.opentelemetry:",
-        "^io\\.opentelemetry\\.instrumentation:"
-      ],
       "groupName": "Micrometer / OpenTelemetry",
-      "separateMinorPatch": true
+      "separateMinorPatch": true,
+      "matchPackageNames": [
+        "/^io\\.micrometer:/",
+        "/^io\\.opentelemetry:/",
+        "/^io\\.opentelemetry\\.instrumentation:/"
+      ]
     },
     {
       "description": "Group Testcontainers modules.",
-      "matchPackagePatterns": ["^org\\.testcontainers:"],
-      "groupName": "Testcontainers"
+      "groupName": "Testcontainers",
+      "matchPackageNames": ["/^org\\.testcontainers:/"]
     },
     {
       "description": "Group all Maven plugin versions (properties ending .plugin.version) so a weekly sweep doesn't flood the MR board.",
@@ -79,10 +79,10 @@
       "pinDigests": true
     },
     {
-      "description": "Never auto-merge anything flagged with security tags.",
-      "matchPackagePatterns": [".*"],
+      "description": "Never auto-merge SNAPSHOT dependencies.",
       "matchCurrentVersion": "/SNAPSHOT$/",
-      "enabled": false
+      "enabled": false,
+      "matchPackageNames": ["/.*/"]
     }
   ],
   "gitlabci": {
