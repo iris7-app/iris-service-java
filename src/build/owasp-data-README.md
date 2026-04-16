@@ -54,7 +54,7 @@ Get a key at <https://nvd.nist.gov/developers/request-an-api-key>.
 - `pom.xml` — plugin configuration (`org.owasp:dependency-check-maven`), sets
   `<dataDirectory>${project.basedir}/.owasp-data</dataDirectory>` and the
   `owasp-data-readme` antrun execution that produced this file.
-- `owasp-suppressions.xml` (repo root) — project-specific CVE suppressions.
+- `config/owasp-suppressions.xml` — project-specific CVE suppressions.
 - `.gitignore` line 25 — excludes this directory from Git (too large, re-fetchable).
 - `.gitlab-ci.yml` — the `owasp-dependency-check` CI job caches this directory.
 - `src/build/owasp-data-README.md` — the committed template for this file.

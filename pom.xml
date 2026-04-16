@@ -702,8 +702,8 @@
                     <skip>true</skip>
                     <effort>Default</effort>
                     <threshold>Medium</threshold>
-                    <!-- Documented false positives for Spring DI patterns — see spotbugs-exclude.xml -->
-                    <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+                    <!-- Documented false positives for Spring DI patterns — see config/spotbugs-exclude.xml -->
+                    <excludeFilterFile>config/spotbugs-exclude.xml</excludeFilterFile>
                     <!-- XML report consumed by CI artifact / GitLab Code Quality -->
                     <xmlOutput>true</xmlOutput>
                 </configuration>
@@ -754,7 +754,7 @@
                 <failBuildOnCVSS>9</failBuildOnCVSS>
                 <formats>HTML,JSON</formats>
                 <suppressionFiles>
-                    <suppressionFile>owasp-suppressions.xml</suppressionFile>
+                    <suppressionFile>config/owasp-suppressions.xml</suppressionFile>
                 </suppressionFiles>
                 <!-- Store NVD database inside the project dir so GitLab CI can cache it -->
                 <dataDirectory>${project.basedir}/.owasp-data</dataDirectory>
@@ -853,7 +853,7 @@
                 <includeTests>false</includeTests>
                 <!-- Custom ruleset excludes LawOfDemeter (StackOverflow on Java 25) -->
                 <rulesets>
-                    <ruleset>pmd-ruleset.xml</ruleset>
+                    <ruleset>config/pmd-ruleset.xml</ruleset>
                 </rulesets>
             </configuration>
             <executions>
