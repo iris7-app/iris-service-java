@@ -210,11 +210,6 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 - **Usage here**: Injected as a container in the GKE overlay (`deploy/kubernetes/overlays/gke/`).
 - **Why it's pertinent**: No DB password in transit, no VPC peering, no public IP — auth piggy-backs on K8s ServiceAccount → GCP IAM via Workload Identity. Best practice for Cloud SQL on GKE.
 
-### JSONB / SQL extensions
-- **What it is**: PostgreSQL native JSON types, GIN indexes, logical replication.
-- **Usage here**: Not heavily used today but available in Cloud SQL — see `docs/architecture.md` for future-use notes.
-- **Why it's pertinent**: Postgres-specific features we'd lose if we standardised on a lowest-common-denominator ORM.
-
 ---
 
 ## Caching
@@ -226,8 +221,8 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 
 ### Memorystore for Redis
 - **What it is**: Google Cloud's managed Redis service.
-- **Usage here**: Tracked as a future migration in Terraform; currently local Redis is wired to GKE via the `stateful` base overlay.
-- **Why it's pertinent**: Managed failover and patching once we outgrow the in-cluster Redis deployment.
+- **Usage here**: Provisioned by Terraform as `google_redis_instance.cache` in `deploy/terraform/gcp/main.tf` (size configurable via `redis_tier` / `redis_memory_size_gb`). The GKE overlay currently still inherits in-cluster Redis from the base `stateful/` overlay — the Memorystore host is plumbed through Terraform outputs but the Kustomize switchover is pending.
+- **Why it's pertinent**: Managed failover and patching once we cut over from the in-cluster Redis deployment.
 
 ### RedisInsight
 - **What it is**: Official Redis Labs web UI for browsing keys, TTLs, memory.
@@ -264,9 +259,9 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 - **Why it's pertinent**: Tracked as a future migration once sustained throughput justifies the per-GB/s pricing. For now, in-cluster Kafka on GKE is adequate and cheap.
 
 ### Server-Sent Events (SSE)
-- **What it is**: One-way server-push over HTTP.
-- **Usage here**: Not currently used — WebSocket/STOMP covers the real-time need.
-- **Why it's pertinent**: Kept on radar as a simpler alternative if bi-directional messaging ever leaves the scope.
+- **What it is**: One-way server-push over HTTP, native browser `EventSource`.
+- **Usage here**: `CustomerController.stream()` exposes `GET /api/customers/stream` returning a `SseEmitter`; `SseEmitterRegistry` (thread-safe `CopyOnWriteArrayList`) fans out customer-created / enriched events with a 5-minute keep-alive timeout.
+- **Why it's pertinent**: One-directional push fits our "customer feed" UI perfectly — simpler than WebSocket/STOMP, no library on the browser side (`new EventSource()`), works through corporate proxies that break WebSocket.
 
 ---
 
@@ -487,11 +482,6 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 - **What it is**: SB4-only MockMvc DSL replacement.
 - **Usage here**: Declared in the `sb4` profile; used in `CustomerRestClientITest` (excluded from the SB3 test overlay).
 - **Why it's pertinent**: The RestTestClient API is fluent, reactive-style, and plays well with virtual threads.
-
-### WireMock
-- **What it is**: HTTP stubbing library for external service simulation.
-- **Usage here**: Listed as a category item — not currently a pom dependency but used historically and kept on radar for future external-HTTP integration tests.
-- **Why it's pertinent**: Useful if we ever need to integration-test against Auth0's JWKS endpoint without touching the real thing.
 
 ### Pitest
 - **What it is**: Mutation testing tool — re-runs tests against tiny code mutations to measure how many are killed.
@@ -1040,8 +1030,8 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 
 ### GCP Artifact Registry
 - **What it is**: Google's container + language-package registry.
-- **Usage here**: Target for production images when deploying to GKE or Cloud Run.
-- **Why it's pertinent**: Tight IAM integration with GKE; replaces the deprecated gcr.io.
+- **Usage here**: Not currently wired in CI — `docker-build` pushes to GitLab Container Registry (see entry below), and the GKE deploy pulls from there via the `gitlab-registry` pull secret. Artifact Registry is the intended target when we move the Docker image push to GCP-native infra (e.g. Cloud Build triggered on tag). Terraform does not provision it yet.
+- **Why it's pertinent**: Tight IAM integration with GKE; replaces the deprecated gcr.io. Kept in the glossary because it is where we plan to end up, and because some cosign/SBOM references assume a GCP-native registry path.
 
 ### GitLab Container Registry
 - **What it is**: Built-in container registry per GitLab project.
@@ -1086,11 +1076,6 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 - **What it is**: Browser-enforced cross-origin request policy.
 - **Usage here**: `CORS_ALLOWED_ORIGINS` env var; `cors-proxy` sidecar in observability compose adds CORS headers to Loki/Docker API.
 - **Why it's pertinent**: `CLAUDE.md` flags `"*"` as an antipattern — we always specify an explicit allowlist.
-
-### SSE (Server-Sent Events)
-- **What it is**: One-way push-from-server-to-browser over HTTP.
-- **Usage here**: Available via Spring MVC `ResponseBodyEmitter` but not currently wired — WebSocket/STOMP covers our real-time needs.
-- **Why it's pertinent**: Listed for completeness; simpler than WebSocket if bi-directional traffic is overkill.
 
 ### STOMP
 - **What it is**: Text-based messaging sub-protocol for WebSocket.
