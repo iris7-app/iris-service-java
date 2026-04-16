@@ -38,6 +38,9 @@ File name pattern: `NNNN-kebab-case-title.md` (NNNN is a zero-padded sequence).
 | 0006  | Accepted    | [Hoist every Maven version into `<properties>`](0006-maven-version-hoisting.md) |
 | 0007  | Accepted    | [Workload Identity Federation for GCP auth in CI](0007-workload-identity-federation.md) |
 | 0008  | Accepted    | [Feature-sliced package layout in `com.mirador.*`](0008-feature-sliced-packages.md) |
+| 0009  | Accepted    | [Container runtime base image — `eclipse-temurin:25-jre`](0009-container-runtime-base-image.md) |
+| 0010  | Accepted    | [OpenTelemetry OTLP push to a Collector (not Prometheus scrape)](0010-otlp-push-to-collector.md) |
+| 0011  | Accepted    | [Minimal `@Transactional` surface, no `@Transactional(readOnly = true)`](0011-transactional-read-strategy.md) |
 
 ## When to write an ADR
 
