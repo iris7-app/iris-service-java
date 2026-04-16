@@ -65,14 +65,14 @@ resource "google_compute_subnetwork" "subnet" {
   # Secondary ranges for GKE pods and services (required by GKE Autopilot)
   secondary_ip_range {
     range_name    = "pods"
-    ip_cidr_range = "10.1.0.0/16"   # up to 65536 pod IPs
+    ip_cidr_range = "10.1.0.0/16" # up to 65536 pod IPs
   }
   secondary_ip_range {
     range_name    = "services"
-    ip_cidr_range = "10.2.0.0/20"   # up to 4096 service IPs
+    ip_cidr_range = "10.2.0.0/20" # up to 4096 service IPs
   }
 
-  private_ip_google_access = true   # allows private GKE nodes to reach GCP APIs
+  private_ip_google_access = true # allows private GKE nodes to reach GCP APIs
 }
 
 # Private service access peering — required for Cloud SQL and Memorystore
@@ -89,6 +89,34 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   network                 = google_compute_network.vpc.id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
+}
+
+# =============================================================================
+# Cloud NAT — egress for private GKE nodes
+#
+# Private GKE Autopilot nodes have no public IP, so they cannot reach the
+# public internet (Docker Hub, GitLab Container Registry, Maven Central, etc).
+# Cloud NAT provides outbound NAT for the entire subnet — pulls, webhooks,
+# and API calls leave through a shared public IP while nodes stay private.
+# Without this, pods fail to pull images with ImagePullBackOff.
+# =============================================================================
+resource "google_compute_router" "nat_router" {
+  name    = "mirador-nat-router"
+  region  = var.region
+  network = google_compute_network.vpc.id
+}
+
+resource "google_compute_router_nat" "nat" {
+  name                               = "mirador-nat"
+  router                             = google_compute_router.nat_router.name
+  region                             = var.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
 }
 
 # =============================================================================
@@ -117,7 +145,7 @@ resource "google_container_cluster" "autopilot" {
   # to restrict access to specific IP ranges (e.g. office VPN + CI runner).
   private_cluster_config {
     enable_private_nodes    = true
-    enable_private_endpoint = false   # public control plane endpoint for kubectl from CI
+    enable_private_endpoint = false # public control plane endpoint for kubectl from CI
     master_ipv4_cidr_block  = "172.16.0.0/28"
   }
 
@@ -132,6 +160,10 @@ resource "google_container_cluster" "autopilot" {
     # RAPID: earliest new versions. STABLE: 2-3 months after REGULAR.
     channel = "REGULAR"
   }
+
+  # Disabled in dev so `terraform destroy` / recreate is possible between tests.
+  # Flip to true once the cluster hosts production workloads.
+  deletion_protection = false
 }
 
 # =============================================================================
@@ -149,34 +181,36 @@ resource "google_sql_database_instance" "postgres" {
     # Private IP only — the instance is NOT reachable from the public internet.
     # Connection is via the VPC peering established above.
     ip_configuration {
-      ipv4_enabled    = false   # disable public IP — private IP only
+      ipv4_enabled    = false # disable public IP — private IP only
       private_network = google_compute_network.vpc.id
     }
 
     backup_configuration {
       enabled                        = true
-      start_time                     = "03:00"   # 03:00 UTC — off-peak
-      point_in_time_recovery_enabled = true       # enables WAL-based PITR
+      start_time                     = "03:00" # 03:00 UTC — off-peak
+      point_in_time_recovery_enabled = true    # enables WAL-based PITR
       transaction_log_retention_days = 7
       backup_retention_settings {
-        retained_backups = 7   # keep 7 daily backups
+        retained_backups = 7 # keep 7 daily backups
       }
     }
 
     maintenance_window {
-      day          = 7    # Sunday
-      hour         = 4    # 04:00 UTC
+      day          = 7 # Sunday
+      hour         = 4 # 04:00 UTC
       update_track = "stable"
     }
 
     # Database flags
     database_flags {
       name  = "log_min_duration_statement"
-      value = "1000"   # log queries slower than 1 second (slow query log)
+      value = "1000" # log queries slower than 1 second (slow query log)
     }
   }
 
-  deletion_protection = true   # prevents accidental `terraform destroy` from deleting data
+  # Disabled in dev so `terraform destroy` can tear down cleanly between tests.
+  # Flip to true before any production-grade deployment to protect data.
+  deletion_protection = false
 
   depends_on = [google_service_networking_connection.private_vpc_connection]
 }
@@ -223,12 +257,12 @@ resource "google_service_account_iam_member" "workload_identity_binding" {
 # =============================================================================
 
 resource "google_redis_instance" "cache" {
-  name               = "mirador-redis"
-  tier               = var.redis_tier
-  memory_size_gb     = var.redis_memory_size_gb
-  region             = var.region
-  redis_version      = "REDIS_7_2"
-  display_name       = "Mirador Redis Cache"
+  name           = "mirador-redis"
+  tier           = var.redis_tier
+  memory_size_gb = var.redis_memory_size_gb
+  region         = var.region
+  redis_version  = "REDIS_7_2"
+  display_name   = "Mirador Redis Cache"
 
   # Connect via private services access so pods reach Redis via VPC private IP
   authorized_network = google_compute_network.vpc.id
