@@ -151,7 +151,7 @@ case "$1" in
 
   simulate)
     echo "Starting traffic simulation..."
-    ./infra/simulate-traffic.sh "${2:-60}" "${3:-2}"
+    ./scripts/simulate-traffic.sh "${2:-60}" "${3:-2}"
     ;;
 
   restart)
