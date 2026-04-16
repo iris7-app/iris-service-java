@@ -147,6 +147,30 @@ openapi-lint:
   image: node:22-alpine
   tags:
     - macbook-local
+  # Postgres sidecar — Spring Boot's Flyway auto-config will fail-fast on
+  # a missing DB before OpenAPI routes come up, so we need a real DB on
+  # localhost:5432. GitLab spawns this container on the same network.
+  # Credentials match the application.yml defaults (DB_USER/DB_PASSWORD).
+  services:
+    - name: postgres:17-alpine
+      alias: postgres
+      variables:
+        POSTGRES_DB: customer-service
+        POSTGRES_USER: demo
+        POSTGRES_PASSWORD: demo
+  variables:
+    # With `services:`, the DB is reachable via the alias, not localhost.
+    # Spring's application.yml defaults use DB_HOST=localhost; override here.
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_NAME: customer-service
+    DB_USER: demo
+    DB_PASSWORD: demo
+    # Redis / Kafka aren't reached during a plain `/v3/api-docs` request, but
+    # Spring's actuator health indicators may probe them at startup. Disable
+    # the probes that would block the app from becoming ready without those
+    # services. See `observability/*HealthIndicator` classes for what's gated.
+    SPRING_DATA_REDIS_REPOSITORIES_ENABLED: "false"
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
