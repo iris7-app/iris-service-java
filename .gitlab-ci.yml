@@ -1082,7 +1082,7 @@ terraform-apply:
     - |
       # App secrets — masked GitLab CI group variables injected into K8s.
       # GRAFANA_OTLP_AUTH = base64(instanceId:apiToken) for Grafana Cloud direct OTLP push.
-      kubectl create secret generic customer-service-secrets \
+      kubectl create secret generic mirador-secrets \
         --from-literal=DB_PASSWORD="$DB_PASSWORD" \
         --from-literal=JWT_SECRET="$JWT_SECRET" \
         --from-literal=API_KEY="${API_KEY:-}" \
@@ -1106,7 +1106,7 @@ terraform-apply:
       done
     # Wait for the rolling update to complete. 6 min is enough for cold-start
     # on GKE Autopilot (image pull + JVM warmup + Flyway), matches startupProbe budget.
-    - kubectl rollout status deployment/customer-service -n app --timeout=360s
+    - kubectl rollout status deployment/mirador -n app --timeout=360s
 
 # ── GKE Autopilot — DEFAULT production (runs automatically on main) ───────────
 #
@@ -1197,7 +1197,7 @@ deploy:gke:
         envsubst < deploy/kubernetes/gke/cloud-sql-proxy.yaml | kubectl apply -f -
         # Patch backend deployment: set serviceAccount + cloud-sql-proxy sidecar.
         # Strategic merge patch is idempotent — safe to re-apply on every deploy.
-        kubectl patch deployment customer-service -n app --type=strategic -p="{
+        kubectl patch deployment mirador -n app --type=strategic -p="{
           \"spec\":{\"template\":{\"spec\":{
             \"serviceAccountName\":\"mirador-backend\",
             \"containers\":[{
@@ -1210,8 +1210,8 @@ deploy:gke:
           }}}
         }"
         # Override DB_HOST in running pods — the ConfigMap override triggers a rollout
-        kubectl set env deployment/customer-service -n app DB_HOST=127.0.0.1
-        kubectl rollout status deployment/customer-service -n app --timeout=180s
+        kubectl set env deployment/mirador -n app DB_HOST=127.0.0.1
+        kubectl rollout status deployment/mirador -n app --timeout=180s
       else
         echo "CLOUD_SQL_INSTANCE not set — skipping Cloud SQL Auth Proxy (using in-cluster PostgreSQL)"
       fi

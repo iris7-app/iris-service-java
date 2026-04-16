@@ -9,7 +9,7 @@
 # reachable at http://mirador.127.0.0.1.nip.io:8090 on the host.
 #
 # Routing (same as production):
-#   /api/(.*) → customer-service:8080/$1   (backend, strip /api prefix)
+#   /api/(.*) → mirador:8080/$1   (backend, strip /api prefix)
 #   /(.*)     → customer-ui:80             (Angular SPA)
 # =============================================================================
 apiVersion: networking.k8s.io/v1
@@ -40,7 +40,7 @@ spec:
             pathType: ImplementationSpecific
             backend:
               service:
-                name: customer-service
+                name: mirador
                 port:
                   number: 8080
           # All other paths → Angular SPA

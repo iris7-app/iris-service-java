@@ -2,7 +2,7 @@
 # Kubernetes Namespace definitions
 #
 # Three namespaces follow the principle of least privilege and resource isolation:
-#   app           — the customer-service application (backend + frontend)
+#   app           — the mirador application (backend + frontend)
 #   infra         — stateful infrastructure: PostgreSQL, Kafka, Redis, Keycloak
 #   observability — monitoring stack: Grafana, Prometheus, Loki, Tempo
 #
@@ -20,18 +20,18 @@ kind: Namespace
 metadata:
   name: app
   labels:
-    app.kubernetes.io/part-of: customer-service
+    app.kubernetes.io/part-of: mirador
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
   name: infra
   labels:
-    app.kubernetes.io/part-of: customer-service
+    app.kubernetes.io/part-of: mirador
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
   name: observability
   labels:
-    app.kubernetes.io/part-of: customer-service
+    app.kubernetes.io/part-of: mirador

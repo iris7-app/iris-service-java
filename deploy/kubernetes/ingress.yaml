@@ -9,7 +9,7 @@
 # request because it always talks to the same origin (e.g. https://app.example.com).
 #
 # Routing rules:
-#   /api/(.*) → customer-service:8080/$1    (backend — strip /api prefix)
+#   /api/(.*) → mirador:8080/$1    (backend — strip /api prefix)
 #   /(.*)     → customer-ui:80              (frontend — Angular SPA)
 #
 # K8S_HOST = mirador1.duckdns.org  (DuckDNS free domain — A record → 34.52.233.183)
@@ -22,10 +22,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: customer-service-ingress
+  name: mirador-ingress
   namespace: app
   labels:
-    app.kubernetes.io/name: customer-service-ingress
+    app.kubernetes.io/name: mirador-ingress
   annotations:
     # ── Nginx Ingress Controller ────────────────────────────────────────────
     nginx.ingress.kubernetes.io/use-regex: "true"
@@ -47,7 +47,7 @@ spec:
   tls:
     - hosts:
         - "${K8S_HOST}"
-      secretName: customer-service-tls
+      secretName: mirador-tls
   rules:
     - host: "${K8S_HOST}"
       http:
@@ -58,7 +58,7 @@ spec:
             pathType: ImplementationSpecific
             backend:
               service:
-                name: customer-service
+                name: mirador
                 port:
                   number: 8080
           # All other paths → Angular frontend

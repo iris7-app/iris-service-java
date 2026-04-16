@@ -25,7 +25,7 @@
 set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-CLUSTER_NAME="customer-service"
+CLUSTER_NAME="mirador"
 REGISTRY_NAME="registry"
 REGISTRY_PORT="5001"
 IMAGE_REGISTRY="localhost:${REGISTRY_PORT}"
@@ -137,7 +137,7 @@ fi
 if ! $SKIP_BUILD; then
   log "Building backend image..."
   docker build \
-    -t "${IMAGE_REGISTRY}/customer-service:${IMAGE_TAG}" \
+    -t "${IMAGE_REGISTRY}/mirador:${IMAGE_TAG}" \
     "$BACKEND_DIR"
   ok "Backend image built."
 
@@ -160,7 +160,7 @@ fi
 # network path and works without configuring containerd mirrors.
 # Docker layer caching means repeated builds are fast (only changed layers rebuild).
 log "Loading images into kind cluster..."
-kind load docker-image "${IMAGE_REGISTRY}/customer-service:${IMAGE_TAG}" \
+kind load docker-image "${IMAGE_REGISTRY}/mirador:${IMAGE_TAG}" \
   --name "$CLUSTER_NAME"
 if docker image inspect "${IMAGE_REGISTRY}/customer-observability-ui:${UI_IMAGE_TAG}" &>/dev/null; then
   kind load docker-image "${IMAGE_REGISTRY}/customer-observability-ui:${UI_IMAGE_TAG}" \
@@ -174,10 +174,10 @@ kubectl apply -f "$BACKEND_DIR/deploy/kubernetes/namespace.yaml"
 
 log "Creating secrets..."
 # The secret is needed in both namespaces:
-#   - app:   customer-service Deployment reads DB_PASSWORD, JWT_SECRET, API_KEY
+#   - app:   mirador Deployment reads DB_PASSWORD, JWT_SECRET, API_KEY
 #   - infra: postgres StatefulSet reads DB_PASSWORD for POSTGRES_PASSWORD
 for ns in app infra; do
-  kubectl create secret generic customer-service-secrets \
+  kubectl create secret generic mirador-secrets \
     --from-literal=DB_PASSWORD="$DB_PASSWORD" \
     --from-literal=JWT_SECRET="$JWT_SECRET" \
     --from-literal=API_KEY="$API_KEY" \
@@ -203,8 +203,8 @@ for f in \
   envsubst < "$f" | kubectl apply -f -
 done
 # Switch imagePullPolicy to IfNotPresent for local registry
-kubectl patch deployment customer-service -n app \
-  -p '{"spec":{"template":{"spec":{"containers":[{"name":"customer-service","imagePullPolicy":"IfNotPresent"}]}}}}' \
+kubectl patch deployment mirador -n app \
+  -p '{"spec":{"template":{"spec":{"containers":[{"name":"mirador","imagePullPolicy":"IfNotPresent"}]}}}}' \
   2>/dev/null || true
 
 log "Applying frontend manifests..."
@@ -226,19 +226,19 @@ envsubst < "$BACKEND_DIR/deploy/kubernetes/ingress.yaml" | kubectl apply -f -
 
 # Disable HTTPS redirect (nginx-ingress defaults to redirect HTTP → HTTPS when
 # a TLS block is present; not needed for local development).
-kubectl annotate ingress customer-service-ingress -n app \
+kubectl annotate ingress mirador-ingress -n app \
   nginx.ingress.kubernetes.io/ssl-redirect="false" \
   nginx.ingress.kubernetes.io/force-ssl-redirect="false" \
   --overwrite 2>/dev/null || true
 # Remove the TLS spec so no redirect occurs at all
-kubectl patch ingress customer-service-ingress -n app \
+kubectl patch ingress mirador-ingress -n app \
   --type=json \
   -p='[{"op":"remove","path":"/spec/tls"}]' 2>/dev/null || true
 
 # Use IfNotPresent so pods don't try to pull from an external registry — the
 # images are already loaded into kind's containerd via `kind load` above.
-kubectl patch deployment customer-service -n app \
-  -p '{"spec":{"template":{"spec":{"containers":[{"name":"customer-service","imagePullPolicy":"Never"}]}}}}' 2>/dev/null || true
+kubectl patch deployment mirador -n app \
+  -p '{"spec":{"template":{"spec":{"containers":[{"name":"mirador","imagePullPolicy":"Never"}]}}}}' 2>/dev/null || true
 kubectl patch deployment customer-ui -n app \
   -p '{"spec":{"template":{"spec":{"containers":[{"name":"customer-ui","imagePullPolicy":"Never"}]}}}}' 2>/dev/null || true
 
@@ -249,7 +249,7 @@ kubectl rollout status statefulset/postgresql -n infra --timeout=90s
 kubectl rollout status deployment/kafka     -n infra --timeout=120s
 
 log "Waiting for backend to be ready (may take up to 2 min for Flyway migrations)..."
-kubectl rollout status deployment/customer-service -n app --timeout=180s
+kubectl rollout status deployment/mirador -n app --timeout=180s
 
 if kubectl get deployment customer-ui -n app &>/dev/null; then
   log "Waiting for frontend to be ready..."
