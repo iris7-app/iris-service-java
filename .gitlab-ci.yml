@@ -272,6 +272,50 @@ renovate-lint:
     # --strict: fail on warnings too.
     - npx --yes --package renovate renovate-config-validator --strict renovate.json
 
+# ── release-please — automatic CHANGELOG + semver tags on main ────────────────
+#
+# release-please (Google's tool) reads Conventional Commits since the last tag,
+# computes the next version (semver: feat → minor, fix/perf → patch, ! → major),
+# writes CHANGELOG.md, and opens a release MR. When that MR merges, it creates
+# a Git tag (vX.Y.Z) and a GitLab Release.
+#
+# Runs only on `main` — feature commits on `dev` are picked up when `dev` is
+# merged into `main` (via our auto-merge flow on green pipelines).
+#
+# Requires RELEASE_PLEASE_TOKEN (masked CI var) — a personal access token with
+# `api` + `write_repository` scopes so release-please can push the release MR
+# and tag. Job is a no-op until that token is provisioned.
+release-please:
+  stage: deploy
+  image: node:22-alpine
+  tags:
+    - macbook-local
+  needs: []        # independent — runs in parallel with deploys
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $RELEASE_PLEASE_TOKEN
+  before_script:
+    - apk add --no-cache git
+  script:
+    # --token passes the PAT; --repo-url points at this project.
+    # The CLI reads release-please-config.json + .release-please-manifest.json
+    # from the working tree.
+    - |
+      npx --yes release-please release-pr \
+        --token "$RELEASE_PLEASE_TOKEN" \
+        --repo-url "$CI_PROJECT_URL" \
+        --target-branch "$CI_DEFAULT_BRANCH" \
+        --config-file release-please-config.json \
+        --manifest-file .release-please-manifest.json
+      npx --yes release-please github-release \
+        --token "$RELEASE_PLEASE_TOKEN" \
+        --repo-url "$CI_PROJECT_URL" \
+        --target-branch "$CI_DEFAULT_BRANCH" \
+        --config-file release-please-config.json \
+        --manifest-file .release-please-manifest.json
+  allow_failure: true   # until RELEASE_PLEASE_TOKEN is set; flip to false after
+
 # ── stage: integration ────────────────────────────────────────────────────────
 
 # Integration tests (*ITest) via maven-failsafe, with Docker socket binding for Testcontainers.
