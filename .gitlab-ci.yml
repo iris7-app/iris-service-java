@@ -312,10 +312,14 @@ sonar-analysis:
       -XX:+EnableDynamicAgentLoading
       -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
   script:
-    # target/jacoco-merged.xml (unit + IT combined) is produced by the report-merged JaCoCo execution
-    # in the integration-test stage and forwarded here via artifacts. sonar.coverage.jacoco.xmlReportPaths
-    # in pom.xml points to this file so integration test coverage (CustomerController, AuthController,
-    # messaging…) is included — without ITs only ~32% coverage would be reported instead of ~80%.
+    # Compile first so target/classes/ exists — SonarScanner's Java analyzer
+    # requires compiled bytecode via sonar.java.binaries.
+    # The integration-test artifacts contain jacoco-it.xml + spotbugs report
+    # but NOT target/classes/ (would bloat artifacts beyond what GitLab allows).
+    # Skip tests: already validated in unit-test + integration-test stages.
+    - mvn $MAVEN_CLI_OPTS compile -DskipTests -Djacoco.skip=true
+    # target/site/jacoco-it/jacoco.xml comes from integration-test artifacts
+    # so SonarCloud merges unit + IT coverage (matches pom.xml xmlReportPaths).
     - mvn $MAVEN_CLI_OPTS sonar:sonar
       -Dsonar.token="$SONAR_TOKEN"
       -Dsonar.host.url="https://sonarcloud.io"
@@ -374,6 +378,10 @@ code-quality:
   allow_failure: true   # Code Quality annotations are informational — must never block merges
   variables:
     MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  before_script:
+    # python3 is required for the XML→JSON conversion below but isn't in the
+    # maven:noble image. apt-get install is ~1s since we only need the minimal package.
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3
   script:
     # Step 1 — Generate PMD + Checkstyle XML reports.
     # -Dcompat: activates the Java 21 source overlay (ScopedValue → ThreadLocal shim)
