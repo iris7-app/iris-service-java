@@ -37,30 +37,41 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 workflow:
+  # IMPORTANT: `changes:` matches if at LEAST one listed file changed, so the
+  # "skip if only docs changed" intent is expressed as an ALLOWLIST of code paths:
+  # run the pipeline ONLY when at least one code/build/infra file changed.
+  # Pure .md/docs/.gitignore commits → no rule matches → pipeline skipped entirely.
   rules:
-    # Skip the pipeline entirely when only documentation files change.
-    # Avoids burning 20+ CI jobs for a typo fix or TASKS.md update.
-    # Applies to both MR events and direct pushes on any branch (including main).
-    # If truly needed, force a pipeline via the GitLab UI ("Run pipeline").
+    # MR events — run when code, build, infra, or CI config changes.
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
-        - "**/*.md"
-        - "docs/**/*"
-        - ".gitignore"
-        - "LICENSE"
-      when: never
-    - if: $CI_COMMIT_BRANCH
-      changes:
-        paths:
-          - "**/*.md"
-          - "docs/**/*"
-          - ".gitignore"
-          - "LICENSE"
-        compare_to: refs/heads/main
-      when: never
-    # Regular pipelines: code-review feedback on MRs + artifact production on main.
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+        - "src/**/*"
+        - "pom.xml"
+        - "mvnw"
+        - "mvnw.cmd"
+        - ".mvn/**/*"
+        - "Dockerfile*"
+        - ".dockerignore"
+        - "docker-compose*.yml"
+        - ".gitlab-ci.yml"
+        - "k8s/**/*"
+        - "terraform/**/*"
+        - "scripts/**/*"
+    # Main branch pushes — same allowlist, compared against HEAD~1 (last commit).
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
+      changes:
+        - "src/**/*"
+        - "pom.xml"
+        - "mvnw"
+        - "mvnw.cmd"
+        - ".mvn/**/*"
+        - "Dockerfile*"
+        - ".dockerignore"
+        - "docker-compose*.yml"
+        - ".gitlab-ci.yml"
+        - "k8s/**/*"
+        - "terraform/**/*"
+        - "scripts/**/*"
     # Scheduled pipelines: two named schedules (native build + report generation).
     # Configure each in GitLab → CI/CD → Schedules. The REPORT_PIPELINE variable
     # distinguishes the report schedule from the native-build schedule.
