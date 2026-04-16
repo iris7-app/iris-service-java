@@ -312,10 +312,14 @@ sonar-analysis:
       -XX:+EnableDynamicAgentLoading
       -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
   script:
-    # target/jacoco-merged.xml (unit + IT combined) is produced by the report-merged JaCoCo execution
-    # in the integration-test stage and forwarded here via artifacts. sonar.coverage.jacoco.xmlReportPaths
-    # in pom.xml points to this file so integration test coverage (CustomerController, AuthController,
-    # messaging…) is included — without ITs only ~32% coverage would be reported instead of ~80%.
+    # Compile first so target/classes/ exists — SonarScanner's Java analyzer
+    # requires compiled bytecode via sonar.java.binaries.
+    # The integration-test artifacts contain jacoco-it.xml + spotbugs report
+    # but NOT target/classes/ (would bloat artifacts beyond what GitLab allows).
+    # Skip tests: already validated in unit-test + integration-test stages.
+    - mvn $MAVEN_CLI_OPTS compile -DskipTests -Djacoco.skip=true
+    # target/site/jacoco-it/jacoco.xml comes from integration-test artifacts
+    # so SonarCloud merges unit + IT coverage (matches pom.xml xmlReportPaths).
     - mvn $MAVEN_CLI_OPTS sonar:sonar
       -Dsonar.token="$SONAR_TOKEN"
       -Dsonar.host.url="https://sonarcloud.io"
@@ -374,6 +378,10 @@ code-quality:
   allow_failure: true   # Code Quality annotations are informational — must never block merges
   variables:
     MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  before_script:
+    # python3 is required for the XML→JSON conversion below but isn't in the
+    # maven:noble image. apt-get install is ~1s since we only need the minimal package.
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends python3
   script:
     # Step 1 — Generate PMD + Checkstyle XML reports.
     # -Dcompat: activates the Java 21 source overlay (ScopedValue → ThreadLocal shim)
@@ -527,24 +535,19 @@ build-jar:
 # Only runs on the default branch and on tags — skip on every MR to
 # avoid flooding the registry with images that are never deployed.
 docker-build:
-  # Build a multi-arch (amd64) image using Docker buildx on the local macbook runner.
-  # Why not Kaniko anymore:
-  #   - The macbook-local runner is Apple Silicon (arm64); Kaniko is NOT a cross-compiler,
-  #     so it produces arm64-only images that fail on GKE amd64 nodes with "exec format error".
-  #   - Forcing Kaniko onto saas-linux-medium-amd64 works but burns GitLab SaaS quota fast.
-  # buildx + QEMU on the local runner cross-compiles amd64 at the cost of wall-clock time
-  # (emulation is ~2-3x slower than native) but runs on local hardware with no quota impact.
-  # The runner has Docker Desktop with buildx + QEMU preinstalled.
+  # Build an amd64 image via Docker buildx + QEMU on the local macbook runner.
+  # Uses the host's Docker Desktop socket (mounted by the runner config) instead
+  # of a DinD service, which doesn't work reliably on Docker Desktop Mac — the
+  # DinD container can't be resolved by name from the job container on Docker
+  # Desktop's virtualised network.
+  # Kaniko was dropped: it isn't a cross-compiler, so arm64 host → arm64 image
+  # which fails on GKE amd64 nodes with "exec format error".
+  # SaaS runner alternative (saas-linux-medium-amd64) works but burns paid quota.
   stage: package
-  interruptible: false   # Expensive build. Don't restart mid-run on a new push.
+  interruptible: false # Expensive build. Don't restart mid-run on a new push.
+  tags:
+    - macbook-local # Only this runner has buildx + QEMU + host Docker socket.
   image: docker:28
-  services:
-    - name: docker:28-dind
-      alias: docker
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_BUILDKIT: "1"
   needs:
     - job: unit-test
     - job: integration-test
@@ -555,9 +558,9 @@ docker-build:
     - if: $CI_COMMIT_TAG
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-    # Register QEMU to cross-build amd64 on an arm64 host (no-op on native amd64).
+    # Ensure QEMU is registered for cross-compilation (idempotent).
     - docker run --privileged --rm tonistiigi/binfmt --install amd64 || true
-    - docker buildx create --name multi --use || docker buildx use multi
+    - docker buildx create --name multi --use 2>/dev/null || docker buildx use multi
   script:
     - |
       docker buildx build \
