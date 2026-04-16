@@ -72,7 +72,7 @@
 
 ## Pending — Documentation
 
-- [ ] **Tech glossary verification pass** — `docs/technologies.md` has
+- [ ] **Tech glossary verification pass** — `docs/reference/technologies.md` has
       entries tagged "verify" by the generating agent: WireMock usage
       (not in pom.xml?), SSE/SockJS wiring, Cilium/Dataplane V2 explicit
       status, Memorystore vs scaffolding, Artifact Registry explicit
@@ -93,6 +93,6 @@
       securityContext + readOnlyRootFilesystem.
 - [x] Docker image supply-chain — syft SBOM, Grype CVE scan, Dockle,
       hadolint, cosign keyless via GitLab OIDC + Sigstore.
-- [x] 1100-line technology glossary (`docs/technologies.md`).
+- [x] 1100-line technology glossary (`docs/reference/technologies.md`).
 - [x] Bumped 12 safe minor/patch versions (resilience4j, pyroscope, jjwt,
       maven plugins, spotbugs, pmd, asm, OTel appender, sonar-maven-plugin).

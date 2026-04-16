@@ -297,11 +297,11 @@ Pre-push hook (via lefthook) runs unit tests automatically before every `git pus
 
 | Document | Audience | Content |
 |----------|----------|---------|
-| [Architecture](docs/architecture.md) | New contributors | Component reference, call flows, code organisation |
-| [API Reference](docs/api.md) | API consumers | All endpoints with curl examples |
-| [API Contract](docs/api-contract.md) | API consumers | Versioning policy (`X-API-Version` vs URL), deprecation rules, BC guarantees |
-| [Security](docs/security.md) | Security reviewers | OWASP patterns, threat model, auth flows, CVE handling |
-| [Observability](docs/observability.md) | SRE / ops | Dashboards, trace/log/metric flow, diagnostic scenarios, Kafka, resilience, Grafana Cloud |
+| [Architecture](docs/architecture/overview.md) | New contributors | Component reference, call flows, code organisation |
+| [API Reference](docs/api/api.md) | API consumers | All endpoints with curl examples |
+| [API Contract](docs/api/contract.md) | API consumers | Versioning policy (`X-API-Version` vs URL), deprecation rules, BC guarantees |
+| [Security](docs/architecture/security.md) | Security reviewers | OWASP patterns, threat model, auth flows, CVE handling |
+| [Observability](docs/architecture/observability.md) | SRE / ops | Dashboards, trace/log/metric flow, diagnostic scenarios, Kafka, resilience, Grafana Cloud |
 
 ### Folder-level orientation (`README.md` in each directory)
 
