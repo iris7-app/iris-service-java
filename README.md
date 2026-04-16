@@ -303,6 +303,23 @@ Pre-push hook (via lefthook) runs unit tests automatically before every `git pus
 | [Security](docs/architecture/security.md) | Security reviewers | OWASP patterns, threat model, auth flows, CVE handling |
 | [Observability](docs/architecture/observability.md) | SRE / ops | Dashboards, trace/log/metric flow, diagnostic scenarios, Kafka, resilience, Grafana Cloud |
 
+### Architecture decisions (ADRs)
+
+Non-obvious choices are justified in Michael-Nygard–style ADRs under
+[`docs/adr/`](docs/adr/README.md):
+
+- [0001 — Record architecture decisions](docs/adr/0001-record-architecture-decisions.md)
+- [0002 — Kustomize over Helm for K8s manifests](docs/adr/0002-kustomize-over-helm.md)
+- [0003 — Cloud SQL over in-cluster Postgres on GKE](docs/adr/0003-cloud-sql-over-in-cluster-postgres.md)
+- [0004 — Local CI runner, no paid SaaS quota](docs/adr/0004-local-ci-runner.md)
+- [0005 — In-cluster Kafka (not Managed) for cost reasons](docs/adr/0005-in-cluster-kafka.md)
+- [0006 — Hoist every Maven version into `<properties>`](docs/adr/0006-maven-version-hoisting.md)
+- [0007 — Workload Identity Federation for GCP auth in CI](docs/adr/0007-workload-identity-federation.md)
+- [0008 — Feature-sliced package layout in `com.mirador.*`](docs/adr/0008-feature-sliced-packages.md)
+- [0009 — Container runtime base image — `eclipse-temurin:25-jre`](docs/adr/0009-container-runtime-base-image.md)
+- [0010 — OpenTelemetry OTLP push to a Collector (not Prometheus scrape)](docs/adr/0010-otlp-push-to-collector.md)
+- [0011 — Minimal `@Transactional` surface, no `@Transactional(readOnly = true)`](docs/adr/0011-transactional-read-strategy.md)
+
 ### Folder-level orientation (`README.md` in each directory)
 
 | Folder | README points at |

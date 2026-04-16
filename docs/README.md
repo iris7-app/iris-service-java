@@ -9,7 +9,7 @@ under this tree.
 ```
 docs/
 ├── README.md               ← you are here (index)
-├── adr/                    ← Architecture Decision Records (8 entries)
+├── adr/                    ← Architecture Decision Records (11 entries)
 ├── architecture/           ← high-level design, observability, security model
 ├── api/                    ← API contract, curl examples, Auth0 action code
 ├── reference/              ← technology glossary (~1100 lines)
@@ -20,18 +20,8 @@ docs/
 ## Architecture decisions
 
 Non-obvious architectural choices are captured in **ADRs** (Michael Nygard
-format). Start with the index: [`adr/README.md`](adr/README.md).
-
-| ID   | Status    | Decision                                                               |
-| ---- | --------- | ---------------------------------------------------------------------- |
-| 0001 | Accepted  | [Record architecture decisions](adr/0001-record-architecture-decisions.md)        |
-| 0002 | Accepted  | [Kustomize over Helm for K8s manifests](adr/0002-kustomize-over-helm.md)          |
-| 0003 | Accepted  | [Cloud SQL over in-cluster Postgres on GKE](adr/0003-cloud-sql-over-in-cluster-postgres.md) |
-| 0004 | Accepted  | [Local CI runner, no paid SaaS quota](adr/0004-local-ci-runner.md)                |
-| 0005 | Accepted  | [In-cluster Kafka for cost reasons](adr/0005-in-cluster-kafka.md)                 |
-| 0006 | Accepted  | [Hoist every Maven version into `<properties>`](adr/0006-maven-version-hoisting.md) |
-| 0007 | Accepted  | [Workload Identity Federation for GCP auth](adr/0007-workload-identity-federation.md) |
-| 0008 | Accepted  | [Feature-sliced package layout](adr/0008-feature-sliced-packages.md)              |
+format). The canonical index lives at [`adr/README.md`](adr/README.md) —
+it lists every ADR with status, and the numbers are stable once merged.
 
 ## Architecture
 
