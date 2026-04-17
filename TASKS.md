@@ -39,10 +39,10 @@
       known CVEs. Requires artifact rename
       (`spring-ai-ollama-spring-boot-starter` → `spring-ai-starter-model-ollama`)
       and API-surface validation.
-- [ ] **ShedLock** 6 → 7 (major; distributed-lock library).
-- [ ] **Testcontainers** 1.21 → 2.0 (major; breaking changes).
-- [ ] **testcontainers-keycloak** 3 → 4 (major).
-- [~] **Checkstyle** 10.26.1 → 13.4.0 (3 majors; Checkstyle-config review).
+- [ ] **Testcontainers** 1.21 → 2.0 — **blocked**. 2.0.x core is on
+      Maven Central but companion modules (`junit-jupiter`,
+      `postgresql`, `kafka`) only ship for 1.21.x; stay on 1.21.4
+      until modules catch up. Revisit periodically.
 
 ## Pending — Industry-standard upgrades
 
@@ -73,6 +73,12 @@
 
 ## Recently Completed
 
+- [x] **Version bumps (post-Sonar)**: Checkstyle 10.26.1 → 13.4.0
+      (3 majors; Java 25 parser verified clean, only stylistic
+      warnings emitted), ShedLock 6.0.2 → 7.7.0 (same import paths),
+      testcontainers-keycloak 3.5.0 → 4.1.1 (API compatible),
+      tools.jackson.core 3.1.0 → 3.1.1 pinned (CVE
+      GHSA-2m67-wjpj-xhg9).
 - [x] **SonarCloud cleanup — zero actionable issues**. Five merged MRs
       (56-60) drove the inventory from 146 open issues to 0: S7467
       (unused-catch pattern), S1128 (unused imports), S1192 (literal

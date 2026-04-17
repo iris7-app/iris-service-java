@@ -57,7 +57,7 @@
         -->
         <springdoc.version>3.0.3</springdoc.version>
         <pyroscope.version>2.5.2</pyroscope.version>                <!-- continuous profiling agent — pushes CPU/memory profiles to Pyroscope -->
-        <testcontainers.version>1.21.4</testcontainers.version>     <!-- pinned to align kafka module with the core version -->
+        <testcontainers.version>1.21.4</testcontainers.version>     <!-- 2.0.x core is released but companion modules (junit-jupiter, postgresql, kafka) are not yet published to Central; stay on 1.21.x until they catch up -->
         <jjwt.version>0.13.0</jjwt.version>                        <!-- split into api/impl/jackson — see dependency block -->
         <shedlock.version>7.7.0</shedlock.version>                  <!-- split into spring/provider — see dependency block -->
         <!--
@@ -129,7 +129,7 @@
           its OTel floor.
         -->
         <opentelemetry-appender.version>2.18.1-alpha</opentelemetry-appender.version>
-        <testcontainers-keycloak.version>3.5.0</testcontainers-keycloak.version>
+        <testcontainers-keycloak.version>4.1.1</testcontainers-keycloak.version>
 
         <!--
           SonarCloud analysis configuration (sonarcloud.io — free for public repos).
