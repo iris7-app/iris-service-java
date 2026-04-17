@@ -875,7 +875,11 @@ public class QualityReportEndpoint {
      * @return map with {@code usedUndeclared} and {@code unusedDeclared} lists, or {@code null}
      *         if the file is absent (not generated yet / build skipped analyze phase).
      */
-    @SuppressWarnings("java:S3776") // cognitive complexity — linear parsing, not reducible
+    // S1168: null is semantically distinct from Map.of() here — the caller uses it
+    // to decide whether to include the "dependencyAnalysis" key in the report at all.
+    // Returning an empty map would emit `"dependencyAnalysis": {}` even when the
+    // source file is missing, misleading the UI.
+    @SuppressWarnings({"java:S3776", "java:S1168"})
     private Map<String,Object> parseDependencyAnalysis() {
         InputStream is = loadResource(CP_DEP_ANALYZE, "target/dependency-analysis.txt");
         if (is == null) return null;
