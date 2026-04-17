@@ -58,7 +58,7 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    void noResourceFoundException_returns404_notFound() throws Exception {
+    void noResourceFoundException_returns404_notFound() {
         var ex = mock(NoResourceFoundException.class);
         ProblemDetail pd = handler.handle(ex);
         assertThat(pd.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
