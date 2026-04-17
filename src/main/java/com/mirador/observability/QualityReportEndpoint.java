@@ -312,7 +312,7 @@ public class QualityReportEndpoint {
                         allTestCases.add(new double[]{tcTime});
                         allTestCaseNames.add(tcName);
                     }
-                } catch (Exception ignored) {
+                } catch (Exception _) {
                     // skip malformed XML
                 }
             }
@@ -364,7 +364,7 @@ public class QualityReportEndpoint {
                 }
             }
             if (!streams.isEmpty()) return streams;
-        } catch (IOException ignored) {
+        } catch (IOException _) {
             // fall through to dev fallback
         }
         // Fallback: local target/ directory
@@ -375,7 +375,7 @@ public class QualityReportEndpoint {
                 for (File f : xmlFiles) {
                     try {
                         streams.add(new java.io.FileInputStream(f));
-                    } catch (IOException ignored) {
+                    } catch (IOException _) {
                         // skip unreadable files
                     }
                 }
@@ -451,7 +451,7 @@ public class QualityReportEndpoint {
 
                     pkgData.merge(pkgDisplay, new long[]{lCovered, lMissed + lCovered, iCovered, iMissed + iCovered},
                             (a, b) -> new long[]{a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]});
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException _) {
                     // skip malformed lines
                 }
             }
@@ -602,10 +602,10 @@ public class QualityReportEndpoint {
                     if (line != null && !line.isBlank()) remoteUrl = line.trim();
                 }
                 remoteProc.waitFor();
-            } catch (InterruptedException ignored) {
+            } catch (InterruptedException _) {
                 // Preserve interrupt so callers can react (Sonar S2142).
                 Thread.currentThread().interrupt();
-            } catch (Exception ignored) { /* remote URL is optional */ }
+            } catch (Exception _) { /* remote URL is optional */ }
 
             Process proc = new ProcessBuilder(GIT_BIN, "log", "--no-merges", "-15",
                     "--format=%h|%an|%ai|%s")
@@ -786,9 +786,9 @@ public class QualityReportEndpoint {
                             }
                         }
                     }
-                } catch (InterruptedException ignored) {
+                } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
-                } catch (Exception ignored) {
+                } catch (Exception _) {
                     // Freshness check failure is non-critical — dep appears without latestVersion field
                 }
             });
@@ -799,9 +799,9 @@ public class QualityReportEndpoint {
         try {
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                     .get(8, TimeUnit.SECONDS);
-        } catch (InterruptedException ignored) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
-        } catch (Exception ignored) {
+        } catch (Exception _) {
             // Timeout or interruption — return whatever was collected so far
         }
 
@@ -828,7 +828,7 @@ public class QualityReportEndpoint {
                         .filter(l -> l.startsWith("   ") || l.startsWith("\\-") || l.startsWith("+"))
                         .count();
                 treeResult.put("totalTransitive", transitiveCount);
-            } catch (IOException ignored) {
+            } catch (IOException _) {
                 // tree unavailable — report without it
             }
         }
@@ -1073,7 +1073,7 @@ public class QualityReportEndpoint {
                     if (methodCovered == 0 && methods > 0) {
                         untestedClasses.add(simpleClass);
                     }
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException _) {}
             }
         } catch (IOException e) {
             return Map.of(K_AVAILABLE, false, K_ERROR, e.getMessage());
@@ -1515,7 +1515,7 @@ public class QualityReportEndpoint {
         if (res.exists()) {
             try {
                 return res.getInputStream();
-            } catch (IOException ignored) {
+            } catch (IOException _) {
                 // fall through
             }
         }
@@ -1523,7 +1523,7 @@ public class QualityReportEndpoint {
         if (devFile.exists()) {
             try {
                 return new java.io.FileInputStream(devFile);
-            } catch (IOException ignored) {
+            } catch (IOException _) {
                 // fall through
             }
         }
@@ -1789,7 +1789,7 @@ public class QualityReportEndpoint {
                         Instant start  = Instant.parse(startedAt.asText());
                         Instant finish = Instant.parse(finishedAt.asText());
                         entry.put("durationSeconds", Duration.between(start, finish).getSeconds());
-                    } catch (Exception ignored) {
+                    } catch (Exception _) {
                         // Malformed timestamp — omit duration rather than break the section
                     }
                 }

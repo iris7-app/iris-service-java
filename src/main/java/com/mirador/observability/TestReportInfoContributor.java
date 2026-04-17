@@ -96,7 +96,7 @@ public class TestReportInfoContributor implements InfoContributor {
                     suiteMap.put(KEY_SKIPPED, skipped);
                     suiteMap.put("time", String.format("%.3fs", time));
                     suites.add(suiteMap);
-                } catch (Exception ignored) {
+                } catch (Exception _) {
                     // skip malformed XML
                 }
             }
@@ -145,7 +145,7 @@ public class TestReportInfoContributor implements InfoContributor {
     private static int intAttr(Element el, String attr) {
         try {
             return Integer.parseInt(el.getAttribute(attr));
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             return 0;
         }
     }
@@ -153,7 +153,7 @@ public class TestReportInfoContributor implements InfoContributor {
     private static double doubleAttr(Element el, String attr) {
         try {
             return Double.parseDouble(el.getAttribute(attr));
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             return 0.0;
         }
     }
