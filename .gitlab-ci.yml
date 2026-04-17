@@ -486,6 +486,20 @@ sonar-analysis:
   needs:
     - job: integration-test
       artifacts: true   # inherit target/ artifacts (JaCoCo XML, bytecode) from integration stage
+    # Optional SARIF sources — Sonar silently skips missing
+    # sarifReportPaths entries, so sonar-analysis still runs on MR
+    # pipelines where trivy didn't fire. When trivy runs (main / tags),
+    # Sonar absorbs its findings as External Issues.
+    #
+    # semgrep SARIF is NOT chained here because semgrep lives in the
+    # `reports` stage (downstream of `sonar`) so it produces the SARIF
+    # after sonar-analysis has finished. The semgrep-report.sarif is
+    # still published to SonarCloud manually during the daily report
+    # schedule by running semgrep BEFORE the sonar step in that job —
+    # tracked as a follow-up if we want continuous semgrep coverage.
+    - job: trivy:scan
+      artifacts: true
+      optional: true
   rules:
     # Run on default branch and MRs only — skip feature branches to avoid noise.
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
@@ -768,6 +782,18 @@ trivy:scan:
         --password "$CI_REGISTRY_PASSWORD" \
         "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA"
     - |
+      # SARIF output — ingested by SonarCloud via sonar.sarifReportPaths.
+      # Trivy's sarif template attaches CVE → rule/finding so Sonar
+      # shows them on the Issues page next to native rules.
+      trivy image \
+        --exit-code 0 \
+        --severity HIGH,CRITICAL \
+        --format sarif \
+        --output trivy-report.sarif \
+        --username "$CI_REGISTRY_USER" \
+        --password "$CI_REGISTRY_PASSWORD" \
+        "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA"
+    - |
       # Human-readable summary to CI log
       trivy image \
         --exit-code 0 \
@@ -778,6 +804,7 @@ trivy:scan:
     expire_in: 30 days
     paths:
       - trivy-report.json
+      - trivy-report.sarif
 
 # ── Dockerfile lint (hadolint) ────────────────────────────────────────────────
 # Linter for Dockerfile best practices: pin versions, COPY not ADD, USER
@@ -1215,6 +1242,19 @@ semgrep:
         --config=p/secrets
         --json
         --output=semgrep-report.json
+        --exclude="src/test"
+        src/main/java/
+        || true
+    # SARIF output — ingested by SonarCloud via sonar.sarifReportPaths
+    # so Semgrep findings land on Sonar's Issues page next to native
+    # Java rule findings (single-source-of-truth principle).
+    - semgrep
+        --config=p/java
+        --config=p/spring
+        --config=p/owasp-top-ten
+        --config=p/secrets
+        --sarif
+        --output=semgrep-report.sarif
         --exclude="src/test"
         src/main/java/
         || true

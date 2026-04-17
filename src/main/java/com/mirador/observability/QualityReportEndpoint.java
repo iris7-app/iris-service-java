@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import javax.xml.XMLConstants;
@@ -105,8 +108,11 @@ public class QualityReportEndpoint {
     private static final String CP_OWASP      = "META-INF/build-reports/dependency-check-report.json";
     private static final String CP_PITEST     = "META-INF/build-reports/pit-reports/mutations.xml";
 
-    // Fallback paths for local development
-    private static final String DEV_JACOCO = "target/site/jacoco/jacoco.csv";
+    // Fallback paths for local development. DEV_JACOCO prefers the merged
+    // report (unit + IT) — same data as the jacoco:check gate reads — and
+    // falls back to the unit-only CSV when running `mvn verify -DskipITs`.
+    private static final String DEV_JACOCO = "target/site/jacoco-merged/jacoco.csv";
+    private static final String DEV_JACOCO_UNIT = "target/site/jacoco/jacoco.csv";
     private static final String DEV_SPOTBUGS = "target/spotbugsXml.xml";
     private static final String DEV_SUREFIRE_DIR = "target/surefire-reports";
     private static final String DEV_PMD        = "target/pmd.xml";
@@ -138,6 +144,33 @@ public class QualityReportEndpoint {
     private static final String K_VERSION       = "version";
     private static final String K_DEPENDENCIES  = "dependencies";
     private static final String K_MUTATED_CLASS = "mutatedClass";
+
+    /**
+     * Absolute path to the {@code git} binary, resolved once at class-init
+     * from well-known container / distro locations. Using an absolute path
+     * in {@code ProcessBuilder} sidesteps the Sonar S4036 hotspot that
+     * fires on commands resolved via {@code $PATH} (which could in theory
+     * include a user-writable directory). In our container the path is
+     * {@code /usr/bin/git}; on a developer Mac it's typically under
+     * Homebrew. When git isn't found we fall back to the bare command
+     * name so the diagnostics still run (the `git` entries are optional
+     * metadata in the quality report, not load-bearing).
+     */
+    private static final String GIT_BIN = resolveGitBinary();
+
+    private static String resolveGitBinary() {
+        for (String candidate : List.of(
+                "/usr/bin/git",
+                "/usr/local/bin/git",
+                "/opt/homebrew/bin/git",
+                "/bin/git")) {
+            Path p = Paths.get(candidate);
+            if (Files.isExecutable(p)) {
+                return p.toString();
+            }
+        }
+        return "git";
+    }
 
     // SonarQube integration — defaults work for local Docker setup.
     // Override via env vars: SONAR_HOST_URL, SONAR_PROJECT_KEY, SONAR_TOKEN.
@@ -360,7 +393,13 @@ public class QualityReportEndpoint {
 
     @SuppressWarnings("java:S3776") // parses JaCoCo CSV with per-package aggregation — inherently multi-branch
     private Map<String, Object> buildCoverageSection() {
+        // Prefer the merged report (unit + IT). In dev, fall through to
+        // the unit-only CSV when the merged one was not produced (e.g.
+        // `mvn verify -DskipITs`).
         InputStream is = loadResource(CP_JACOCO, DEV_JACOCO);
+        if (is == null) {
+            is = loadResource(CP_JACOCO, DEV_JACOCO_UNIT);
+        }
         if (is == null) {
             return Map.of(K_AVAILABLE, false);
         }
@@ -552,7 +591,7 @@ public class QualityReportEndpoint {
             // Fetch remote URL first so it can be shown as a link in the frontend.
             String remoteUrl = null;
             try {
-                Process remoteProc = new ProcessBuilder("git", "remote", "get-url", "origin")
+                Process remoteProc = new ProcessBuilder(GIT_BIN, "remote", "get-url", "origin")
                         .directory(new File("."))
                         .redirectErrorStream(true)
                         .start();
@@ -562,9 +601,12 @@ public class QualityReportEndpoint {
                     if (line != null && !line.isBlank()) remoteUrl = line.trim();
                 }
                 remoteProc.waitFor();
+            } catch (InterruptedException ignored) {
+                // Preserve interrupt so callers can react (Sonar S2142).
+                Thread.currentThread().interrupt();
             } catch (Exception ignored) { /* remote URL is optional */ }
 
-            Process proc = new ProcessBuilder("git", "log", "--no-merges", "-15",
+            Process proc = new ProcessBuilder(GIT_BIN, "log", "--no-merges", "-15",
                     "--format=%h|%an|%ai|%s")
                     .directory(new File("."))
                     .redirectErrorStream(true)
@@ -591,6 +633,9 @@ public class QualityReportEndpoint {
             if (remoteUrl != null) r.put("remoteUrl", remoteUrl);
             r.put("commits", commits);
             return r;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Map.of(K_AVAILABLE, false, K_ERROR, e.getMessage());
         } catch (Exception e) {
             return Map.of(K_AVAILABLE, false, K_ERROR, e.getMessage());
         }
@@ -740,6 +785,8 @@ public class QualityReportEndpoint {
                             }
                         }
                     }
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
                 } catch (Exception ignored) {
                     // Freshness check failure is non-critical — dep appears without latestVersion field
                 }
@@ -751,6 +798,8 @@ public class QualityReportEndpoint {
         try {
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                     .get(8, TimeUnit.SECONDS);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
         } catch (Exception ignored) {
             // Timeout or interruption — return whatever was collected so far
         }
@@ -962,7 +1011,11 @@ public class QualityReportEndpoint {
      * COMPLEXITY_MISSED(9), COMPLEXITY_COVERED(10), METHOD_MISSED(11), METHOD_COVERED(12)
      */
     private Map<String, Object> buildMetricsSection() {
+        // Same merged-first / unit-fallback strategy as buildCoverageSection.
         InputStream is = loadResource(CP_JACOCO, DEV_JACOCO);
+        if (is == null) {
+            is = loadResource(CP_JACOCO, DEV_JACOCO_UNIT);
+        }
         if (is == null) return Map.of(K_AVAILABLE, false);
 
         long totalClasses = 0, totalMethods = 0, totalLines = 0, totalComplexity = 0;
@@ -1409,6 +1462,10 @@ public class QualityReportEndpoint {
             r.put("maintainabilityRating", ratingLabel(raw.get("sqale_rating")));
             return r;
 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Map.of(K_AVAILABLE, false,
+                    "note", "SonarQube call interrupted");
         } catch (Exception e) {
             return Map.of(K_AVAILABLE, false,
                     "note", "SonarQube unreachable — start with: docker compose up -d sonarqube");
@@ -1738,6 +1795,9 @@ public class QualityReportEndpoint {
             result.put("host", gitlabHostUrl);
             result.put("pipelines", pipelines);
             return result;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Map.of(K_AVAILABLE, false, K_ERROR, "interrupted");
         } catch (Exception e) {
             return Map.of(K_AVAILABLE, false, K_ERROR, e.getMessage());
         }
@@ -1757,7 +1817,7 @@ public class QualityReportEndpoint {
             // --sort=-committerdate: most recently updated branches first
             // %(refname:short): strips "origin/" prefix cleanly
             Process proc = new ProcessBuilder(
-                    "git", "for-each-ref", "refs/remotes",
+                    GIT_BIN, "for-each-ref", "refs/remotes",
                     "--sort=-committerdate",
                     "--format=%(refname:short)|%(committerdate:iso)|%(authorname)",
                     "--count=20"
@@ -1789,6 +1849,9 @@ public class QualityReportEndpoint {
             result.put("branches", branches);
             result.put("total", branches.size());
             return result;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Map.of(K_AVAILABLE, false, "reason", "git call interrupted");
         } catch (Exception e) {
             return Map.of(K_AVAILABLE, false, "reason", "git error: " + e.getMessage());
         }
