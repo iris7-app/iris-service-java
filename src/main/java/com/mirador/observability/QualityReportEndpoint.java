@@ -108,8 +108,11 @@ public class QualityReportEndpoint {
     private static final String CP_OWASP      = "META-INF/build-reports/dependency-check-report.json";
     private static final String CP_PITEST     = "META-INF/build-reports/pit-reports/mutations.xml";
 
-    // Fallback paths for local development
-    private static final String DEV_JACOCO = "target/site/jacoco/jacoco.csv";
+    // Fallback paths for local development. DEV_JACOCO prefers the merged
+    // report (unit + IT) — same data as the jacoco:check gate reads — and
+    // falls back to the unit-only CSV when running `mvn verify -DskipITs`.
+    private static final String DEV_JACOCO = "target/site/jacoco-merged/jacoco.csv";
+    private static final String DEV_JACOCO_UNIT = "target/site/jacoco/jacoco.csv";
     private static final String DEV_SPOTBUGS = "target/spotbugsXml.xml";
     private static final String DEV_SUREFIRE_DIR = "target/surefire-reports";
     private static final String DEV_PMD        = "target/pmd.xml";
@@ -390,7 +393,13 @@ public class QualityReportEndpoint {
 
     @SuppressWarnings("java:S3776") // parses JaCoCo CSV with per-package aggregation — inherently multi-branch
     private Map<String, Object> buildCoverageSection() {
+        // Prefer the merged report (unit + IT). In dev, fall through to
+        // the unit-only CSV when the merged one was not produced (e.g.
+        // `mvn verify -DskipITs`).
         InputStream is = loadResource(CP_JACOCO, DEV_JACOCO);
+        if (is == null) {
+            is = loadResource(CP_JACOCO, DEV_JACOCO_UNIT);
+        }
         if (is == null) {
             return Map.of(K_AVAILABLE, false);
         }
@@ -1002,7 +1011,11 @@ public class QualityReportEndpoint {
      * COMPLEXITY_MISSED(9), COMPLEXITY_COVERED(10), METHOD_MISSED(11), METHOD_COVERED(12)
      */
     private Map<String, Object> buildMetricsSection() {
+        // Same merged-first / unit-fallback strategy as buildCoverageSection.
         InputStream is = loadResource(CP_JACOCO, DEV_JACOCO);
+        if (is == null) {
+            is = loadResource(CP_JACOCO, DEV_JACOCO_UNIT);
+        }
         if (is == null) return Map.of(K_AVAILABLE, false);
 
         long totalClasses = 0, totalMethods = 0, totalLines = 0, totalComplexity = 0;
