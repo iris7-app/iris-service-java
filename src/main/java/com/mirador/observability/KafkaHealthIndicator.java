@@ -30,6 +30,8 @@ import java.util.concurrent.TimeUnit;
 @Component("kafka")
 public class KafkaHealthIndicator implements HealthIndicator {
 
+    private static final String DETAIL_BOOTSTRAP = "bootstrapServers";
+
     private final String bootstrapServers;
 
     public KafkaHealthIndicator(
@@ -61,18 +63,18 @@ public class KafkaHealthIndicator implements HealthIndicator {
                     .get(5, TimeUnit.SECONDS);
             return Health.up()
                     .withDetail("clusterId", clusterId)
-                    .withDetail("bootstrapServers", bootstrapServers)
+                    .withDetail(DETAIL_BOOTSTRAP, bootstrapServers)
                     .build();
         } catch (InterruptedException ex) {
             // Preserve the interrupt status so callers above us can react —
             // Sonar S2142: never swallow an InterruptedException silently.
             Thread.currentThread().interrupt();
             return Health.down(ex)
-                    .withDetail("bootstrapServers", bootstrapServers)
+                    .withDetail(DETAIL_BOOTSTRAP, bootstrapServers)
                     .build();
         } catch (Exception ex) {
             return Health.down(ex)
-                    .withDetail("bootstrapServers", bootstrapServers)
+                    .withDetail(DETAIL_BOOTSTRAP, bootstrapServers)
                     .build();
         }
     }
