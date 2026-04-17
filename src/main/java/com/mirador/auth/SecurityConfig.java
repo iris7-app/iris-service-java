@@ -72,11 +72,13 @@ public class SecurityConfig {
     }
 
     @Bean
+    @SuppressWarnings("java:S4502") // CSRF disabled intentionally — stateless JWT API, no session cookie to hijack (see comment below + Spring Security docs)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // CSRF protection is irrelevant for stateless REST APIs authenticated via Bearer tokens:
-                // there is no session cookie that a CSRF attack could hijack.
+                // there is no session cookie that a CSRF attack could hijack. Spring Security's own
+                // documentation explicitly recommends disabling CSRF for such APIs.
                 .csrf(AbstractHttpConfigurer::disable)
                 // Disable Spring Security's default security headers (X-Frame-Options, CSP, etc.)
                 // because SecurityHeadersFilter manages all OWASP headers with path-aware logic:

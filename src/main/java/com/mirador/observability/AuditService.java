@@ -71,25 +71,38 @@ public class AuditService {
      * @param from   optional lower bound for created_at (inclusive)
      * @param to     optional upper bound for created_at (inclusive)
      */
+    // Only these exact clause strings can ever reach SQL concatenation, so
+    // the dynamic WHERE cannot carry user input into the query shape. The
+    // actual filter values are always passed as JDBC parameters (?). The
+    // @SuppressWarnings below documents this closed set for Sonar S2077,
+    // which can't statically prove the safety itself.
+    private static final String CLAUSE_ACTION = "action = ?";
+    private static final String CLAUSE_USER   = "user_name = ?";
+    private static final String CLAUSE_FROM   = "created_at >= ?";
+    private static final String CLAUSE_TO     = "created_at <= ?";
+
+    @SuppressWarnings("java:S2077") // WHERE built from a closed enum of constants; values bind via ? placeholders
     public AuditPage findAll(int page, int size, String action, String user, Instant from, Instant to) {
-        // Build WHERE clause dynamically
+        // Build WHERE clause from a fixed set of constant fragments. No
+        // branch of this chain ever concatenates the user input itself —
+        // only hard-coded column references.
         var whereClauses = new ArrayList<String>();
         var params = new ArrayList<Object>();
 
         if (action != null && !action.isBlank()) {
-            whereClauses.add("action = ?");
+            whereClauses.add(CLAUSE_ACTION);
             params.add(action);
         }
         if (user != null && !user.isBlank()) {
-            whereClauses.add("user_name = ?");
+            whereClauses.add(CLAUSE_USER);
             params.add(user);
         }
         if (from != null) {
-            whereClauses.add("created_at >= ?");
+            whereClauses.add(CLAUSE_FROM);
             params.add(java.sql.Timestamp.from(from));
         }
         if (to != null) {
-            whereClauses.add("created_at <= ?");
+            whereClauses.add(CLAUSE_TO);
             params.add(java.sql.Timestamp.from(to));
         }
 

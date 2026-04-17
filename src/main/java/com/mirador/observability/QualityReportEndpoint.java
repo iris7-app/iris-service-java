@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import javax.xml.XMLConstants;
@@ -138,6 +141,33 @@ public class QualityReportEndpoint {
     private static final String K_VERSION       = "version";
     private static final String K_DEPENDENCIES  = "dependencies";
     private static final String K_MUTATED_CLASS = "mutatedClass";
+
+    /**
+     * Absolute path to the {@code git} binary, resolved once at class-init
+     * from well-known container / distro locations. Using an absolute path
+     * in {@code ProcessBuilder} sidesteps the Sonar S4036 hotspot that
+     * fires on commands resolved via {@code $PATH} (which could in theory
+     * include a user-writable directory). In our container the path is
+     * {@code /usr/bin/git}; on a developer Mac it's typically under
+     * Homebrew. When git isn't found we fall back to the bare command
+     * name so the diagnostics still run (the `git` entries are optional
+     * metadata in the quality report, not load-bearing).
+     */
+    private static final String GIT_BIN = resolveGitBinary();
+
+    private static String resolveGitBinary() {
+        for (String candidate : List.of(
+                "/usr/bin/git",
+                "/usr/local/bin/git",
+                "/opt/homebrew/bin/git",
+                "/bin/git")) {
+            Path p = Paths.get(candidate);
+            if (Files.isExecutable(p)) {
+                return p.toString();
+            }
+        }
+        return "git";
+    }
 
     // SonarQube integration — defaults work for local Docker setup.
     // Override via env vars: SONAR_HOST_URL, SONAR_PROJECT_KEY, SONAR_TOKEN.
@@ -552,7 +582,7 @@ public class QualityReportEndpoint {
             // Fetch remote URL first so it can be shown as a link in the frontend.
             String remoteUrl = null;
             try {
-                Process remoteProc = new ProcessBuilder("git", "remote", "get-url", "origin")
+                Process remoteProc = new ProcessBuilder(GIT_BIN, "remote", "get-url", "origin")
                         .directory(new File("."))
                         .redirectErrorStream(true)
                         .start();
@@ -567,7 +597,7 @@ public class QualityReportEndpoint {
                 Thread.currentThread().interrupt();
             } catch (Exception ignored) { /* remote URL is optional */ }
 
-            Process proc = new ProcessBuilder("git", "log", "--no-merges", "-15",
+            Process proc = new ProcessBuilder(GIT_BIN, "log", "--no-merges", "-15",
                     "--format=%h|%an|%ai|%s")
                     .directory(new File("."))
                     .redirectErrorStream(true)
@@ -1774,7 +1804,7 @@ public class QualityReportEndpoint {
             // --sort=-committerdate: most recently updated branches first
             // %(refname:short): strips "origin/" prefix cleanly
             Process proc = new ProcessBuilder(
-                    "git", "for-each-ref", "refs/remotes",
+                    GIT_BIN, "for-each-ref", "refs/remotes",
                     "--sort=-committerdate",
                     "--format=%(refname:short)|%(committerdate:iso)|%(authorname)",
                     "--count=20"
