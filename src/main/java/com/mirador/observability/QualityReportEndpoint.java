@@ -730,10 +730,10 @@ public class QualityReportEndpoint {
             for (int i = 0; i < depNodes.getLength(); i++) {
                 Element dep = (Element) depNodes.item(i);
                 // Only direct dependencies (parent is <dependencies>, not <dependencyManagement>)
-                if (!"dependencies".equals(dep.getParentNode().getNodeName())) continue;
+                if (!K_DEPENDENCIES.equals(dep.getParentNode().getNodeName())) continue;
                 String groupId    = getTagText(dep, K_GROUP_ID);
                 String artifactId = getTagText(dep, K_ARTIFACT_ID);
-                String rawVersion = getTagText(dep, "version");
+                String rawVersion = getTagText(dep, K_VERSION);
                 String scope      = getTagText(dep, "scope");
                 if (scope.isEmpty()) scope = "compile";
 
@@ -984,7 +984,7 @@ public class QualityReportEndpoint {
                 Map<String,Object> dep = new LinkedHashMap<>();
                 dep.put("group", groupId);
                 dep.put("artifact", artifactId);
-                dep.put("version", version);
+                dep.put(K_VERSION, version);
                 dep.put("license", licenseStr);
                 dep.put("incompatible", incompatible);
                 deps.add(dep);
@@ -1008,7 +1008,7 @@ public class QualityReportEndpoint {
         result.put(K_TOTAL, deps.size());
         result.put("incompatibleCount", incompatibleCount);
         result.put("licenses", licenseSummary);
-        result.put("dependencies", deps);
+        result.put(K_DEPENDENCIES, deps);
         return result;
     }
 
@@ -1488,11 +1488,11 @@ public class QualityReportEndpoint {
             r.put("maintainabilityRating", ratingLabel(raw.get("sqale_rating")));
             return r;
 
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return Map.of(K_AVAILABLE, false,
                     "note", "SonarQube call interrupted");
-        } catch (Exception e) {
+        } catch (Exception _) {
             return Map.of(K_AVAILABLE, false,
                     "note", "SonarQube unreachable — start with: docker compose up -d sonarqube");
         }
@@ -1821,7 +1821,7 @@ public class QualityReportEndpoint {
             result.put("host", gitlabHostUrl);
             result.put("pipelines", pipelines);
             return result;
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return Map.of(K_AVAILABLE, false, K_ERROR, "interrupted");
         } catch (Exception e) {
@@ -1873,9 +1873,9 @@ public class QualityReportEndpoint {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put(K_AVAILABLE, true);
             result.put(K_BRANCHES, branches);
-            result.put("total", branches.size());
+            result.put(K_TOTAL, branches.size());
             return result;
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return Map.of(K_AVAILABLE, false, K_REASON, "git call interrupted");
         } catch (Exception e) {

@@ -47,6 +47,7 @@ public class SecurityDemoController {
     // Sonar java:S1192 — response map keys used in the security-headers demo.
     private static final String KEY_EXPECTED    = "expected";
     private static final String KEY_EXPLANATION = "explanation";
+    private static final String KEY_RESULTS     = "results";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -77,7 +78,7 @@ public class SecurityDemoController {
         return Map.of(
                 "query", sql,
                 "vulnerability", "String concatenation — input is NOT sanitized",
-                "results", results,
+                KEY_RESULTS, results,
                 "exploit", "Try: ?name=Alice' OR '1'='1"
         );
     }
@@ -99,7 +100,7 @@ public class SecurityDemoController {
         return Map.of(
                 "query", sql,
                 "fix", "Parameterized query — input is treated as data, not SQL",
-                "results", results
+                KEY_RESULTS, results
         );
     }
 
@@ -192,7 +193,7 @@ public class SecurityDemoController {
                 "vulnerability", "No ownership check — any caller can access any customer by guessing the ID",
                 "owaspCategory", "A01:2021 — Broken Object Level Authorization (BOLA/IDOR)",
                 "exploit", "Enumerate IDs: try id=1, id=2, id=3 … to harvest all customer records",
-                "results", results
+                KEY_RESULTS, results
         );
     }
 
@@ -215,7 +216,7 @@ public class SecurityDemoController {
                 "safeQuery", "SELECT * FROM customer WHERE id = ? AND created_by = :currentAuthenticatedUser",
                 "springAnnotation", "@PreAuthorize(\"hasRole('ADMIN') or @customerService.isOwner(#id, authentication.name)\")",
                 "pattern", "BOLA/IDOR prevention: every object-level read/write must include an ownership or permission check — not just 'is the user authenticated?'",
-                "results", List.of()
+                KEY_RESULTS, List.of()
         );
     }
 
