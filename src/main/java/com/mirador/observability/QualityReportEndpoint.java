@@ -361,10 +361,10 @@ public class QualityReportEndpoint {
     // Coverage section
     // -------------------------------------------------------------------------
 
-    // S1141: the inner try/catch is idiomatic "skip malformed CSV row, continue" —
-    // extracting it to a helper would require a mutable 10-field accumulator
-    // that hurts rather than helps readability.
-    @SuppressWarnings({"java:S3776", "java:S1141"})
+    // S1141 + S135: the inner try/catch and several `continue` statements are
+    // idiomatic for "skip malformed CSV row, aggregate the rest" — restructuring
+    // to one exit point would hide the data-validation cliff.
+    @SuppressWarnings({"java:S3776", "java:S1141", "java:S135"})
     private Map<String, Object> buildCoverageSection() {
         // Prefer the merged report (unit + IT). In dev, fall through to
         // the unit-only CSV when the merged one was not produced (e.g.
@@ -669,7 +669,10 @@ public class QualityReportEndpoint {
      *          Partial results are returned if some futures time out; those entries will lack
      *          {@code latestVersion} and {@code outdated} fields.
      */
-    @SuppressWarnings("java:S3776") // multi-step parsing + parallel HTTP: complexity is inherent
+    // Complexity is inherent to the pom XML walk + parallel HTTP freshness lookups;
+    // the multiple `continue` statements are used to skip non-dependency nodes
+    // (parent references, dependencyManagement imports, excluded scopes).
+    @SuppressWarnings({"java:S3776", "java:S135"})
     private Map<String, Object> buildDependenciesSection() {
         InputStream is = loadResource(CP_POM, "pom.xml");
         if (is == null) return Map.of(K_AVAILABLE, false);
@@ -1000,8 +1003,9 @@ public class QualityReportEndpoint {
      * BRANCH_MISSED(5), BRANCH_COVERED(6), LINE_MISSED(7), LINE_COVERED(8),
      * COMPLEXITY_MISSED(9), COMPLEXITY_COVERED(10), METHOD_MISSED(11), METHOD_COVERED(12)
      */
-    // S1141: inner try/catch intentional (skip-malformed-row pattern, same as buildCoverageSection).
-    @SuppressWarnings("java:S1141")
+    // S1141 + S135: intentional skip-malformed-row pattern — same rationale as
+    // buildCoverageSection above. Restructuring obscures the validation intent.
+    @SuppressWarnings({"java:S1141", "java:S135"})
     private Map<String, Object> buildMetricsSection() {
         // Same merged-first / unit-fallback strategy as buildCoverageSection.
         InputStream is = loadResource(CP_JACOCO, DEV_JACOCO);
@@ -1868,6 +1872,9 @@ public class QualityReportEndpoint {
      *
      * Format field: %(refname:short) %(committerdate:iso) %(authorname)
      */
+    // S135: a couple of `continue` statements skip malformed git output lines —
+    // collapsing them into nested ifs hides the "row-is-invalid, next" intent.
+    @SuppressWarnings("java:S135")
     private Map<String, Object> buildBranchesSection() {
         try {
             // --sort=-committerdate: most recently updated branches first
