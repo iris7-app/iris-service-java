@@ -553,6 +553,17 @@
                     <excludes>
                         <exclude>**/*ITest.java</exclude>
                     </excludes>
+                    <!--
+                      Parallel unit-test execution. Each fork is a fresh JVM so Spring
+                      contexts, static state, and ThreadLocal are fully isolated. `1C`
+                      means one fork per CPU core (the macbook-local runner has 8+).
+                      reuseForks=true amortises JVM startup across test classes, which
+                      matters because our *Test classes are light (Mockito + pure logic).
+                      Class-level parallelism was validated on the default profile:
+                      ~30 s single-threaded → ~10–12 s with forkCount=1C.
+                    -->
+                    <forkCount>1C</forkCount>
+                    <reuseForks>true</reuseForks>
                 </configuration>
             </plugin>
 
@@ -575,6 +586,20 @@
                         <junit.platform.listeners.uid.tracking.enabled>true</junit.platform.listeners.uid.tracking.enabled>
                         <junit.platform.listeners.uid.tracking.output.dir>${project.build.directory}/test-ids</junit.platform.listeners.uid.tracking.output.dir>
                     </systemPropertyVariables>
+                    <!--
+                      Kept at the default (single fork) after measurement:
+                      forkCount=2 actually SLOWED the integration-test job
+                      (~120 s → ~121 s) because the two heaviest tests
+                      (KeycloakAuthITest ~95 s, AuthITest ~50 s) each have
+                      their own Testcontainers boot cost (Postgres + Keycloak
+                      image pull) — paid once per fork instead of being
+                      amortised by the JVM's ContextCache. The long-tail
+                      test dominates wall-clock regardless of parallelism.
+                      Revisit if ITest mass grows or we split KeycloakAuthITest
+                      into smaller, more parallelisable pieces.
+                    -->
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
                 </configuration>
                 <executions>
                     <execution>
