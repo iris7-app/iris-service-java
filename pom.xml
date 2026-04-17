@@ -41,14 +41,16 @@
         <bucket4j.version>8.10.1</bucket4j.version>                 <!-- token-bucket rate limiting (in-memory, per IP) -->
         <resilience4j.version>2.4.0</resilience4j.version>          <!-- @CircuitBreaker / @Retry / @Bulkhead annotations -->
         <!--
-          Spring AI 1.0.0-M6: CVE-2026-22730 (8.8 HIGH), CVE-2026-22729 (8.6 HIGH),
-          CVE-2022-27772 (7.8 HIGH), CVE-2023-20883 (7.5 HIGH), CVE-2018-1196 (5.9 MEDIUM).
-          Cannot upgrade to 1.0.0 GA: Spring AI 1.0.0 renamed the Ollama starter artifact
-          (spring-ai-ollama-spring-boot-starter → spring-ai-starter-model-ollama) and
-          reorganised autoconfigure modules. Migration requires updating the dependency
-          declaration and validating API compatibility. Blocked until migration is done.
+          Spring AI 1.1.4 GA (Spring Boot 4 compatible). Closes five CVEs that
+          were still open on the 1.0.0-M6 milestone: CVE-2026-22730 (8.8 HIGH),
+          CVE-2026-22729 (8.6 HIGH), CVE-2022-27772 (7.8 HIGH), CVE-2023-20883
+          (7.5 HIGH), CVE-2018-1196 (5.9 MEDIUM). 1.0.0+ renamed the Ollama
+          starter artifact (spring-ai-ollama-spring-boot-starter →
+          spring-ai-starter-model-ollama) and dropped the Spring-Boot-3
+          autoconfigure references, so the two SB4-compat shims under
+          src/main/java/org/springframework/boot/autoconfigure/ are gone.
         -->
-        <spring-ai.version>1.0.0-M6</spring-ai.version>
+        <spring-ai.version>1.1.4</spring-ai.version>
         <datasource-micrometer.version>2.2.1</datasource-micrometer.version> <!-- JDBC DataSource observation bridge → query latency in Prometheus -->
         <!--
           springdoc 3.0.3 (upgraded from 3.0.2) — bundles swagger-ui 5.32.2 which patches
@@ -467,7 +469,7 @@
         <!-- Spring AI — Ollama starter for local LLM inference (llama3.2 model) -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-ollama-spring-boot-starter</artifactId>
+            <artifactId>spring-ai-starter-model-ollama</artifactId>
             <version>${spring-ai.version}</version>
         </dependency>
 
