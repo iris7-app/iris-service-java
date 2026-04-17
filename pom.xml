@@ -115,7 +115,16 @@
 
         <!-- Non-BOM application dependencies -->
         <protobuf.version>4.34.1</protobuf.version>
-        <opentelemetry-appender.version>2.26.1-alpha</opentelemetry-appender.version>
+        <!--
+          opentelemetry-logback-appender-1.0 tracks OTel API tightly.
+          2.26.1-alpha calls LogRecordBuilder.setException(Throwable) which
+          only exists from OTel API 1.58.0 onward. Spring Boot 4's BOM
+          resolves OTel API to 1.55.0, so the appender fails at startup
+          with NoSuchMethodError. Pin the appender to 2.18.1-alpha — the
+          last release aligned with OTel API 1.55. Revisit when SB bumps
+          its OTel floor.
+        -->
+        <opentelemetry-appender.version>2.18.1-alpha</opentelemetry-appender.version>
         <testcontainers-keycloak.version>3.5.0</testcontainers-keycloak.version>
 
         <!--
