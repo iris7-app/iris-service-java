@@ -150,6 +150,29 @@
             ${project.reporting.outputDirectory}/jacoco/jacoco.xml,
             ${project.reporting.outputDirectory}/jacoco-it/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
+        <!--
+          Test execution report paths — Sonar's "Tests" widget reads these
+          to show pass/fail/skipped counts, duration, and per-class
+          execution time. This is the Sonar-philosophy-compliant
+          equivalent of Maven-site's Surefire + Failsafe HTML: same data,
+          ingested as metrics instead of rendered as standalone HTML.
+        -->
+        <sonar.junit.reportPaths>
+            ${project.build.directory}/surefire-reports,
+            ${project.build.directory}/failsafe-reports
+        </sonar.junit.reportPaths>
+        <!--
+          SARIF ingestion for third-party security scanners. Sonar
+          treats each SARIF finding as an "External Issue" alongside
+          its native Java issues, so Semgrep / Trivy findings appear
+          on the Issues page next to Sonar's own rules.
+          SARIF files are produced by the corresponding CI jobs
+          (see .gitlab-ci.yml: semgrep-sast, trivy:scan).
+        -->
+        <sonar.sarifReportPaths>
+            semgrep-report.sarif,
+            trivy-report.sarif
+        </sonar.sarifReportPaths>
         <sonar.exclusions>
             **/compat/**,**/*.java17/**,**/*.java21/**,**/*.sb3/**,
             **/generated-sources/**,**/target/**

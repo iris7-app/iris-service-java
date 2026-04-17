@@ -63,6 +63,13 @@ public class KafkaHealthIndicator implements HealthIndicator {
                     .withDetail("clusterId", clusterId)
                     .withDetail("bootstrapServers", bootstrapServers)
                     .build();
+        } catch (InterruptedException ex) {
+            // Preserve the interrupt status so callers above us can react —
+            // Sonar S2142: never swallow an InterruptedException silently.
+            Thread.currentThread().interrupt();
+            return Health.down(ex)
+                    .withDetail("bootstrapServers", bootstrapServers)
+                    .build();
         } catch (Exception ex) {
             return Health.down(ex)
                     .withDetail("bootstrapServers", bootstrapServers)

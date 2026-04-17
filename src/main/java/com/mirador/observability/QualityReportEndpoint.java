@@ -562,6 +562,9 @@ public class QualityReportEndpoint {
                     if (line != null && !line.isBlank()) remoteUrl = line.trim();
                 }
                 remoteProc.waitFor();
+            } catch (InterruptedException ignored) {
+                // Preserve interrupt so callers can react (Sonar S2142).
+                Thread.currentThread().interrupt();
             } catch (Exception ignored) { /* remote URL is optional */ }
 
             Process proc = new ProcessBuilder("git", "log", "--no-merges", "-15",
@@ -591,6 +594,9 @@ public class QualityReportEndpoint {
             if (remoteUrl != null) r.put("remoteUrl", remoteUrl);
             r.put("commits", commits);
             return r;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Map.of(K_AVAILABLE, false, K_ERROR, e.getMessage());
         } catch (Exception e) {
             return Map.of(K_AVAILABLE, false, K_ERROR, e.getMessage());
         }
@@ -740,6 +746,8 @@ public class QualityReportEndpoint {
                             }
                         }
                     }
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
                 } catch (Exception ignored) {
                     // Freshness check failure is non-critical — dep appears without latestVersion field
                 }
@@ -751,6 +759,8 @@ public class QualityReportEndpoint {
         try {
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                     .get(8, TimeUnit.SECONDS);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
         } catch (Exception ignored) {
             // Timeout or interruption — return whatever was collected so far
         }
@@ -1409,6 +1419,10 @@ public class QualityReportEndpoint {
             r.put("maintainabilityRating", ratingLabel(raw.get("sqale_rating")));
             return r;
 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Map.of(K_AVAILABLE, false,
+                    "note", "SonarQube call interrupted");
         } catch (Exception e) {
             return Map.of(K_AVAILABLE, false,
                     "note", "SonarQube unreachable — start with: docker compose up -d sonarqube");
@@ -1738,6 +1752,9 @@ public class QualityReportEndpoint {
             result.put("host", gitlabHostUrl);
             result.put("pipelines", pipelines);
             return result;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Map.of(K_AVAILABLE, false, K_ERROR, "interrupted");
         } catch (Exception e) {
             return Map.of(K_AVAILABLE, false, K_ERROR, e.getMessage());
         }
@@ -1789,6 +1806,9 @@ public class QualityReportEndpoint {
             result.put("branches", branches);
             result.put("total", branches.size());
             return result;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Map.of(K_AVAILABLE, false, "reason", "git call interrupted");
         } catch (Exception e) {
             return Map.of(K_AVAILABLE, false, "reason", "git error: " + e.getMessage());
         }
