@@ -43,13 +43,13 @@
      Validated on cluster 2026-04-18: kubectl get externalsecrets -A shows
      mirador-secrets + keycloak-secrets with STATUS: SecretSynced, READY: True. -->
 
-- [ ] **distroless java25 image** — switch once Google publishes it (track
-      https://github.com/GoogleContainerTools/distroless). Drops ~90 CVEs
-      vs `eclipse-temurin:25-jre`.
-
 - [ ] **Argo Rollouts / Flagger** — progressive traffic split for canary
       deploys. Requires Istio or Linkerd; deferred (ADR-0015 notes it
       as a future upgrade path).
+
+<!-- distroless-java25 blocker is documented in the Dockerfile header
+     (external, undated). Remove from tasks to avoid a rotting entry. -->
+
 
 <!-- deploy:gke retired. Argo CD + :main image tag close the loop. -->
 
