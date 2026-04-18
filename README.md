@@ -510,6 +510,7 @@ Pre-push hook (via lefthook) runs unit tests automatically before every `git pus
 | Document | Audience | Content |
 |----------|----------|---------|
 | [Dev tooling](docs/getting-started/dev-tooling.md) | Every new dev | OpenLens / Docker Desktop / VS Code / IntelliJ setup, GitLab auth, environment-by-environment connect recipes |
+| [Environments & flows](docs/architecture/environments-and-flows.md) | New contributors + reviewers | Two ASCII diagrams (compose + GKE via tunnels) + per-page call table + architectural invariants |
 | [Architecture](docs/architecture/overview.md) | New contributors | Component reference, call flows, code organisation |
 | [API Reference](docs/api/api.md) | API consumers | All endpoints with curl examples |
 | [API Contract](docs/api/contract.md) | API consumers | Versioning policy (`X-API-Version` vs URL), deprecation rules, BC guarantees |
