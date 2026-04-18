@@ -1,34 +1,32 @@
 # =============================================================================
-# Terraform — GCP infrastructure for mirador (2026-04-18 scope reset)
+# Terraform — GCP infrastructure for mirador (ephemeral demo cluster)
 #
-# IaC posture after ADR-0013 (in-cluster Postgres) + ADR-0021 (cost-deferred
-# industrial patterns):
+# IaC posture after ADR-0013 + ADR-0021 + ADR-0022 (ephemeral cluster):
 #
-#   MANAGED BY TERRAFORM NOW (this file):
-#     - VPC + subnet + NAT + Cloud Router (private cluster network)
-#     - GKE Autopilot cluster
-#     - Workload Identity provider + SAs (present-tense, used by ESO etc.)
+#   MANAGED BY TERRAFORM NOW:
+#     - GKE Autopilot cluster `mirador-prod` (on the project's default VPC).
+#     - Workload Identity pool is implicit via enable_autopilot.
 #
-#   DELIBERATELY DROPPED (see ADR-0013 / ADR-0021):
-#     - Cloud SQL instance + database + user + proxy SA — replaced by
-#       in-cluster Postgres StatefulSet.
-#     - Memorystore Redis — replaced by in-cluster Redis Deployment.
-#     Full previous blocks archived in
-#     docs/archive/terraform-deferred/main-with-cloudsql-memorystore.tf.
+#   DELIBERATELY DROPPED:
+#     - Cloud SQL instance / Memorystore Redis — see ADR-0013 + ADR-0021.
+#       Archived in docs/archive/terraform-deferred/.
+#     - Custom VPC + subnet + NAT + Cloud Router — not needed for the demo;
+#       the default VPC has public nodes and NAT egress out of the box.
+#       This also halves `terraform apply` time and state size.
 #
-#   OUT OF TERRAFORM (intentional — created manually on 2026-04-15):
-#     - The live `mirador-prod` cluster (this file's resource still describes
-#       the target shape; a `terraform import` would be needed before any
-#       `terraform apply` on the live cluster). Until then, treat this as
-#       "the IaC we would apply to a fresh project".
+#   OUT OF TERRAFORM (intentional):
+#     - GSM secrets (5 entries) — created via `gcloud secrets create`.
+#       They outlive the cluster so demo data password / JWT secret / API
+#       key are not rotated on every boot.
+#     - external-secrets-operator GCP service account + IAM bindings — same
+#       rationale. `bin/demo-up.sh` re-annotates the K8s SA on each fresh
+#       cluster.
 #
-# Prerequisites (when applying to a fresh project):
-#   gcloud auth application-default login
-#   gcloud services enable container.googleapis.com \
-#     servicenetworking.googleapis.com --project=${var.project_id}
-#
-# Skipped services (not needed with the scope reset):
-#   sqladmin.googleapis.com, redis.googleapis.com
+# Ephemeral demo cluster pattern:
+#     terraform apply   # create cluster (~5 min)
+#     bin/demo-up.sh    # install Argo CD + ESO + deploy app (~3 min)
+#     ...run the demo...
+#     terraform destroy # delete cluster, stop paying (~5 min)
 # =============================================================================
 
 terraform {
@@ -40,9 +38,6 @@ terraform {
       version = "~> 6.0"
     }
   }
-
-  # Backend configuration is in backend.tf — bucket/prefix injected via
-  # -backend-config at terraform init time (see .gitlab-ci.yml infra stage).
 }
 
 provider "google" {
@@ -51,131 +46,46 @@ provider "google" {
 }
 
 # =============================================================================
-# VPC — private network for GKE + Cloud SQL + Memorystore
-# =============================================================================
-
-resource "google_compute_network" "vpc" {
-  name                    = "mirador-vpc"
-  auto_create_subnetworks = false
-
-  # Deleting a VPC with dependent resources fails. Terraform handles this by
-  # destroying dependent resources first in the correct order.
-}
-
-resource "google_compute_subnetwork" "subnet" {
-  name          = "mirador-subnet"
-  network       = google_compute_network.vpc.id
-  region        = var.region
-  ip_cidr_range = "10.0.0.0/20"
-
-  # Secondary ranges for GKE pods and services (required by GKE Autopilot)
-  secondary_ip_range {
-    range_name    = "pods"
-    ip_cidr_range = "10.1.0.0/16" # up to 65536 pod IPs
-  }
-  secondary_ip_range {
-    range_name    = "services"
-    ip_cidr_range = "10.2.0.0/20" # up to 4096 service IPs
-  }
-
-  private_ip_google_access = true # allows private GKE nodes to reach GCP APIs
-}
-
-# Private service access peering — required for Cloud SQL and Memorystore
-# to be reachable from GKE pods via private IP.
-resource "google_compute_global_address" "private_ip_range" {
-  name          = "mirador-private-ip"
-  purpose       = "VPC_PEERING"
-  address_type  = "INTERNAL"
-  prefix_length = 16
-  network       = google_compute_network.vpc.id
-}
-
-resource "google_service_networking_connection" "private_vpc_connection" {
-  network                 = google_compute_network.vpc.id
-  service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
-}
-
-# =============================================================================
-# Cloud NAT — egress for private GKE nodes
+# GKE Autopilot cluster — regional, public nodes, STABLE release channel.
 #
-# Private GKE Autopilot nodes have no public IP, so they cannot reach the
-# public internet (Docker Hub, GitLab Container Registry, Maven Central, etc).
-# Cloud NAT provides outbound NAT for the entire subnet — pulls, webhooks,
-# and API calls leave through a shared public IP while nodes stay private.
-# Without this, pods fail to pull images with ImagePullBackOff.
+# The default network/subnetwork carry public IP ranges and default NAT,
+# which is enough for a demo cluster (nodes reach Docker Hub, Maven Central,
+# Let's Encrypt, etc. via GCE's default egress).
 # =============================================================================
-resource "google_compute_router" "nat_router" {
-  name    = "mirador-nat-router"
-  region  = var.region
-  network = google_compute_network.vpc.id
-}
-
-resource "google_compute_router_nat" "nat" {
-  name                               = "mirador-nat"
-  router                             = google_compute_router.nat_router.name
-  region                             = var.region
-  nat_ip_allocate_option             = "AUTO_ONLY"
-  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
-
-  log_config {
-    enable = true
-    filter = "ERRORS_ONLY"
-  }
-}
-
-# =============================================================================
-# GKE Autopilot cluster
-# =============================================================================
-
 resource "google_container_cluster" "autopilot" {
   name     = var.cluster_name
   location = var.region
 
   # Autopilot: Google manages nodes, scaling, and upgrades automatically.
-  # No node pool configuration needed — resource requests in Deployment manifests
-  # drive the node provisioning.
+  # No node pool configuration needed — resource requests in Deployment
+  # manifests drive the node provisioning.
   enable_autopilot = true
 
-  network    = google_compute_network.vpc.id
-  subnetwork = google_compute_subnetwork.subnet.id
+  # Use the project's default VPC. Keeping this minimal halves apply time
+  # and avoids 6 additional Terraform resources (VPC, subnet, NAT, router,
+  # global address, service networking connection). The demo doesn't need
+  # private nodes — the ingress-nginx Ingress Controller is what's exposed
+  # on a public IP anyway.
+  network    = "default"
+  subnetwork = "default"
 
-  ip_allocation_policy {
-    cluster_secondary_range_name  = "pods"
-    services_secondary_range_name = "services"
-  }
-
-  # Private cluster — nodes have no public IP. The control plane is reachable
-  # via a private endpoint. Set master_authorized_networks_config if you want
-  # to restrict access to specific IP ranges (e.g. office VPN + CI runner).
-  private_cluster_config {
-    enable_private_nodes    = true
-    enable_private_endpoint = false # public control plane endpoint for kubectl from CI
-    master_ipv4_cidr_block  = "172.16.0.0/28"
-  }
-
-  # Workload Identity: pods authenticate to GCP APIs using Kubernetes service
-  # accounts mapped to GCP service accounts — no key files needed.
+  # Workload Identity: pods authenticate to GCP APIs using Kubernetes
+  # service accounts mapped to GCP service accounts — no JSON key files.
+  # ESO uses this to pull from Google Secret Manager (ADR-0016).
   workload_identity_config {
     workload_pool = "${var.project_id}.svc.id.goog"
   }
 
   release_channel {
-    # REGULAR: receives new Kubernetes versions ~2-3 months after release.
-    # RAPID: earliest new versions. STABLE: 2-3 months after REGULAR.
-    channel = "REGULAR"
+    # STABLE: ~3 months after the REGULAR channel. Fewer surprises during
+    # demos; if a new K8s feature is needed, switch to REGULAR temporarily.
+    channel = "STABLE"
   }
 
-  # Disabled in dev so `terraform destroy` / recreate is possible between tests.
-  # Flip to true once the cluster hosts production workloads.
+  # Ephemeral cluster — terraform destroy must succeed without
+  # deletion protection getting in the way.
   deletion_protection = false
-}
 
-# =============================================================================
-# Cloud SQL, Memorystore Redis, sql_proxy Service Account + IAM:
-# dropped by ADR-0013 + ADR-0021 (Postgres and Redis run in-cluster).
-# Previous blocks preserved in
-#   docs/archive/terraform-deferred/main-with-cloudsql-memorystore.tf
-# with a reactivation runbook in docs/archive/gke-cloud-sql/README.md.
-# =============================================================================
+  # Autopilot sets sensible defaults for ip_allocation_policy,
+  # networking_mode=VPC_NATIVE, gateway_api, and most other fields.
+}
