@@ -108,12 +108,12 @@ before merging.
 
 ## Implementation plan (executed after this ADR lands)
 
-1. **pgweb back in compose**, with two profiles:
+1. **pgweb back in compose**, with three profiles / ports (kind = +10000, prod = +20000):
    - `pgweb-local`: port 8081 → `db:5432` (compose Postgres)
-   - `pgweb-prod` (profile `prod-tunnel`): port 8082 → `host.docker.internal:15432`
-     (the port-forwarded cluster Postgres on the laptop)
-   - Helper: `bin/pgweb-prod-up.sh` that pulls the DB password from GSM
-     and starts the prod profile
+   - `pgweb-kind`  (profile `kind-tunnel`): port 8082 → `host.docker.internal:15432` (kind tunnel)
+   - `pgweb-prod`  (profile `prod-tunnel`): port 8083 → `host.docker.internal:25432` (GKE tunnel)
+   - Helpers: `bin/pgweb-kind-up.sh`, `bin/pgweb-prod-up.sh` (the latter
+     pulls the DB password from GSM via ESO).
 2. **EnvService** exposes `pgwebUrl` — `:8081` on Local, `:8082` on Prod
    tunnel. The Database page gates SQL Explorer + health checks behind
    `@if (env.pgwebUrl())`.

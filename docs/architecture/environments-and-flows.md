@@ -1,12 +1,19 @@
 # Environments & runtime flows
 
-Mirador runs against two environments. The **Angular UI is the same bundle
-in both** — only the `EnvService`'s computed URLs change.
+Mirador runs against **three** environments. The Angular UI bundle is the
+same in all three — only the `EnvService`'s computed URLs change.
 
 - **Local** — everything on the developer's laptop via Docker Compose.
+- **Kind** — a local Kubernetes-in-Docker cluster, reached via
+  `bin/pf-kind.sh` on the laptop.
 - **Prod tunnel** — the GKE Autopilot cluster reached through
-  `kubectl port-forward` on the laptop. No public surface
+  `bin/pf-prod.sh`. No public surface
   ([ADR-0025](../adr/0025-ui-local-only-no-public-prod-ingress.md)).
+
+Port offsets (decided 2026-04-18): Local uses upstream defaults, Kind
+adds `+10000`, Prod adds `+20000`. The three can coexist simultaneously
+(same service, three different ports) — useful for kind-vs-prod
+comparisons.
 
 The backend (Spring Boot) owns its domain + self-admin only —
 it does not proxy or query third-party tools
@@ -88,26 +95,26 @@ host firewall.
 │   ┌─────────────────────────────────────────────────────────────────────┐ │
 │   │              kubectl port-forward (bin/pf-prod.sh)                   │ │
 │   │                                                                      │ │
-│   │   18080 ─┐    kubelet forwards TCP to the pod IP                     │ │
-│   │   13000 ─┤    (authenticated via ~/.kube/config — IAM/WIF gated)     │ │
-│   │   13100 ─┤                                                           │ │
-│   │   13200 ─┤                                                           │ │
-│   │   19009 ─┤                                                           │ │
-│   │   14040 ─┤                                                           │ │
-│   │   19091 ─┤                                                           │ │
-│   │   14242 ─┤                                                           │ │
-│   │   18081 ─┤                                                           │ │
-│   │   12333 ─┤                                                           │ │
-│   │   15432 ─┤   ◀── pgweb-prod (:8082) + CloudBeaver desktop            │ │
-│   │   16379 ─┤                                                           │ │
-│   │   19092 ─┘                                                           │ │
+│   │   28080 ─┐    kubelet forwards TCP to the pod IP                     │ │
+│   │   23000 ─┤    (authenticated via ~/.kube/config — IAM/WIF gated)     │ │
+│   │   23100 ─┤    Prod uses the +20000 offset so Local compose (+0) and  │ │
+│   │   23200 ─┤    Local kind (+10000) can run simultaneously.            │ │
+│   │   29009 ─┤                                                           │ │
+│   │   24040 ─┤                                                           │ │
+│   │   29090 ─┤                                                           │ │
+│   │   24242 ─┤                                                           │ │
+│   │   28081 ─┤                                                           │ │
+│   │   22333 ─┤                                                           │ │
+│   │   25432 ─┤   ◀── pgweb-prod (:8083) + CloudBeaver desktop            │ │
+│   │   26379 ─┤                                                           │ │
+│   │   29092 ─┘                                                           │ │
 │   └──────┬──────────────────────────────────────────────────────────────┘ │
 │          │ TLS tunnel through the GKE API server                          │
 │          ▼                                                                │
 │   Partial compose (local tooling that needs the tunnels):                 │
 │   ┌─────────────────────────────────────────────────────────────────────┐ │
-│   │  cloudbeaver :8978 ──PG proto──▶ localhost:15432 (via tunnel)       │ │
-│   │  pgweb-prod  :8082 ──PG proto──▶ host.docker.internal:15432          │ │
+│   │  cloudbeaver :8978 ──PG proto──▶ localhost:25432 (via tunnel)       │ │
+│   │  pgweb-prod  :8083 ──PG proto──▶ host.docker.internal:25432          │ │
 │   │  kafka-ui    :9080   (stays pointed at compose kafka or tunnelled)   │ │
 │   │  redisinsight:5540   (idem)                                          │ │
 │   └─────────────────────────────────────────────────────────────────────┘ │
@@ -155,23 +162,24 @@ host firewall.
 
 ## Per-page call flows
 
-| UI page | Local flow | Prod-tunnel flow |
-|---|---|---|
-| **Login** | `POST :8080/auth/login` + Keycloak OIDC on `:9090` | `POST :18080/auth/login` + Keycloak on `:19091` |
-| **Dashboard** — health probes | `GET :8080/actuator/health` | `GET :18080/actuator/health` |
-| **Dashboard** — tool tiles | `<a href="localhost:<env.*>">` | idem, 1xxxx ports |
-| **Customers CRUD** | `/api/customers/*` on `:8080` | `/api/customers/*` on `:18080` |
-| **Database → SQL Explorer** | `GET :8081/api/query` (pgweb-local → db:5432) | `GET :8082/api/query` (pgweb-prod → tunnel :15432) |
-| **Database → VACUUM** | `POST :8080/actuator/maintenance` | `POST :18080/actuator/maintenance` |
-| **Database → CloudBeaver link** | `<a href=":8978">` (compose container) | user opens desktop CloudBeaver manually |
-| **Observability — Grafana** | `<iframe src=":3000/…">` | `<iframe src=":13000/…">` |
-| **Observability — Tempo (TraceQL)** | `GET :3000/api/datasources/proxy/uid/tempo` | `GET :13000/api/datasources/proxy/uid/tempo` |
-| **Observability — Loki (LogQL)** | `GET :3100/loki/api/v1/query_range` (CORS proxy) | `GET :13100/loki/…` |
-| **Pipelines** | `GET :3333/gitlab/*` (docker-api.mjs local proxy → gitlab.com) | idem, proxy runs on laptop |
-| **Chaos dashboard** | — (not in compose) | `<iframe src=":12333">` |
-| **Feature flags** | — (not in compose) | `<a href=":14242">` (future: `unleash-proxy`) |
-| **Activity / Audit** | `/audit` on `:8080` | `/audit` on `:18080` |
-| **Quality** | `/actuator/quality` on `:8080` + `sonar:9000` + `maven-site:8084` + `compodoc:8085` | `/actuator/quality` on `:18080` only; no sonar / maven site / compodoc in prod |
+Kind and Prod use the same call shapes — only the port changes (+10000 vs +20000).
+
+| UI page | Local (compose) | Kind (+10000) | Prod (+20000) |
+|---|---|---|---|
+| **Login** | `POST :8080/auth/login` + Keycloak `:9090` | `POST :18080/auth/login` + Keycloak `:19090` | `POST :28080/auth/login` + Keycloak `:29090` |
+| **Health probes** | `GET :8080/actuator/health` | `GET :18080/actuator/health` | `GET :28080/actuator/health` |
+| **Customers CRUD** | `/api/customers/*` on `:8080` | `/api/customers/*` on `:18080` | `/api/customers/*` on `:28080` |
+| **DB → SQL Explorer** | `GET :8081/api/query` (pgweb-local → db:5432) | `GET :8082/api/query` (pgweb-kind → tunnel :15432) | `GET :8083/api/query` (pgweb-prod → tunnel :25432) |
+| **DB → VACUUM** | `POST :8080/actuator/maintenance` | `POST :18080/actuator/maintenance` | `POST :28080/actuator/maintenance` |
+| **DB → CloudBeaver** | `<a href=":8978">` compose container | manual desktop, connect to `:15432` | manual desktop, connect to `:25432` |
+| **Obs → Grafana** | `<iframe src=":3000/…">` | `<iframe src=":13000/…">` | `<iframe src=":23000/…">` |
+| **Obs → Tempo (TraceQL)** | `:3000/api/datasources/proxy/uid/tempo` | `:13000/…` | `:23000/…` |
+| **Obs → Loki (LogQL)** | `:3100/loki/api/v1/query_range` | `:13100/…` | `:23100/…` |
+| **Pipelines** | `:3333/gitlab/*` (local docker-api.mjs proxy) | idem | idem |
+| **Chaos dashboard** | — (not in compose) | `<iframe src=":12333">` | `<iframe src=":22333">` |
+| **Feature flags** | — (not in compose) | `<a href=":14242">` | `<a href=":24242">` |
+| **Activity / Audit** | `/audit` on `:8080` | `/audit` on `:18080` | `/audit` on `:28080` |
+| **Quality** | `/actuator/quality :8080` + `sonar:9000` + `maven-site:8084` + `compodoc:8085` | `/actuator/quality :18080` only | `/actuator/quality :28080` only |
 
 ## Invariants
 

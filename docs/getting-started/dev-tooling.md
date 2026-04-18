@@ -99,7 +99,7 @@ Plugins (bundled in Ultimate — Community needs swaps):
 | **Docker**              | Dockerfile syntax + compose run configurations.                    |
 | **GitLab**              | Bundled since IntelliJ 2023.3 — handles MR, clone, pipelines.      |
 | **Spring Boot**         | Ultimate only. Run configs + live beans view.                      |
-| **Database Tools**      | Ultimate only. Points at localhost:5432 (dev) or localhost:15432 (prod tunnel). |
+| **Database Tools**      | Ultimate only. Points at localhost:5432 (compose), localhost:15432 (kind tunnel) or localhost:25432 (prod tunnel). |
 
 Community-edition alternatives: disable bundled GitLab → use the `glab`
 CLI from the integrated terminal; Kubernetes → use OpenLens in parallel.
@@ -146,29 +146,33 @@ git remote set-url origin git@gitlab.com:mirador1/mirador-service.git
 
 ## Environment connection matrix
 
-| Environment       | Admin plane (kubeconfig) | App services (port-forward)        |
-|-------------------|--------------------------|------------------------------------|
-| **compose local** | n/a                      | `./run.sh all` — standard ports    |
-| **kind local**    | `kubectl config use-context kind-mirador-local` | `bin/pf-prod.sh` (reuses port map) |
-| **GKE prod**      | `bin/connect-prod.sh`    | `bin/pf-prod.sh --daemon`          |
+Three environments, three port decades (compose = upstream, kind = +10000, prod = +20000).
+
+| Environment    | Admin plane (kubeconfig)                        | App services (port-forward)     |
+|----------------|-------------------------------------------------|----------------------------------|
+| **compose**    | n/a                                             | `./run.sh all` — upstream ports  |
+| **kind**       | `kubectl config use-context kind-mirador-local` | `bin/pf-kind.sh --daemon` — 1xxxx |
+| **GKE prod**   | `bin/connect-prod.sh`                           | `bin/pf-prod.sh --daemon` — 2xxxx |
 
 ### Concretely
 
 ```bash
 # Compose (dev)
-./run.sh all                    # spins everything, ports 8080/3000/4242/…
+./run.sh all                       # infra containers, ports 8080/3000/…
 
-# kind (local K8s mirror of prod)
+# kind (local K8s mirror)
 kind create cluster --name mirador-local --config deploy/kubernetes/kind-config.yaml
 kubectl apply -k deploy/kubernetes/overlays/local
-bin/pf-prod.sh --daemon         # same tunnel ports as GKE (18080, 13000, 14242, …)
+bin/pf-kind.sh --daemon            # tunnels on 1xxxx (18080, 13000, 14242, …)
+bin/pgweb-kind-up.sh               # optional: pgweb on 8082 for the UI's Database page
 
 # GKE (ephemeral prod — ADR-0022)
-bin/demo-up.sh                  # ~13 min
-bin/connect-prod.sh             # gcloud credentials + open OpenLens
-bin/pf-prod.sh --daemon         # tunnels for app services
+bin/demo-up.sh                     # ~13 min
+bin/connect-prod.sh                # gcloud credentials + open OpenLens
+bin/pf-prod.sh --daemon            # tunnels on 2xxxx (28080, 23000, 24242, …)
+bin/pgweb-prod-up.sh               # optional: pgweb on 8083
 # …work…
-bin/pf-stop.sh
+bin/pf-stop.sh                     # stops both kind + prod tunnels
 bin/demo-down.sh
 ```
 

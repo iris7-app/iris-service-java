@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/pgweb-prod-up.sh — start the "prod tunnel" pgweb container (port 8082).
+# bin/pgweb-prod-up.sh — start the "Prod tunnel" pgweb container (port 8083).
 #
 # Per ADR-0026 the Angular UI's Database page calls pgweb directly. In "Prod
 # tunnel" mode that pgweb still runs on the laptop (compose profile
-# `prod-tunnel`), but points at the CLUSTER Postgres through the port-forward
-# tunnel that bin/pf-prod.sh opens on localhost:15432.
+# `prod-tunnel`), but points at the GKE cluster Postgres through the
+# port-forward tunnel that bin/pf-prod.sh opens on localhost:25432 (prod uses
+# the +20000 offset — see docs/architecture/environments-and-flows.md).
 #
 # Because the cluster DB password is stored in Google Secret Manager (not
 # in .env for dev reasons), this script fetches it from the live cluster
-# Secret before starting the container.
+# Secret (ESO-synced) before starting the container.
 #
 # Pre-requisites:
 #   1. bin/demo-up.sh (or bin/demo-up-fast.sh) — GKE cluster up
-#   2. bin/pf-prod.sh --daemon           — tunnels open (we need 15432 here)
+#   2. bin/pf-prod.sh --daemon           — tunnels open (we need 25432 here)
 #
 # Usage:
-#   bin/pgweb-prod-up.sh            # start pgweb-prod on localhost:8082
+#   bin/pgweb-prod-up.sh            # start pgweb-prod on localhost:8083
 #   bin/pgweb-prod-up.sh --down      # stop the container
 # =============================================================================
 
@@ -35,11 +36,9 @@ if ! kubectl cluster-info >/dev/null 2>&1; then
   exit 1
 fi
 
-# Sanity 2: the Postgres tunnel is open on the host.
-# nc -G 1 is the macOS flag for a 1-second connect timeout; the GNU/Linux
-# equivalent is -w 1. Try both; either accepts the probe.
-if ! { nc -z -G 1 localhost 15432 2>/dev/null || nc -z -w 1 localhost 15432 2>/dev/null; }; then
-  echo "❌  localhost:15432 is not open. Run bin/pf-prod.sh --daemon first." >&2
+# Sanity 2: the Postgres tunnel is open on the host (prod = +20000).
+if ! { nc -z -G 1 localhost 25432 2>/dev/null || nc -z -w 1 localhost 25432 2>/dev/null; }; then
+  echo "❌  localhost:25432 is not open. Run bin/pf-prod.sh --daemon first." >&2
   exit 1
 fi
 
@@ -56,22 +55,20 @@ fi
 
 export PGWEB_DB_PASSWORD
 
-echo "🔑  Using DB password from cluster Secret (ESO)."
-echo "🐘  Starting pgweb-prod on http://localhost:8082 → cluster Postgres via tunnel…"
+echo "🔑  Using DB password from GKE cluster Secret (ESO)."
+echo "🐘  Starting pgweb-prod on http://localhost:8083 → GKE Postgres via tunnel…"
 
 docker compose --profile prod-tunnel up -d pgweb-prod
 
-# Quick readiness probe so the user knows pgweb has actually opened 8082.
 for _ in $(seq 1 15); do
-  if nc -z localhost 8082 2>/dev/null; then
-    echo "✅  pgweb-prod ready at http://localhost:8082"
-    echo "    The Angular UI's EnvService picks this up automatically on"
-    echo "    'Prod tunnel' environment."
+  if nc -z localhost 8083 2>/dev/null; then
+    echo "✅  pgweb-prod ready at http://localhost:8083"
+    echo "    The Angular UI picks this up automatically on 'Prod tunnel' environment."
     exit 0
   fi
   sleep 1
 done
 
-echo "⚠️   pgweb-prod started but port 8082 is not responding after 15s."
+echo "⚠️   pgweb-prod started but port 8083 is not responding after 15s."
 echo "    Check logs: docker compose logs pgweb-prod"
 exit 1

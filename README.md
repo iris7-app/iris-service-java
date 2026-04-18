@@ -264,19 +264,19 @@ Developer laptop                         GKE Autopilot (no public surface)
                                          ─────────────────────────────────
   Angular UI (localhost:4200)            namespace: app
         │                                  mirador-service:8080   (Spring Boot 4)
-   EnvService selects "prod-tunnel"        HPA 1–5, PDB 1-min-available
+   EnvService selects "Prod tunnel"        HPA 1–5, PDB 1-min-available
         │
         ▼                                namespace: infra
   kubectl port-forward  ══════════════►    PostgreSQL 17 (StatefulSet)
-  (bin/pf-prod.sh)                         Redis 7 / Kafka / Keycloak / Unleash
+  (bin/pf-prod.sh — prod = +20000)         Redis 7 / Kafka / Keycloak / Unleash
         │                                  LGTM all-in-one (Grafana + Loki + Tempo + Mimir)
         ▼
-  localhost:18080 → mirador
-  localhost:13000 → grafana
-  localhost:14242 → unleash
-  localhost:18081 → argo-cd
-  localhost:15432 → postgres (CloudBeaver)
-  … (see bin/pf-prod.sh for full port map)
+  localhost:28080 → mirador
+  localhost:23000 → grafana
+  localhost:24242 → unleash
+  localhost:28081 → argo-cd
+  localhost:25432 → postgres (CloudBeaver)
+  … (see bin/pf-prod.sh or docs/architecture/environments-and-flows.md)
 ```
 
 > **Why no public URL**: ADR-0025 trades recruiter click-through for
@@ -426,18 +426,18 @@ Pre-push hook (via lefthook) runs unit tests automatically before every `git pus
 
 ### Port reference
 
-> **Three runtime modes. The UI always runs on `:4200` (`ng serve`).
-> Only the backend port changes.**
+> **Three runtime modes, UI always on `:4200`. Backend port changes per
+> environment — compose uses upstream, kind adds +10000, prod +20000.**
 >
 > | Mode | Launcher | Backend API |
 > |------|----------|-------------|
 > | **Docker Compose (dev)** | `./run.sh all` | `http://localhost:8080` |
-> | **kind cluster** | `scripts/deploy-local.sh` + `bin/pf-prod.sh` | `http://localhost:18080` |
-> | **GKE (prod)** | `bin/demo-up.sh` + `bin/pf-prod.sh` | `http://localhost:18080` |
+> | **kind cluster** | `scripts/deploy-local.sh` + `bin/pf-kind.sh` | `http://localhost:18080` |
+> | **GKE (prod)** | `bin/demo-up.sh` + `bin/pf-prod.sh` | `http://localhost:28080` |
 >
 > Cluster modes go through `kubectl port-forward` (ADR-0025) — the UI's
-> EnvService switches between `8080` (dev) and `18080` (cluster tunnel).
-> Full port map in `bin/pf-prod.sh`.
+> EnvService picks between the three. Full port map in
+> `docs/architecture/environments-and-flows.md`.
 
 #### Application
 

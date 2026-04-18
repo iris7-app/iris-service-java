@@ -1,56 +1,64 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/pf-status.sh — list the tunnels started by pf-prod.sh and probe each.
+# bin/pf-status.sh — list active kind + prod tunnels and probe each.
 #
-# For every local port, print:
-#   • the underlying kubectl PID (from /tmp/pf-prod.pids)
-#   • a quick TCP probe (nc -z) to show whether the port is really open
-#   • an HTTP probe to /actuator/health (or /health for Unleash) to confirm
-#     the service behind the tunnel is responsive
+# Three-environment policy (docs/architecture/environments-and-flows.md):
+#   Local compose = upstream ports
+#   Kind          = upstream + 10000   (bin/pf-kind.sh)
+#   Prod          = upstream + 20000   (bin/pf-prod.sh)
+# Compose is not listed here — those are regular docker containers, checked
+# with `docker compose ps`.
 # =============================================================================
 
 set -u
 
-PID_FILE="/tmp/pf-prod.pids"
+declare -A KIND_PORT=(
+  [backend]=18080 [postgres]=15432 [redis]=16379 [kafka]=19092
+  [grafana]=13000 [tempo]=13200    [loki]=13100  [mimir]=19009
+  [pyroscope]=14040 [keycloak]=19090
+  [unleash]=14242 [argocd]=18081   [chaos-mesh]=12333
+)
 
-declare -A SERVICE_PORT=(
-  [backend]=18080
-  [postgres]=15432
-  [redis]=16379
-  [kafka]=19092
-  [grafana]=13000
-  [tempo]=13200
-  [loki]=13100
-  [mimir]=19009
-  [pyroscope]=14040
-  [keycloak]=19091
-  [unleash]=14242
-  [argocd]=18081
-  [chaos-mesh]=12333
+declare -A PROD_PORT=(
+  [backend]=28080 [postgres]=25432 [redis]=26379 [kafka]=29092
+  [grafana]=23000 [tempo]=23200    [loki]=23100  [mimir]=29009
+  [pyroscope]=24040 [keycloak]=29090
+  [unleash]=24242 [argocd]=28081   [chaos-mesh]=22333
 )
 
 declare -A HEALTH_PATH=(
-  [backend]=/actuator/health
-  [grafana]=/api/health
-  [unleash]=/health
-  [keycloak]=/health/ready
+  [backend]=/actuator/health  [grafana]=/api/health
+  [unleash]=/health           [keycloak]=/health/ready
   [argocd]=/healthz
 )
 
-printf "%-12s %-6s %-7s %-10s %s\n" "NAME" "PID" "PORT" "TCP" "HTTP"
-for name in "${!SERVICE_PORT[@]}"; do
-  port="${SERVICE_PORT[$name]}"
-  pid=$(grep " $name\$" "$PID_FILE" 2>/dev/null | awk '{print $1}')
-  pid=${pid:-"-"}
-  # TCP probe: nc -z returns 0 if port is open.
-  if nc -z -G 1 localhost "$port" 2>/dev/null; then tcp="open"; else tcp="closed"; fi
-  # HTTP probe where applicable — otherwise print "-".
-  path="${HEALTH_PATH[$name]:-}"
-  if [ -n "$path" ] && [ "$tcp" = "open" ]; then
-    # --insecure for argocd self-signed cert.
-    http=$(curl -s -k -o /dev/null -w "%{http_code}" --max-time 2 "http://localhost:$port$path" 2>/dev/null || echo "err")
-  else
-    http="-"
-  fi
-  printf "%-12s %-6s %-7s %-10s %s\n" "$name" "$pid" "$port" "$tcp" "$http"
-done
+probe_env() {
+  local env="$1"; shift
+  local -n MAP=$1
+  local pid_file="/tmp/pf-$env.pids"
+  printf "\n── %s (pids: %s) ──\n" "$env" "$([ -f "$pid_file" ] && echo "$pid_file" || echo "not started")"
+  printf "%-12s %-6s %-7s %-10s %s\n" "NAME" "PID" "PORT" "TCP" "HTTP"
+  for name in "${!MAP[@]}"; do
+    local port="${MAP[$name]}"
+    local pid="-"
+    if [ -f "$pid_file" ]; then
+      pid=$(grep " $name\$" "$pid_file" 2>/dev/null | awk '{print $1}')
+      pid=${pid:-"-"}
+    fi
+    # TCP probe (macOS -G, Linux -w); either option is accepted.
+    local tcp="closed"
+    if nc -z -G 1 localhost "$port" 2>/dev/null || nc -z -w 1 localhost "$port" 2>/dev/null; then
+      tcp="open"
+    fi
+    local path="${HEALTH_PATH[$name]:-}"
+    local http="-"
+    if [ -n "$path" ] && [ "$tcp" = "open" ]; then
+      http=$(curl -s -k -o /dev/null -w "%{http_code}" --max-time 2 \
+        "http://localhost:$port$path" 2>/dev/null || echo "err")
+    fi
+    printf "%-12s %-6s %-7s %-10s %s\n" "$name" "$pid" "$port" "$tcp" "$http"
+  done
+}
+
+probe_env kind KIND_PORT
+probe_env prod PROD_PORT

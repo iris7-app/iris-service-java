@@ -2,27 +2,30 @@
 # =============================================================================
 # bin/pf-prod.sh — one kubectl port-forward per service to reach the GKE demo.
 #
-# Per ADR-0025 the cluster has no public surface. The Angular UI runs on your
-# laptop; this script spins up a local tunnel to every service the UI (and
-# you) might need to talk to. Each tunnel uses a `1<default>` port so it
-# coexists with the docker-compose stack on the standard ports.
+# Port scheme (three-environment policy, decided 2026-04-18):
+#   Local compose     = upstream ports          (e.g. backend 8080)
+#   Local kind         = upstream + 10000       (e.g. backend 18080)  — bin/pf-kind.sh
+#   GKE prod tunnel    = upstream + 20000       (e.g. backend 28080)  — this script
+# The fixed 10k-per-env offset lets you run all three simultaneously without
+# port conflicts. See docs/architecture/environments-and-flows.md for the
+# full port map + matching EnvService entries.
 #
-# Port map:
+# Port map (prod / +20000):
 #   Service              local:port
 #   -------------------  -----------
-#   Backend API          18080
-#   Postgres             15432
-#   Redis                16379
-#   Kafka                19092
-#   Grafana (LGTM)       13000
-#   Tempo                13200
-#   Loki                 13100
-#   Mimir (Prom API)     19009
-#   Pyroscope            14040
-#   Keycloak             19091
-#   Unleash              14242
-#   Argo CD UI           18081   (port-forward to argocd-server:443, https)
-#   Chaos Mesh dashboard 12333
+#   Backend API          28080
+#   Postgres             25432
+#   Redis                26379
+#   Kafka                29092
+#   Grafana (LGTM)       23000
+#   Tempo                23200
+#   Loki                 23100
+#   Mimir (Prom API)     29009
+#   Pyroscope            24040
+#   Keycloak             29090
+#   Unleash              24242
+#   Argo CD UI           28081   (port-forward to argocd-server:443, https)
+#   Chaos Mesh dashboard 22333
 #
 # Usage:
 #   bin/pf-prod.sh               # foreground, Ctrl-C to stop
@@ -49,21 +52,21 @@ if ! kubectl cluster-info >/dev/null 2>&1; then
   exit 1
 fi
 
-# Tunnels: "name | namespace | svc | local:remote"
+# Tunnels: "name | namespace | svc | local:remote"  — prod uses upstream + 20000.
 TUNNELS=(
-  "backend       | app       | svc/mirador                   | 18080:8080"
-  "postgres      | infra     | svc/postgresql                | 15432:5432"
-  "redis         | infra     | svc/redis                     | 16379:6379"
-  "kafka         | infra     | svc/kafka                     | 19092:9092"
-  "grafana       | infra     | svc/lgtm                      | 13000:3000"
-  "tempo         | infra     | svc/lgtm                      | 13200:3200"
-  "loki          | infra     | svc/lgtm                      | 13100:3100"
-  "mimir         | infra     | svc/lgtm                      | 19009:9009"
-  "pyroscope     | infra     | svc/pyroscope                 | 14040:4040"
-  "keycloak      | infra     | svc/keycloak                  | 19091:8080"
-  "unleash       | infra     | svc/unleash                   | 14242:4242"
-  "argocd        | argocd    | svc/argocd-server             | 18081:443"
-  "chaos-mesh    | chaos-mesh| svc/chaos-dashboard           | 12333:2333"
+  "backend       | app       | svc/mirador                   | 28080:8080"
+  "postgres      | infra     | svc/postgresql                | 25432:5432"
+  "redis         | infra     | svc/redis                     | 26379:6379"
+  "kafka         | infra     | svc/kafka                     | 29092:9092"
+  "grafana       | infra     | svc/lgtm                      | 23000:3000"
+  "tempo         | infra     | svc/lgtm                      | 23200:3200"
+  "loki          | infra     | svc/lgtm                      | 23100:3100"
+  "mimir         | infra     | svc/lgtm                      | 29009:9009"
+  "pyroscope     | infra     | svc/pyroscope                 | 24040:4040"
+  "keycloak      | infra     | svc/keycloak                  | 29090:8080"
+  "unleash       | infra     | svc/unleash                   | 24242:4242"
+  "argocd        | argocd    | svc/argocd-server             | 28081:443"
+  "chaos-mesh    | chaos-mesh| svc/chaos-dashboard           | 22333:2333"
 )
 
 start_tunnel() {
