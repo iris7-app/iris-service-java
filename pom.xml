@@ -1615,6 +1615,31 @@
                                         <copy todir="${project.build.directory}/merged-sources/main" overwrite="true" if:set="java17">
                                             <fileset dir="src/main/java-overlays/java17"/>
                                         </copy>
+                                        <!--
+                                          Step 4: Rewrite JEP 443 unnamed-variable patterns to
+                                          named throwaways.
+                                            catch (Xxx _)          (Exception / Throwable / any type)
+                                            try (var _ = expr)     (try-with-resources)
+                                            case Xxx _ ->          (switch pattern)
+                                          All three are preview in JDK 21 and absent in JDK 17.
+                                          The rename preserves semantics (the name is still
+                                          unused) and works on every JDK we target.
+                                        -->
+                                        <replaceregexp match="catch \((\w+) _\)"
+                                                       replace="catch (\1 _ignored)"
+                                                       flags="g" byline="true">
+                                            <fileset dir="${project.build.directory}/merged-sources/main" includes="**/*.java"/>
+                                        </replaceregexp>
+                                        <replaceregexp match="try \(var _ ="
+                                                       replace="try (var _ignoredRes ="
+                                                       flags="g" byline="true">
+                                            <fileset dir="${project.build.directory}/merged-sources/main" includes="**/*.java"/>
+                                        </replaceregexp>
+                                        <replaceregexp match="case ([\w.]+) _ ->"
+                                                       replace="case \1 _ignored ->"
+                                                       flags="g" byline="true">
+                                            <fileset dir="${project.build.directory}/merged-sources/main" includes="**/*.java"/>
+                                        </replaceregexp>
                                     </target>
                                 </configuration>
                             </execution>
