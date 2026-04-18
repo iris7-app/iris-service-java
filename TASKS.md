@@ -19,22 +19,20 @@
       the selected env. Port map is in
       `docs/adr/0025-ui-local-only-no-public-prod-ingress.md`.
 
-- [ ] **Drop the mirador-ui docker image build + push** in the UI repo's
-      `.gitlab-ci.yml`. The image is no longer deployed anywhere
-      (ADR-0025). Keeping the job is ~3 min of CI waste per MR.
+<!-- The mirador-ui docker image stays built + pushed. Even with ADR-0025
+     (no prod deployment) the image is useful for: local prod-like run
+     without `npm install`, CI integration tests against a built bundle,
+     one-command demo. Only the K8s Deployment is dropped, not the CI build. -->
+
+- [ ] **Move UI image pipeline to a `test-image` stage** (UI repo).
+      Since the image is no longer a deploy artefact, mark it clearly
+      as a validation artefact. Tag `:main-<sha>` only, no `:latest`.
 
 - [ ] **CI push `:main` + `:latest` tags on every merge to main** —
       registry only has `:<sha>` tags; `image-tags-patch.yaml` still
       hard-codes a SHA. Once CI publishes `:main`, flip the patch to
       `newTag: main` so Argo CD auto-pulls. ~15 min in `docker-build`
       job of `.gitlab-ci.yml`.
-
-## Pending — Version upgrades (deferred majors, separate MRs each)
-
-- [ ] **Testcontainers** 1.21 → 2.0 — **blocked**. 2.0.x core is on
-      Maven Central but companion modules (`junit-jupiter`,
-      `postgresql`, `kafka`) only ship for 1.21.x; stay on 1.21.4
-      until modules catch up. Revisit periodically.
 
 ## Pending — Industry-standard upgrades
 
