@@ -41,14 +41,18 @@
         <bucket4j.version>8.10.1</bucket4j.version>                 <!-- token-bucket rate limiting (in-memory, per IP) -->
         <resilience4j.version>2.4.0</resilience4j.version>          <!-- @CircuitBreaker / @Retry / @Bulkhead annotations -->
         <!--
-          Spring AI 1.1.4 GA (Spring Boot 4 compatible). Closes five CVEs that
-          were still open on the 1.0.0-M6 milestone: CVE-2026-22730 (8.8 HIGH),
-          CVE-2026-22729 (8.6 HIGH), CVE-2022-27772 (7.8 HIGH), CVE-2023-20883
-          (7.5 HIGH), CVE-2018-1196 (5.9 MEDIUM). 1.0.0+ renamed the Ollama
-          starter artifact (spring-ai-ollama-spring-boot-starter →
-          spring-ai-starter-model-ollama) and dropped the Spring-Boot-3
-          autoconfigure references, so the two SB4-compat shims under
-          src/main/java/org/springframework/boot/autoconfigure/ are gone.
+          Spring AI 1.1.4 GA. Closes five CVEs that were still open on the
+          1.0.0-M6 milestone: CVE-2026-22730 (8.8 HIGH), CVE-2026-22729 (8.6 HIGH),
+          CVE-2022-27772 (7.8 HIGH), CVE-2023-20883 (7.5 HIGH), CVE-2018-1196 (5.9).
+          1.0.0+ renamed the Ollama starter artifact
+          (spring-ai-ollama-spring-boot-starter → spring-ai-starter-model-ollama).
+
+          NOTE: the SB4-compat shims under
+          src/main/java/org/springframework/boot/autoconfigure/ must stay —
+          even 1.1.4 GA still has @AutoConfiguration(after = {
+            org.springframework.boot.autoconfigure.web.client.RestClientAutoConfiguration.class,
+            org.springframework.boot.autoconfigure.web.reactive.function.client.WebClientAutoConfiguration.class
+          }) on OllamaApiAutoConfiguration, pointing at the Spring Boot 3 package.
         -->
         <spring-ai.version>1.1.4</spring-ai.version>
         <datasource-micrometer.version>2.2.1</datasource-micrometer.version> <!-- JDBC DataSource observation bridge → query latency in Prometheus -->
