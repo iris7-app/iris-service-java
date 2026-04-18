@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# =============================================================================
+# demo-up.sh — bring up the ephemeral mirador demo cluster on GKE.
+#
+# 1. terraform apply      (create GKE Autopilot cluster)
+# 2. get-credentials      (wire kubectl)
+# 3. install Argo CD core (with shrunk resources per ADR-0014)
+# 4. install ESO          (helm + Workload Identity annotation)
+# 5. apply Argo CD Application → reconciles the app from main
+# 6. print the Argo CD admin password + ingress hostnames
+#
+# Prerequisite: gcloud auth application-default login (user's laptop only).
+# Cost while cluster is running: ~€0.26/h (see ADR-0022).
+# Run `bin/demo-down.sh` when the demo is over to stop paying.
+# =============================================================================
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TF_DIR="$REPO_ROOT/deploy/terraform/gcp"
+PROJECT_ID="${TF_VAR_project_id:-project-8d6ea68c-33ac-412b-8aa}"
+REGION="${TF_VAR_region:-europe-west1}"
+CLUSTER_NAME="${TF_VAR_cluster_name:-mirador-prod}"
+TF_STATE_BUCKET="${TF_STATE_BUCKET:-${PROJECT_ID}-tf-state}"
+
+echo "▶️  demo-up starting (project=$PROJECT_ID region=$REGION cluster=$CLUSTER_NAME)"
+
+# 0. Pre-flight: enable required APIs idempotently (fast if already enabled).
+gcloud services enable \
+  container.googleapis.com \
+  secretmanager.googleapis.com \
+  iamcredentials.googleapis.com \
+  --project="$PROJECT_ID" --quiet
+
+# 1. Terraform apply.
+cd "$TF_DIR"
+terraform init \
+  -backend-config="bucket=$TF_STATE_BUCKET" \
+  -backend-config="prefix=mirador/gcp" \
+  -input=false -reconfigure >/dev/null
+
+TF_VAR_project_id="$PROJECT_ID" \
+TF_VAR_region="$REGION" \
+TF_VAR_cluster_name="$CLUSTER_NAME" \
+TF_VAR_app_host="${TF_VAR_app_host:-mirador1.duckdns.org}" \
+  terraform apply -input=false -auto-approve
+
+# 2. Wire kubectl to the new cluster.
+gcloud container clusters get-credentials "$CLUSTER_NAME" --region="$REGION" --project="$PROJECT_ID"
+
+# 3. Install Argo CD core subset (ADR-0014 + 0015).
+kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply --server-side=true --force-conflicts -n argocd \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# Drop the heavy controllers we don't use in the demo.
+kubectl delete -n argocd deployment \
+  argocd-applicationset-controller argocd-dex-server argocd-notifications-controller \
+  --ignore-not-found=true
+
+# Shrink resource requests so it all fits the free Autopilot budget.
+for d in argocd-server argocd-repo-server argocd-redis; do
+  kubectl set resources deployment "$d" -n argocd \
+    --requests=cpu=50m,memory=128Mi --limits=cpu=500m,memory=512Mi
+done
+kubectl set resources statefulset argocd-application-controller -n argocd \
+  --requests=cpu=100m,memory=256Mi --limits=cpu=500m,memory=512Mi
+
+# 4. Install External Secrets Operator (ADR-0016).
+helm repo add external-secrets https://charts.external-secrets.io >/dev/null 2>&1 || true
+helm repo update external-secrets >/dev/null
+helm upgrade --install external-secrets external-secrets/external-secrets \
+  -n external-secrets --create-namespace \
+  --set installCRDs=true \
+  --set resources.requests.cpu=50m,resources.requests.memory=128Mi \
+  --wait --timeout 5m
+
+# Bind the K8s SA to the GCP SA (Workload Identity).
+# GCP SA was created by a previous session — re-create idempotently in case.
+SA_EMAIL="external-secrets-operator@${PROJECT_ID}.iam.gserviceaccount.com"
+if ! gcloud iam service-accounts describe "$SA_EMAIL" --project="$PROJECT_ID" >/dev/null 2>&1; then
+  gcloud iam service-accounts create external-secrets-operator \
+    --project="$PROJECT_ID" --display-name="External Secrets Operator"
+fi
+
+# Bind each GSM secret individually (re-running is idempotent).
+for secret in mirador-db-password mirador-jwt-secret mirador-api-key \
+              mirador-gitlab-api-token mirador-keycloak-admin-password; do
+  gcloud secrets add-iam-policy-binding "$secret" \
+    --project="$PROJECT_ID" \
+    --member="serviceAccount:$SA_EMAIL" \
+    --role="roles/secretmanager.secretAccessor" >/dev/null 2>&1 || true
+done
+
+# Workload Identity binding from the K8s SA to the GCP SA.
+gcloud iam service-accounts add-iam-policy-binding "$SA_EMAIL" \
+  --project="$PROJECT_ID" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="serviceAccount:${PROJECT_ID}.svc.id.goog[external-secrets/external-secrets]" >/dev/null
+
+kubectl annotate serviceaccount external-secrets -n external-secrets \
+  "iam.gke.io/gcp-service-account=$SA_EMAIL" --overwrite
+
+# 5. Apply the Argo CD Application — reconciles the app from main.
+kubectl apply -f "$REPO_ROOT/deploy/argocd/application.yaml"
+kubectl apply -f "$REPO_ROOT/deploy/argocd/ingress.yaml"
+
+echo "⏳  waiting for Argo CD to sync the app (up to 5 min)..."
+kubectl wait --for=condition=Available deployment --all -n argocd --timeout=5m || true
+
+# 6. Summary.
+ARGOCD_PWD=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || echo "(already rotated)")
+INGRESS_IP=$(kubectl get ingress mirador-ingress -n app \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
+
+cat <<EOF
+
+✅  demo-up complete
+---
+Argo CD UI     : https://argocd.mirador1.duckdns.org  (or kubectl port-forward -n argocd svc/argocd-server 8080:443)
+  admin / $ARGOCD_PWD
+App ingress IP : $INGRESS_IP  (point mirador1.duckdns.org at this IP)
+App            : https://mirador1.duckdns.org  (once DNS + TLS propagate, ~5 min)
+
+Shut everything down with: bin/demo-down.sh
+EOF
