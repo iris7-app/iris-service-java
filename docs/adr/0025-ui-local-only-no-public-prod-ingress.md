@@ -81,6 +81,7 @@ comparisons).
 | Pyroscope            | `4040`   | `14040`       | `24040`       |
 | Keycloak             | `9090`   | `19090`       | `29090`       |
 | Unleash              | –        | `14242`       | `24242`       |
+| Unleash front-proxy  | –        | `14243`       | `24243`       |
 | Argo CD UI           | –        | `18081`       | `28081`       |
 | Chaos Mesh dashboard | –        | `12333`       | `22333`       |
 

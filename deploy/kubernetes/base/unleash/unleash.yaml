@@ -194,3 +194,101 @@ spec:
               port: 4242
             initialDelaySeconds: 60
             periodSeconds: 30
+
+---
+# ── Unleash front-end proxy — ADR-0026 ──────────────────────────────────
+# The browser never calls the Unleash admin API directly. This sidecar
+# (official `unleashorg/unleash-proxy` image) exposes a narrow read-only
+# API (/proxy) that the browser reaches with a front-end client token.
+# The proxy itself talks to Unleash via a server-side admin token.
+#
+# Tokens are hardcoded demo values ("default:development:…") consistent
+# with the AUTH_TYPE=demo setting of the parent Unleash server. In a real
+# prod deployment the tokens would come from ESO/GSM.
+apiVersion: v1
+kind: Service
+metadata:
+  name: unleash-proxy
+  namespace: infra
+  labels:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/component: proxy
+spec:
+  selector:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/component: proxy
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unleash-proxy
+  namespace: infra
+  labels:
+    app.kubernetes.io/name: unleash
+    app.kubernetes.io/component: proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: unleash
+      app.kubernetes.io/component: proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: unleash
+        app.kubernetes.io/component: proxy
+    spec:
+      initContainers:
+        # Wait for Unleash server to be ready before starting the proxy.
+        - name: wait-for-unleash
+          image: curlimages/curl:8.11.1
+          command:
+            - sh
+            - -c
+            - |
+              until curl -sf http://unleash:4242/health; do
+                echo "waiting for unleash server…"; sleep 2
+              done
+      containers:
+        - name: unleash-proxy
+          image: unleashorg/unleash-proxy:1.0.2
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: UNLEASH_URL
+              value: http://unleash:4242/api/
+            # Server-side API token used by the proxy to poll Unleash. In
+            # AUTH_TYPE=demo mode, the default token starts with
+            # `default:development:` — the proxy validates this pattern.
+            - name: UNLEASH_API_TOKEN
+              value: "default:development:unleash-insecure-api-token"
+            # Front-end tokens — what the browser sends in X-API-Token.
+            # Multiple allowed, comma-separated. One is enough for this demo.
+            - name: UNLEASH_PROXY_SECRETS
+              value: "mirador-ui-proxy-secret"
+            - name: UNLEASH_PROXY_PORT
+              value: "3000"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /proxy/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /proxy/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
