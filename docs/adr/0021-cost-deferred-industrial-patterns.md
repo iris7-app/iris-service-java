@@ -41,6 +41,29 @@ justifies paying.
 | **OpenCost / Kubecost**  | ✓ cost observability | Demo cluster is small enough that `gcloud billing` suffices. OpenCost is free; Kubecost's managed tier is paid. | €0 for OpenCost; Kubecost paid tier |
 | **Multi-region cluster** | ✓ DR | Single-region europe-west1 is enough for a demo. Multi-region doubles compute + egress + Cloud SQL replica pricing. | 2× compute + egress fees |
 
+## Self-hosted alternatives to paid SaaS (nice-to-have bucket)
+
+Outside the critical path there's a "nice to have" tier that the
+industry typically covers with managed SaaS products. For every one
+of those, an open-source self-hosted alternative exists — trading a
+~€10–30/month/user bill against some extra operational complexity.
+Mirador aligns with the self-hosted option by default.
+
+| Capability | SaaS (paid) | Self-hosted free alternative |
+|---|---|---|
+| **APM** (distributed tracing + metrics UI) | Datadog, NewRelic, Dynatrace (~€15–30/host/mo) | OpenTelemetry SDK + LGTM stack (Loki + Grafana + Tempo + Mimir). Code already emits OTLP; the collector is what we defer. |
+| **Error tracking** | Sentry (5k events/mo free, ~€26+/mo after) | [GlitchTip](https://glitchtip.com/) — Sentry-API-compatible, self-hosted. |
+| **Feature flags** | LaunchDarkly, Split (~€10–15/dev/mo) | [Unleash](https://www.getunleash.io/), [OpenFeature](https://openfeature.dev/) + flagd backend. |
+| **Incident management / on-call** | PagerDuty, Opsgenie (~€20–30/user/mo) | [Keep](https://github.com/keephq/keep), [Grafana OnCall](https://grafana.com/products/oncall/). |
+| **Status page** | Statuspage.io (~€30+/mo) | [Cachet](https://cachethq.io/), a Grafana public dashboard. |
+| **Continuous profiling** | Grafana Cloud Profiles, Pyroscope Cloud | Self-hosted [Pyroscope](https://pyroscope.io/) (the JVM agents are already in the codebase). |
+| **Dashboard-as-code IDE** | Grafana Cloud with SSO | Self-hosted Grafana + [grizzly](https://github.com/grafana/grizzly) or jsonnet for git-tracked dashboards. |
+
+The self-hosted option adds cluster CPU/memory (typically < 1 vCPU +
+< 2 GiB per component) and upgrades that the team has to own. For a
+single-tenant demo + moderate traffic, that operational tax is
+negligible compared to the SaaS bill.
+
 ## What we do NOT defer (even when it costs something small)
 
 | Pattern | Cost here | Why we still ship it |
