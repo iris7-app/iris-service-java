@@ -34,6 +34,14 @@
       `newTag: main` so Argo CD auto-pulls. ~15 min in `docker-build`
       job of `.gitlab-ci.yml`.
 
+- [ ] **UI repo — desktop deep-link buttons**. Wire the URI templates
+      from `docs/getting-started/dev-tooling.md` into the Angular UI
+      (Architecture + Database + Quality pages already have slots):
+      `vscode://file/<abs>:<line>`, `idea://open?file=<abs>&line=<n>`,
+      `docker-desktop://dashboard/container/<id>`, GitLab https URLs.
+      Fails silently if the target app is not installed — no feature
+      detection needed.
+
 ## Pending — Industry-standard upgrades
 
 - [~] **External Secrets Operator → Google Secret Manager cutover** —
