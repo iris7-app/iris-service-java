@@ -7,27 +7,36 @@
   When all tasks are done, delete this file and commit the deletion.
 -->
 
-## Pending — Cluster bring-up
+## Pending — Close the app-layer loop
 
-- [ ] **Terraform .tf cleanup** — running `terraform plan` (2026-04-18)
-      reveals 14 resources to create, but several already exist
-      out-of-Terraform (GKE cluster `mirador-prod`, VPC) and others are
-      no longer desired per ADR-0013 (Cloud SQL) / ADR-0014 (single
-      replica, no HA). A session dedicated to rewriting the .tf files
-      to match current reality is needed:
-      - Drop `google_sql_database_instance`, `google_sql_*`,
-        `google_service_networking_connection` (Cloud SQL stack).
-      - Drop `google_redis_instance` if in-cluster Redis stays (ADR
-        pending — currently redis is in `infra` StatefulSet).
-      - Import existing `google_container_cluster.autopilot`,
-        `google_compute_network.vpc`, `google_compute_subnetwork.subnet`,
-        `google_compute_router.*` into state via `terraform import`.
-      - Keep VPC + NAT + Workload Identity SA + IAM bindings.
-      After cleanup, `terraform apply` is safe and becomes a no-op.
+- [ ] **CI push `:main` + `:latest` tags on every merge to main** — the
+      registry only has `:<sha>` tags today, which is why
+      `deploy/kubernetes/overlays/gke/image-tags-patch.yaml` hard-codes a
+      SHA. Once CI publishes `:main`, flip the patch to `newTag: main` so
+      Argo CD auto-pulls the latest merged image. ~15 min of `.gitlab-ci.yml`
+      work in the `docker-build` job.
 
-- [ ] **Managed Kafka on GCP** (~$35/day) — deferred. Requires
-      uncommenting ~70 lines in `deploy/terraform/gcp/kafka.tf` + SASL
-      config in backend ConfigMap. See ADR-0005 for the cost trade-off.
+- [ ] **Dashboards as code via grizzly/jsonnet** — LGTM is deployed,
+      Grafana is reachable, but no dashboards are pre-provisioned. Add
+      `deploy/grafana/dashboards/` with 3-4 JSON (golden signals, JVM,
+      DB, Kafka) and a CronJob or init container that applies them on
+      LGTM boot. ~2h.
+
+- [ ] **Unleash feature flags** — install the Unleash Deployment +
+      Postgres init container seeded from `deploy/kubernetes/base/unleash/seed.sql`
+      (flags: `recent-customers-buffer`, `bio-feature-enabled`, etc.).
+      ADR-0022 trade-off already documented.
+
+- [ ] **Chaos Mesh experiments in git** — CRDs are in-cluster (helm
+      install in demo-up.sh) but no NetworkChaos / PodChaos resources
+      are applied. Add `deploy/kubernetes/base/chaos/experiments.yaml`
+      with 2-3 experiments the frontend Chaos page can trigger.
+
+- [ ] **Mirador Argo Rollout canary** — convert the `mirador` Deployment
+      into a `Rollout` CR with a 2-step canary (10 % → 50 % → 100 %) +
+      AnalysisTemplate gating on the Prometheus `http_server_requests`
+      error rate. Demonstrates ADR-0015's progressive delivery bullet
+      for real.
 
 ## Pending — Version upgrades (deferred majors, separate MRs each)
 
@@ -60,6 +69,17 @@
 
 ## Recently Completed
 
+- [x] **Full nice-to-have stack landed** (2026-04-18 late session).
+      LGTM stack in-cluster + Pyroscope + Argo Rollouts + Kyverno
+      (helm via demo-up.sh) + Sentry SDK dep + cert-manager + Pages
+      landing page. ADR-0023 locks in "stay on Autopilot". README
+      rewritten with 4 manager-audience sections (arbitrages,
+      simplify, AI positioning, compromises). 19 pods Running on the
+      freshly-provisioned ephemeral cluster.
+- [x] **Ephemeral cluster pattern** — ADR-0022. Cluster created from
+      scratch by `terraform apply` (1 resource) on every demo; torn
+      down by `bin/demo-down.sh`. Monthly bill ~€190 (24/7) → ~€2
+      (2 h/mo demos).
 - [x] **GKE cluster bring-up — Argo CD GitOps + in-cluster everything**
       (2026-04-18). Argo CD installed (core subset, 4 pods), External
       Secrets Operator installed (3 pods), both fit on the existing
