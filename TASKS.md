@@ -38,13 +38,10 @@
 
 ## Pending — Industry-standard upgrades
 
-- [~] **External Secrets Operator → Google Secret Manager cutover** —
-      operator is installed (2026-04-18), CRDs available. Remaining
-      user steps documented in ADR-0016: create the GSM entries,
-      grant the WIF-backed SA `roles/secretmanager.secretAccessor`,
-      move `deploy/external-secrets/*` into `base/external-secrets/`,
-      delete the hand-created `mirador-secrets` + `keycloak-secrets`
-      from the cluster.
+<!-- ESO cutover complete: ESO in base/external-secrets/, ESO + 5 GSM
+     secrets live, the legacy deploy/external-secrets/ directory is gone.
+     Validated on cluster 2026-04-18: kubectl get externalsecrets -A shows
+     mirador-secrets + keycloak-secrets with STATUS: SecretSynced, READY: True. -->
 
 - [ ] **distroless java25 image** — switch once Google publishes it (track
       https://github.com/GoogleContainerTools/distroless). Drops ~90 CVEs
