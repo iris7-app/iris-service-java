@@ -51,6 +51,7 @@ File name pattern: `NNNN-kebab-case-title.md` (NNNN is a zero-padded sequence).
 | 0019  | Accepted    | [Resilience4J (CB+Retry) + Bucket4J rate limit + idempotency filter](0019-resilience4j-circuitbreaker-retry-bucket4j.md) |
 | 0020  | Accepted    | [API versioning via `X-API-Version` header (Spring 7)](0020-api-versioning-via-header.md) |
 | 0021  | Accepted    | [Cost-deferred industrial patterns](0021-cost-deferred-industrial-patterns.md) |
+| 0022  | Accepted    | [Ephemeral demo cluster (bring up on demand)](0022-ephemeral-demo-cluster.md) |
 
 ## When to write an ADR
 
