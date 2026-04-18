@@ -243,6 +243,79 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
+  # pgweb (local) — HTTP ↔ Postgres bridge for the Angular UI's Database page.
+  #
+  # ADR-0026: the Angular UI calls pgweb directly; Spring Boot is not in the
+  # SQL path. pgweb itself speaks the Postgres wire protocol as a client
+  # (connects to `db:5432`) and exposes a JSON REST API the browser can hit.
+  #
+  # `--readonly` rejects writes at the HTTP layer before they reach Postgres
+  # (defense in depth; the `demo` PG role also has limited grants).
+  # `--cors-origin=http://localhost:4200` locks the CORS allowlist to the
+  # Angular dev server — no other site in the browser can call this pgweb.
+  # ---------------------------------------------------------------------------
+  pgweb-local:
+    image: sosedoff/pgweb:0.16.2
+    container_name: pgweb-local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGWEB_DATABASE_URL: "postgres://demo:demo@db:5432/customer-service?sslmode=disable"
+    command:
+      - pgweb
+      - --bind=0.0.0.0
+      - --listen=8081
+      - --readonly
+      - --cors
+      - --cors-origin=http://localhost:4200
+    ports:
+      # Bind on 127.0.0.1 only — never exposed on the LAN even if the host
+      # firewall is lax. ADR-0025 pattern applied to compose services too.
+      - "127.0.0.1:8081:8081"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # pgweb (prod tunnel) — same image, points at the CLUSTER Postgres through
+  # a kubectl port-forward running on the host.
+  #
+  # Activation:
+  #   1. bin/pf-prod.sh --daemon       (opens localhost:15432 → cluster Postgres)
+  #   2. bin/pgweb-prod-up.sh           (fetches DB password from GSM, starts this)
+  #
+  # host.docker.internal resolves to the host machine from inside the
+  # container (Docker Desktop native on macOS/Windows, Linux needs the
+  # extra_hosts hint below).
+  #
+  # `profiles: [prod-tunnel]` keeps this service stopped by default; it is
+  # only started on `docker compose --profile prod-tunnel up -d pgweb-prod`.
+  # ---------------------------------------------------------------------------
+  pgweb-prod:
+    image: sosedoff/pgweb:0.16.2
+    container_name: pgweb-prod
+    profiles: ["prod-tunnel"]
+    environment:
+      # PGWEB_DB_PASSWORD is injected by bin/pgweb-prod-up.sh from GSM at
+      # runtime. Default empty string keeps `docker compose config` happy
+      # when the profile is not activated. The script fails fast if the
+      # password resolves to empty, so there is no silent "connect with
+      # empty password" hazard.
+      PGWEB_DATABASE_URL: "postgres://demo:${PGWEB_DB_PASSWORD:-}@host.docker.internal:15432/customer-service?sslmode=disable"
+    command:
+      - pgweb
+      - --bind=0.0.0.0
+      - --listen=8081
+      - --readonly
+      - --cors
+      - --cors-origin=http://localhost:4200
+    ports:
+      - "127.0.0.1:8082:8081"
+    extra_hosts:
+      # Required on Linux. macOS/Windows Docker Desktop resolves it natively.
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
   # Kafka UI — web interface for Apache Kafka
   # Browse topics, messages, consumer groups, and lag in real time.
   # Connects to the internal Kafka listener (29092) on the Docker network.
