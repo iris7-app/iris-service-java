@@ -23,16 +23,6 @@
       `.gitlab-ci.yml`. The image is no longer deployed anywhere
       (ADR-0025). Keeping the job is ~3 min of CI waste per MR.
 
-- [ ] **`code-quality` CI job — javac `--enable-preview` missing**.
-      The job re-compiles `target/merged-sources` through
-      `maven-compiler-plugin` without the preview flag, so it fails on
-      the 7 unnamed-variable (`_`) usages across the codebase
-      (ApiExceptionHandler, AuthController, JwtAuthenticationFilter,
-      RecentCustomerBuffer, ObservabilityConfig, QualityReportEndpoint,
-      TestReportInfoContributor). Either add `--enable-preview` to the
-      `code-quality` maven invocation, OR rewrite those 7 `_` back to
-      named throwaway vars. Pre-existing, unrelated to ADR-0025.
-
 - [ ] **CI push `:main` + `:latest` tags on every merge to main** —
       registry only has `:<sha>` tags; `image-tags-patch.yaml` still
       hard-codes a SHA. Once CI publishes `:main`, flip the patch to
