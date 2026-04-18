@@ -61,27 +61,40 @@ accidental complexity.
    "prod-tunnel" (GKE via port-forward) via an environment selector
    in the Angular topbar.
 
-### Port map
+### Port map — three environments, +10000 per env (decided 2026-04-18)
 
-Convention: dev/compose uses the upstream defaults, prod tunnels
-prefix the same digit with `1` so both can coexist on the laptop
-simultaneously.
+Convention: compose uses the upstream defaults, kind adds `+10000`, prod
+adds `+20000`. Each environment has its own 5-digit decade, so the three
+can coexist on the laptop simultaneously (useful for kind-vs-prod
+comparisons).
 
-| Service              | Dev (compose) | Prod (port-forward) |
-|----------------------|---------------|---------------------|
-| Backend API          | `8080`        | `18080`             |
-| Postgres             | `5432`        | `15432`             |
-| Redis                | `6379`        | `16379`             |
-| Kafka                | `9092`        | `19092`             |
-| Grafana (LGTM)       | `3000`        | `13000`             |
-| Tempo                | `3200`        | `13200`             |
-| Loki                 | `3100`        | `13100`             |
-| Mimir (Prom API)     | `9009`        | `19009`             |
-| Pyroscope            | `4040`        | `14040`             |
-| Keycloak             | `9090`        | `19091`             |
-| Unleash              | `4242`        | `14242`             |
-| Argo CD UI           | –             | `18081`             |
-| Chaos Mesh dashboard | –             | `12333`             |
+| Service              | Compose  | Kind (+10000) | Prod (+20000) |
+|----------------------|----------|---------------|---------------|
+| Backend API          | `8080`   | `18080`       | `28080`       |
+| Postgres             | `5432`   | `15432`       | `25432`       |
+| Redis                | `6379`   | `16379`       | `26379`       |
+| Kafka                | `9092`   | `19092`       | `29092`       |
+| Grafana (LGTM)       | `3000`   | `13000`       | `23000`       |
+| Tempo                | `3200`   | `13200`       | `23200`       |
+| Loki                 | `3100`   | `13100`       | `23100`       |
+| Mimir (Prom API)     | `9009`   | `19009`       | `29009`       |
+| Pyroscope            | `4040`   | `14040`       | `24040`       |
+| Keycloak             | `9090`   | `19090`       | `29090`       |
+| Unleash              | –        | `14242`       | `24242`       |
+| Argo CD UI           | –        | `18081`       | `28081`       |
+| Chaos Mesh dashboard | –        | `12333`       | `22333`       |
+
+Compose-local tooling (no offset — always the same port, regardless of
+which tunnel is active):
+
+| Service              | Port     | Target                                                  |
+|----------------------|----------|---------------------------------------------------------|
+| `pgweb-local`        | `8081`   | compose db:5432                                         |
+| `pgweb-kind`         | `8082`   | host.docker.internal:15432 (profile `kind-tunnel`)      |
+| `pgweb-prod`         | `8083`   | host.docker.internal:25432 (profile `prod-tunnel`)      |
+| CloudBeaver          | `8978`   | compose db:5432 (user configures cluster conn as needed)|
+| Kafka UI             | `9080`   | compose kafka                                           |
+| RedisInsight         | `5540`   | compose redis                                           |
 
 ## Consequences
 
@@ -141,22 +154,28 @@ simultaneously.
   `base/kustomization.yaml` drops frontend + ingress refs;
   `bin/demo-up.sh` drops cert-manager install + DuckDNS step +
   Argo CD Ingress apply.
-- **Add**: `bin/pf-prod.sh`, `bin/pf-stop.sh`, `bin/pf-status.sh`.
+- **Add**: `bin/pf-prod.sh`, `bin/pf-kind.sh`, `bin/pf-stop.sh`,
+  `bin/pf-status.sh`. The port offsets (Kind +10000, Prod +20000) were
+  finalised on 2026-04-18 — see the port map above.
 - **Update**: `public/index.html` (landing points at clone + tunnel
   flow), `README.md` (swap public URLs for tunnel ports).
 
 ## UI-side follow-up (mirador-ui repo)
 
-The EnvService needs a dropdown in the topbar with two entries:
+The EnvService has a dropdown in the topbar with three entries:
 
 ```
-Environment: ( • dev ) ( prod-tunnel )
+Environment: ( • Local ) ( Kind ) ( Prod tunnel )
 ```
 
-Selecting `prod-tunnel` changes all service URLs to `localhost:1*`
-per the port map. Selecting `dev` restores the compose defaults.
-State persists in `localStorage`. Tracked separately in the UI
-repo's `TASKS.md`.
+- `Local`  → compose defaults (`localhost:8080` etc.)
+- `Kind`   → kind cluster via bin/pf-kind.sh, ports `1xxxx`
+- `Prod tunnel` → GKE cluster via bin/pf-prod.sh, ports `2xxxx`
+
+Selection persists in `localStorage`. Signals downstream recompute.
+Env-specific URLs (`unleashUrl`, `argocdUrl`, `chaosMeshUrl`, `pgwebUrl`)
+are only defined on the environments where the tool runs — the UI gates
+optional buttons on `@if (env.<tool>Url())`.
 
 ## Revisit this when
 
