@@ -157,17 +157,17 @@ cat <<EOF
 ---
 Cluster has NO public ingress (ADR-0025). Access from your laptop:
 
-  bin/pf-prod.sh        # start tunnels for every service
+  bin/pf-prod.sh        # start tunnels for every service (prod = +20000)
   bin/pf-status.sh      # list active tunnels + local ports
   bin/pf-stop.sh        # tear them all down
 
-Then in the Angular UI topbar pick "prod-tunnel" as the environment.
+Then in the Angular UI topbar pick "Prod tunnel" as the environment.
 
-Argo CD UI     : http://localhost:18081   (once pf-prod.sh is running)
+Argo CD UI     : http://localhost:28081   (once pf-prod.sh is running)
   admin / $ARGOCD_PWD
-Backend API    : http://localhost:18080
-Grafana        : http://localhost:13000
-Unleash        : http://localhost:14242
+Backend API    : http://localhost:28080
+Grafana        : http://localhost:23000
+Unleash        : http://localhost:24242
 
 Shut everything down with: bin/demo-down.sh
 EOF

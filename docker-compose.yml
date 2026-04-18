@@ -243,6 +243,86 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
+  # pgweb (local) — HTTP ↔ Postgres bridge for the Angular UI's Database page.
+  #
+  # ADR-0026: the Angular UI calls pgweb directly; Spring Boot is not in the
+  # SQL path. pgweb itself speaks the Postgres wire protocol as a client
+  # (connects to `db:5432`) and exposes a JSON REST API the browser can hit.
+  #
+  # `--readonly` rejects writes at the HTTP layer before they reach Postgres
+  # (defense in depth; the `demo` PG role also has limited grants).
+  # `--cors-origin=http://localhost:4200` locks the CORS allowlist to the
+  # Angular dev server — no other site in the browser can call this pgweb.
+  # ---------------------------------------------------------------------------
+  pgweb-local:
+    image: sosedoff/pgweb:0.16.2
+    container_name: pgweb-local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGWEB_DATABASE_URL: "postgres://demo:demo@db:5432/customer-service?sslmode=disable"
+    command:
+      - pgweb
+      - --bind=0.0.0.0
+      - --listen=8081
+      - --readonly
+      - --cors
+      - --cors-origin=http://localhost:4200
+    ports:
+      # Bind on 127.0.0.1 only — never exposed on the LAN even if the host
+      # firewall is lax. ADR-0025 pattern applied to compose services too.
+      - "127.0.0.1:8081:8081"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # pgweb (kind) — same image, points at the KIND cluster Postgres through
+  # the port-forward that bin/pf-kind.sh opens on localhost:15432 (kind = +10000).
+  #
+  # Activation:
+  #   1. bin/pf-kind.sh --daemon        (opens localhost:15432 → kind Postgres)
+  #   2. bin/pgweb-kind-up.sh            (fetches DB password from the kind Secret,
+  #                                        starts this on :8082)
+  # profile `kind-tunnel` keeps it off when you are not using kind.
+  # ---------------------------------------------------------------------------
+  pgweb-kind:
+    image: sosedoff/pgweb:0.16.2
+    container_name: pgweb-kind
+    profiles: ["kind-tunnel"]
+    environment:
+      PGWEB_DATABASE_URL: "postgres://demo:${PGWEB_DB_PASSWORD:-}@host.docker.internal:15432/customer-service?sslmode=disable"
+    command: [pgweb, --bind=0.0.0.0, --listen=8081, --readonly, --cors, --cors-origin=http://localhost:4200]
+    ports:
+      - "127.0.0.1:8082:8081"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # pgweb (prod tunnel) — same image, points at the GKE cluster Postgres
+  # through the port-forward that bin/pf-prod.sh opens on localhost:25432
+  # (prod = +20000).
+  #
+  # Activation:
+  #   1. bin/pf-prod.sh --daemon        (opens localhost:25432 → GKE Postgres)
+  #   2. bin/pgweb-prod-up.sh            (fetches DB password from GSM via ESO,
+  #                                        starts this on :8083)
+  # profile `prod-tunnel` keeps it off unless explicitly activated.
+  # ---------------------------------------------------------------------------
+  pgweb-prod:
+    image: sosedoff/pgweb:0.16.2
+    container_name: pgweb-prod
+    profiles: ["prod-tunnel"]
+    environment:
+      PGWEB_DATABASE_URL: "postgres://demo:${PGWEB_DB_PASSWORD:-}@host.docker.internal:25432/customer-service?sslmode=disable"
+    command: [pgweb, --bind=0.0.0.0, --listen=8081, --readonly, --cors, --cors-origin=http://localhost:4200]
+    ports:
+      - "127.0.0.1:8083:8081"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
   # Kafka UI — web interface for Apache Kafka
   # Browse topics, messages, consumer groups, and lag in real time.
   # Connects to the internal Kafka listener (29092) on the Docker network.

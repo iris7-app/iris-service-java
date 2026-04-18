@@ -7,10 +7,15 @@
 #   3. runtime  — minimal JRE image with only the application layers
 #
 # Runtime base choice — why eclipse-temurin:25-jre and not distroless?
-#   Google distroless-java only ships up to Java 21 at the time of writing.
+#   Google distroless-java only ships up to Java 21 at the time of writing
+#   (https://github.com/GoogleContainerTools/distroless/tree/main/java).
 #   Our bytecode target is Java 25 (pom.xml → java.version=25), so
-#   distroless-java21 would fail with UnsupportedClassVersionError. When
-#   Google publishes distroless-java25, we migrate (tracked in TASKS.md).
+#   distroless-java21 would fail with UnsupportedClassVersionError.
+#
+#   Blocked until Google publishes distroless-java25. No ETA; check the
+#   repo's tags page for `java25-debian12` or similar. Migration is a
+#   one-line FROM swap once the image exists — no TASKS entry because
+#   the blocker is external and undated.
 #
 # Image tagging strategy:
 #   The CI pipeline tags each build with $CI_COMMIT_SHA + $CI_COMMIT_REF_SLUG
