@@ -86,6 +86,32 @@ echo "📋  kubectl version"
 kubectl version --client=true --output=yaml | head -3
 kubectl cluster-info
 
+# Install the third-party CRDs that the overlay's manifests reference.
+# In the real cluster these come from Argo CD applications (chaos-mesh
+# helm chart, external-secrets operator helm chart). kind-in-CI has
+# neither — so `kubectl apply -k` fails with "no matches for kind
+# NetworkChaos / ExternalSecret / SecretStore" before it gets a chance
+# to validate the manifests we actually care about.
+#
+# Pinning CRD versions — we validate shape, not upstream stability. If
+# the CRD schema changes upstream, we find out via a controlled bump.
+CHAOS_MESH_VERSION="${CHAOS_MESH_VERSION:-2.7.2}"
+ESO_VERSION="${ESO_VERSION:-0.10.6}"
+
+echo "📦  Installing third-party CRDs (chaos-mesh $CHAOS_MESH_VERSION, ESO $ESO_VERSION)…"
+kubectl apply --server-side=true -f \
+  "https://mirrors.chaos-mesh.org/v$CHAOS_MESH_VERSION/crd.yaml" >/dev/null
+kubectl apply --server-side=true -f \
+  "https://raw.githubusercontent.com/external-secrets/external-secrets/v$ESO_VERSION/deploy/crds/bundle.yaml" >/dev/null
+
+# Wait for the CRDs to be established before the overlay references them.
+for crd in podchaos.chaos-mesh.org networkchaos.chaos-mesh.org \
+           stresschaos.chaos-mesh.org externalsecrets.external-secrets.io \
+           secretstores.external-secrets.io; do
+  kubectl wait --for=condition=established --timeout=30s "crd/$crd" >/dev/null
+done
+echo "  ✓ CRDs established."
+
 echo "🚀  kubectl apply -k $OVERLAY"
 # The server-side apply pass catches schema errors the `kubectl kustomize`
 # render in the pre-commit hook can't — missing CRDs, admission webhooks
