@@ -51,6 +51,25 @@ CORE_PODS=(
 echo "🛠  Creating kind cluster $KIND_CLUSTER…"
 kind create cluster --name "$KIND_CLUSTER" --config "$KIND_CONFIG" --wait 2m
 
+# --- Docker-in-Docker networking fix ---
+# The GitLab runner mounts the host's Docker socket into the job container,
+# so `kind` creates the control-plane container as a *sibling* of the job
+# container on the host Docker daemon. The kubeconfig that `kind create`
+# writes targets 127.0.0.1:<randomPort> — which from inside the job
+# container points at its own loopback, not the kind control-plane.
+#
+# Fix:
+# 1. Ask kind for the internal kubeconfig (apiserver on the kind bridge IP).
+# 2. Connect the job container to the `kind` Docker network so it can
+#    actually reach that IP. Idempotent — skip if we're not in a container
+#    (local dev) or the connect fails (already connected).
+if [ -f /.dockerenv ] || grep -q "docker\|kubepods" /proc/1/cgroup 2>/dev/null; then
+  JOB_CTR=$(hostname)   # GitLab job containers use container-id as hostname
+  docker network connect kind "$JOB_CTR" 2>/dev/null || true
+  kind export kubeconfig --name "$KIND_CLUSTER" --internal
+  echo "🔌  Wired job container $JOB_CTR onto kind network (internal kubeconfig)."
+fi
+
 echo "📋  kubectl version"
 kubectl version --client=true --output=yaml | head -3
 kubectl cluster-info

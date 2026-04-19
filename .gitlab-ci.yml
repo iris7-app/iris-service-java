@@ -198,6 +198,12 @@ openapi-lint:
     # the probes that would block the app from becoming ready without those
     # services. See `observability/*HealthIndicator` classes for what's gated.
     SPRING_DATA_REDIS_REPOSITORIES_ENABLED: "false"
+    # FF_NETWORK_PER_BUILD puts the job container and its `services:` on a
+    # per-job user-defined Docker network, which is the only way `alias`
+    # DNS resolution works on our socket-mounted macbook-local runner.
+    # Without it, service linking silently lands on the default bridge and
+    # `UnknownHostException: postgres` kills Flyway before openapi export.
+    FF_NETWORK_PER_BUILD: "true"
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
