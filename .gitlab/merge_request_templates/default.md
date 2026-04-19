@@ -17,7 +17,7 @@
 
 ## Checks
 
-- [ ] `bin/mirador-doctor` green
+- [ ] `bin/dev/mirador-doctor` green
 - [ ] CI pipeline green (or skip with rationale for flaky jobs)
 - [ ] Docs updated (README / runbook / technologies.md / methods-and-techniques.md)
 - [ ] If CI added a new `$VAR`, it's documented in `docs/ops/ci-variables.md`

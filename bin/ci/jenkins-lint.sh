@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/jenkins-lint.sh — validate the Jenkinsfile syntax against a real
+# bin/ci/jenkins-lint.sh — validate the Jenkinsfile syntax against a real
 # Jenkins declarative linter.
 #
 # Boot a throwaway Jenkins in Docker, POST the Jenkinsfile to the
@@ -16,8 +16,8 @@
 # Rationale for this specific approach in ADR-0029.
 #
 # Usage:
-#   bin/jenkins-lint.sh                # lint ./Jenkinsfile
-#   bin/jenkins-lint.sh path/to/file  # lint an arbitrary file
+#   bin/ci/jenkins-lint.sh                # lint ./Jenkinsfile
+#   bin/ci/jenkins-lint.sh path/to/file  # lint an arbitrary file
 # =============================================================================
 
 set -euo pipefail

@@ -73,6 +73,6 @@ Surviving resources (intentional, ~€0/month):
   - GSM secrets: mirador-{db-password,jwt-secret,api-key,gitlab-api-token,keycloak-admin-password}
   - GCP SA external-secrets-operator@ (no cost)
 
-Bring everything back with: bin/demo-up.sh
-Standalone PVC audit:         bin/gcp-cost-audit.sh
+Bring everything back with: bin/cluster/demo-up.sh
+Standalone PVC audit:         bin/budget/gcp-cost-audit.sh
 EOF

@@ -257,9 +257,9 @@ Documenting them up front is cheaper than discovering them mid-demo,
 and also clarifies which limitations are deliberate trade-offs
 (linked to an ADR) rather than unintentional gaps.
 
-- **Cold start is slow** — a fresh `bin/demo-up.sh` takes ~8 min
+- **Cold start is slow** — a fresh `bin/cluster/demo-up.sh` takes ~8 min
   (cluster provisioning 5 min + operator installs 2 min + app sync
-  1 min). Access needs one more step: `bin/pf-prod.sh` to open local
+  1 min). Access needs one more step: `bin/cluster/pf-prod.sh` to open local
   tunnels to every service (ADR-0025). I warm the cluster up 10 min
   before any live walkthrough and leave `pf-prod.sh --daemon` running
   in the background.
@@ -341,7 +341,7 @@ Developer laptop                         GKE Autopilot (no public surface)
         │
         ▼                                namespace: infra
   kubectl port-forward  ══════════════►    PostgreSQL 17 (StatefulSet)
-  (bin/pf-prod.sh — prod = +20000)         Redis 7 / Kafka / Keycloak / Unleash
+  (bin/cluster/pf-prod.sh — prod = +20000)         Redis 7 / Kafka / Keycloak / Unleash
         │                                  LGTM all-in-one (Grafana + Loki + Tempo + Mimir)
         ▼
   localhost:28080 → mirador
@@ -349,7 +349,7 @@ Developer laptop                         GKE Autopilot (no public surface)
   localhost:24242 → unleash
   localhost:28081 → argo-cd
   localhost:25432 → postgres (CloudBeaver)
-  … (see bin/pf-prod.sh or docs/architecture/environments-and-flows.md)
+  … (see bin/cluster/pf-prod.sh or docs/architecture/environments-and-flows.md)
 ```
 
 > **Why no public URL**: ADR-0025 trades recruiter click-through for
@@ -505,8 +505,8 @@ Pre-push hook (via lefthook) runs unit tests automatically before every `git pus
 > | Mode | Launcher | Backend API |
 > |------|----------|-------------|
 > | **Docker Compose (dev)** | `./run.sh all` | `http://localhost:8080` |
-> | **kind cluster** | `scripts/deploy-local.sh` + `bin/pf-kind.sh` | `http://localhost:18080` |
-> | **GKE (prod)** | `bin/demo-up.sh` + `bin/pf-prod.sh` | `http://localhost:28080` |
+> | **kind cluster** | `scripts/deploy-local.sh` + `bin/cluster/pf-kind.sh` | `http://localhost:18080` |
+> | **GKE (prod)** | `bin/cluster/demo-up.sh` + `bin/cluster/pf-prod.sh` | `http://localhost:28080` |
 >
 > Cluster modes go through `kubectl port-forward` (ADR-0025) — the UI's
 > EnvService picks between the three. Full port map in

@@ -19,7 +19,7 @@
 # Total cold start: ~10 min vs ~13-15 min for the full demo-up.sh.
 #
 # Access pattern (ADR-0025 — no public surface):
-#   bin/pf-prod.sh                # starts all tunnels
+#   bin/cluster/pf-prod.sh                # starts all tunnels
 #   curl http://localhost:18080/actuator/health
 # =============================================================================
 set -euo pipefail
@@ -123,10 +123,10 @@ cat <<EOF
 ⚡ demo-up-fast complete
 ---
 Access (ADR-0025 — cluster has no public surface, prod uses +20000 offset):
-  bin/pf-prod.sh --daemon           # starts all tunnels in background
+  bin/cluster/pf-prod.sh --daemon           # starts all tunnels in background
   curl http://localhost:28080/actuator/health
   open http://localhost:28081       # Argo CD (admin / $ARGOCD_PWD)
 
 Skipped (vs demo-up.sh): Kyverno, Argo Rollouts, Chaos Mesh.
-Shut down with: bin/pf-stop.sh && bin/demo-down.sh
+Shut down with: bin/cluster/pf-stop.sh && bin/cluster/demo-down.sh
 EOF

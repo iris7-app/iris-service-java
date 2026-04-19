@@ -4,8 +4,8 @@ Operational reference for keeping the Mirador GCP bill under the
 [ADR-0022](../adr/0022-ephemeral-cluster.md) €2/month target.
 
 - **Budget alert** — tells you when you're drifting.
-- **`bin/demo-down.sh`** — cleans at the source after every demo.
-- **`bin/gcp-cost-audit.sh`** — safety net, catches what `demo-down`
+- **`bin/cluster/demo-down.sh`** — cleans at the source after every demo.
+- **`bin/budget/gcp-cost-audit.sh`** — safety net, catches what `demo-down`
   missed (crashed runs, out-of-band resource creation).
 
 This page is the single source of truth for the three pieces. If one
@@ -98,7 +98,7 @@ persistent disks**. `terraform destroy` tears down the GKE node pool
 before any `kubectl delete pvc` runs; the disks end up parent-less,
 still billed at €0.048/GB/month (PD-balanced, europe-west1).
 
-`bin/demo-down.sh` now appends a cleanup pass after `terraform destroy`:
+`bin/cluster/demo-down.sh` now appends a cleanup pass after `terraform destroy`:
 
 ```bash
 gcloud compute disks list \
@@ -119,7 +119,7 @@ Filter rationale:
   names them `pvc-<uuid>`. A manually-created disk named `backup-xyz`
   would not match. Narrower scope, safer blast radius.
 
-## Safety net — `bin/gcp-cost-audit.sh`
+## Safety net — `bin/budget/gcp-cost-audit.sh`
 
 If `demo-down.sh` crashes mid-flight (network glitch, aborted with ^C,
 terraform state inconsistency), the PVC purge won't run. The standalone
@@ -127,9 +127,9 @@ audit script is the recovery path. Run it monthly via cron, or after
 any "did we clean up?" moment:
 
 ```bash
-bin/gcp-cost-audit.sh              # report only — safe
-bin/gcp-cost-audit.sh --delete     # prompt-per-class deletion
-bin/gcp-cost-audit.sh --yes        # non-interactive — CI / cron
+bin/budget/gcp-cost-audit.sh              # report only — safe
+bin/budget/gcp-cost-audit.sh --delete     # prompt-per-class deletion
+bin/budget/gcp-cost-audit.sh --yes        # non-interactive — CI / cron
 ```
 
 The script scans **six** surfaces known to silently accumulate cost:
@@ -147,7 +147,7 @@ static IP €1.50/month, NAT €1.20/month + egress, snapshots €0.025/GB).
 ### Cron (macOS launchd or GitLab scheduled pipeline)
 
 ```
-0 2 1 * *  cd /path/to/mirador-service && bin/gcp-cost-audit.sh --yes
+0 2 1 * *  cd /path/to/mirador-service && bin/budget/gcp-cost-audit.sh --yes
 ```
 
 The first of each month, silent purge. If you prefer email reports,
@@ -183,7 +183,7 @@ GKE cluster mirador-prod → DELETING → gone in ~2 min
 
 - Function: [`deploy/cloud-functions/budget-kill/main.py`](../../deploy/cloud-functions/budget-kill/main.py) (~60 LOC)
 - Requirements: [`deploy/cloud-functions/budget-kill/requirements.txt`](../../deploy/cloud-functions/budget-kill/requirements.txt)
-- Deploy: [`bin/budget-kill-deploy.sh`](../../bin/budget-kill-deploy.sh) — idempotent, re-run any time function code changes
+- Deploy: [`bin/budget/budget-kill-deploy.sh`](../../bin/budget-kill-deploy.sh) — idempotent, re-run any time function code changes
 
 ### Filter rationale (why threshold check in code, not in Billing)
 
@@ -204,8 +204,8 @@ One SA, one role, one project. Narrow on purpose.
 
 | Principal | Role | Scope | Granted by |
 |---|---|---|---|
-| `<project-number>-compute@developer.gserviceaccount.com` (Cloud Functions default runtime SA) | `roles/container.admin` | Project | `bin/budget-kill-deploy.sh` step 4 |
-| `billing-budget-notifications@system.gserviceaccount.com` (GCP-managed) | `roles/pubsub.publisher` | Topic `mirador-budget-kill` only | `bin/budget-kill-deploy.sh` step 5 |
+| `<project-number>-compute@developer.gserviceaccount.com` (Cloud Functions default runtime SA) | `roles/container.admin` | Project | `bin/budget/budget-kill-deploy.sh` step 4 |
+| `billing-budget-notifications@system.gserviceaccount.com` (GCP-managed) | `roles/pubsub.publisher` | Topic `mirador-budget-kill` only | `bin/budget/budget-kill-deploy.sh` step 5 |
 
 Risks:
 
@@ -252,5 +252,5 @@ Two levels:
 
 - [ADR-0022 — ephemeral cluster pattern](../adr/0022-ephemeral-cluster.md)
 - [ADR-0027 — declined service mesh (cost)](../adr/0027-decline-service-mesh-for-portfolio-demo.md)
-- [`bin/demo-up.sh`](../../bin/demo-up.sh) / [`bin/demo-down.sh`](../../bin/demo-down.sh)
-- [`bin/gcp-cost-audit.sh`](../../bin/gcp-cost-audit.sh)
+- [`bin/cluster/demo-up.sh`](../../bin/demo-up.sh) / [`bin/cluster/demo-down.sh`](../../bin/demo-down.sh)
+- [`bin/budget/gcp-cost-audit.sh`](../../bin/gcp-cost-audit.sh)

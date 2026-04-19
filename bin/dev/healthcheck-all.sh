@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/healthcheck-all.sh — one-glance status of every Mirador local service.
+# bin/dev/healthcheck-all.sh — one-glance status of every Mirador local service.
 #
 # Why this script exists: the project spawns ~12 containers + 2 host
 # processes (Spring app + Angular dev server). Diagnosing "why is the
@@ -10,9 +10,9 @@
 # so you find the broken thing in 5 seconds.
 #
 # Usage:
-#   bin/healthcheck-all.sh           # human-readable table (default)
-#   bin/healthcheck-all.sh --json    # machine-readable for scripts
-#   bin/healthcheck-all.sh --watch   # re-run every 3 s
+#   bin/dev/healthcheck-all.sh           # human-readable table (default)
+#   bin/dev/healthcheck-all.sh --json    # machine-readable for scripts
+#   bin/dev/healthcheck-all.sh --watch   # re-run every 3 s
 #
 # Exit code: 0 if everything is UP, 1 if any required service is DOWN
 # (so it can be wired into pre-merge / pre-demo checks).

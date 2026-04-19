@@ -13,7 +13,7 @@
 #   • Pins the backend image tag (Argo CD doesn't do envsubst).
 #
 # Apply:   kubectl apply -k deploy/kubernetes/overlays/gke
-# Access:  kubectl port-forward (see bin/pf-prod.sh).
+# Access:  kubectl port-forward (see bin/cluster/pf-prod.sh).
 # =============================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

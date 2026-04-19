@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/connect-prod.sh — refresh kubeconfig for the ephemeral GKE demo cluster
+# bin/cluster/connect-prod.sh — refresh kubeconfig for the ephemeral GKE demo cluster
 # and (optionally) open the desktop tools that read from it.
 #
 # Most desktop K8s / Docker tools (OpenLens, K9s, Headlamp, kubectl itself)
@@ -31,7 +31,7 @@ fi
 echo "🔑  refreshing kubeconfig for $CLUSTER_NAME in $REGION…"
 if ! gcloud container clusters get-credentials "$CLUSTER_NAME" \
      --region "$REGION" --project "$PROJECT_ID" 2>/dev/null; then
-  echo "❌  Cluster '$CLUSTER_NAME' not found. Run bin/demo-up.sh first."
+  echo "❌  Cluster '$CLUSTER_NAME' not found. Run bin/cluster/demo-up.sh first."
   exit 1
 fi
 
@@ -64,8 +64,8 @@ cat <<'EOF'
     • IntelliJ Kubernetes plugin      ← same
 
   App plane (Grafana / backend / Unleash / Argo CD / Postgres / Kafka / …):
-      bin/pf-prod.sh --daemon        # port-forward tunnels
-      bin/pf-status.sh               # list + probe
-      bin/pf-stop.sh                 # tear down
+      bin/cluster/pf-prod.sh --daemon        # port-forward tunnels
+      bin/cluster/pf-status.sh               # list + probe
+      bin/cluster/pf-stop.sh                 # tear down
 ─────────────────────────────────────────────────────────────────────────
 EOF

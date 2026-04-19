@@ -1814,8 +1814,8 @@ terraform-apply:
 # Manual-trigger job. Pre-ADR-0025 this ran automatically against
 # mirador1.duckdns.org after deploy:gke. Now that the cluster has no public
 # surface, the smoke test only makes sense when a developer has:
-#   1. Booted the cluster   (bin/demo-up.sh, 13 min)
-#   2. Started the tunnels  (bin/pf-prod.sh --daemon)
+#   1. Booted the cluster   (bin/cluster/demo-up.sh, 13 min)
+#   2. Started the tunnels  (bin/cluster/pf-prod.sh --daemon)
 # … and targets localhost:18080 instead of a public host.
 #
 # 30 s of light read-only traffic at ~3 RPS, pass/fail on p95 < 500 ms and
@@ -1849,7 +1849,7 @@ smoke-test:
 # propagates without a manifest edit. The ~90-line CI job is redundant plumbing.
 #
 # If you ever need a one-off apply outside Argo CD (e.g. debug a bad sync),
-# use bin/connect-prod.sh + bin/demo-up.sh or kubectl apply -k from your
+# use bin/cluster/connect-prod.sh + bin/cluster/demo-up.sh or kubectl apply -k from your
 # laptop — same code path, no WIF credentials in CI.
 
 # ── AWS EKS — manual ──────────────────────────────────────────────────────────

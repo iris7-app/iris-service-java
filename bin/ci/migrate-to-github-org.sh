@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/migrate-to-github-org.sh — move GitHub mirrors from `Beennnn/*`
+# bin/ci/migrate-to-github-org.sh — move GitHub mirrors from `Beennnn/*`
 # to an organization (default `mirador1`) and rewrite every URL in
 # both repos so the mirror keeps working.
 #
@@ -25,7 +25,7 @@
 #        - README.md (badge URLs)
 #        - .gitlab-ci.yml (GITHUB_REPO env var)
 #        - docs/ops/*.md (examples, cross-references)
-#        - bin/ship.sh (GITHUB_REPO default map)
+#        - bin/ship/ship.sh (GITHUB_REPO default map)
 #   5. Commit the rewrites on the current dev branch of each repo.
 #
 # What this does NOT do:
@@ -39,9 +39,9 @@
 #     hosts the repo.
 #
 # Usage:
-#   bin/migrate-to-github-org.sh                    # default org = mirador1
-#   bin/migrate-to-github-org.sh mynewname          # override org name
-#   bin/migrate-to-github-org.sh --rewrite-only     # skip transfer, just update URLs
+#   bin/ci/migrate-to-github-org.sh                    # default org = mirador1
+#   bin/ci/migrate-to-github-org.sh mynewname          # override org name
+#   bin/ci/migrate-to-github-org.sh --rewrite-only     # skip transfer, just update URLs
 # =============================================================================
 
 set -euo pipefail
@@ -116,5 +116,5 @@ rewrite_in "$UI_DIR"
 
 echo
 ok "Migration complete. Commit the rewrites with:"
-echo "  cd $SERVICE_DIR && bin/ship.sh \"chore: GitHub org $OLD_OWNER → $NEW_ORG\""
-echo "  cd $UI_DIR      && bin/ship.sh \"chore: GitHub org $OLD_OWNER → $NEW_ORG\""
+echo "  cd $SERVICE_DIR && bin/ship/ship.sh \"chore: GitHub org $OLD_OWNER → $NEW_ORG\""
+echo "  cd $UI_DIR      && bin/ship/ship.sh \"chore: GitHub org $OLD_OWNER → $NEW_ORG\""

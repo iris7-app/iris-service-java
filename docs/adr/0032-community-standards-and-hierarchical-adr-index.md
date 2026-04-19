@@ -43,8 +43,8 @@ Add at the repo root:
   controls, hall of fame placeholder. Tracks the GitHub/GitLab
   expected format.
 - `CONTRIBUTING.md` — where to contribute (GitLab canonical, GitHub
-  read-only mirror), workflow (`bin/mirador-doctor` → branch →
-  `bin/ship.sh`), Conventional Commits rule, code conventions per
+  read-only mirror), workflow (`bin/dev/mirador-doctor` → branch →
+  `bin/ship/ship.sh`), Conventional Commits rule, code conventions per
   repo, ADR discipline, review policy, what gets declined.
 
 Add per-platform templates:

@@ -285,11 +285,11 @@ services:
 
   # ---------------------------------------------------------------------------
   # pgweb (kind) — same image, points at the KIND cluster Postgres through
-  # the port-forward that bin/pf-kind.sh opens on localhost:15432 (kind = +10000).
+  # the port-forward that bin/cluster/pf-kind.sh opens on localhost:15432 (kind = +10000).
   #
   # Activation:
-  #   1. bin/pf-kind.sh --daemon        (opens localhost:15432 → kind Postgres)
-  #   2. bin/pgweb-kind-up.sh            (fetches DB password from the kind Secret,
+  #   1. bin/cluster/pf-kind.sh --daemon        (opens localhost:15432 → kind Postgres)
+  #   2. bin/cluster/pgweb-kind-up.sh            (fetches DB password from the kind Secret,
   #                                        starts this on :8082)
   # profile `kind-tunnel` keeps it off when you are not using kind.
   # ---------------------------------------------------------------------------
@@ -308,12 +308,12 @@ services:
 
   # ---------------------------------------------------------------------------
   # pgweb (prod tunnel) — same image, points at the GKE cluster Postgres
-  # through the port-forward that bin/pf-prod.sh opens on localhost:25432
+  # through the port-forward that bin/cluster/pf-prod.sh opens on localhost:25432
   # (prod = +20000).
   #
   # Activation:
-  #   1. bin/pf-prod.sh --daemon        (opens localhost:25432 → GKE Postgres)
-  #   2. bin/pgweb-prod-up.sh            (fetches DB password from GSM via ESO,
+  #   1. bin/cluster/pf-prod.sh --daemon        (opens localhost:25432 → GKE Postgres)
+  #   2. bin/cluster/pgweb-prod-up.sh            (fetches DB password from GSM via ESO,
   #                                        starts this on :8083)
   # profile `prod-tunnel` keeps it off unless explicitly activated.
   # ---------------------------------------------------------------------------

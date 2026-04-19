@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/nightly-smoke.sh — once-per-day local smoke test (#8 from proposal list).
+# bin/dev/nightly-smoke.sh — once-per-day local smoke test (#8 from proposal list).
 #
 # Why this exists: the local Docker Compose stack drifts silently when
 # upstream images bump their baseline (Postgres 17.x → 17.y, Kafka
@@ -13,7 +13,7 @@
 # What it does:
 #   1. ./run.sh all             — bring up everything (with --profile full)
 #   2. wait up to 3 min for Spring health to flip to UP
-#   3. bin/healthcheck-all.sh   — verify every container probe
+#   3. bin/dev/healthcheck-all.sh   — verify every container probe
 #   4. bin/audit-lighthouse.sh  — capture today's Lighthouse score
 #      (UI repo, optional, only if mirador-ui sibling exists)
 #   5. ./run.sh stop            — leave the laptop clean

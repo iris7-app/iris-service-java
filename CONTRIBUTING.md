@@ -35,7 +35,7 @@ repo description points here. See
 ```bash
 git clone https://gitlab.com/mirador1/mirador-service.git
 cd mirador-service
-bin/mirador-doctor   # one-command health check — must be all green
+bin/dev/mirador-doctor   # one-command health check — must be all green
 ```
 
 If any check fails, follow the advice in the output. `bin/mirador-
@@ -67,7 +67,7 @@ Scope is optional but useful (`feat(auth): ...`, `fix(ci): ...`).
 ### 3. Push + open MR
 
 ```bash
-bin/ship.sh "feat(scope): short subject"
+bin/ship/ship.sh "feat(scope): short subject"
 ```
 
 This one command:
@@ -94,7 +94,7 @@ true` on optional stages means one red doesn't block merge.
 
 ### 5. Sync `dev` after merge
 
-Handled automatically by `bin/ship.sh --wait`. Or manually:
+Handled automatically by `bin/ship/ship.sh --wait`. Or manually:
 
 ```bash
 git fetch --all

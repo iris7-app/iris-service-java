@@ -20,7 +20,7 @@ C4Context
   title System Context — Mirador
 
   Person(operator, "Operator", "Demos the system, debugs incidents, runs chaos scenarios.")
-  Person(developer, "Developer", "Reads ADRs, ships features via bin/ship.sh.")
+  Person(developer, "Developer", "Reads ADRs, ships features via bin/ship/ship.sh.")
   Person(visitor, "Read-only visitor", "Curious dev / recruiter; sees the GIF demo + READMEs.")
 
   System_Boundary(b1, "Mirador") {
@@ -36,7 +36,7 @@ C4Context
   Rel(operator, mirador, "Uses")
   Rel(developer, gitlab, "git push, MR review")
   Rel(visitor, github, "Browses README + GIF")
-  Rel(gitlab, github, "bin/ship.sh mirror push")
+  Rel(gitlab, github, "bin/ship/ship.sh mirror push")
   Rel(developer, gke, "demo-up.sh on demand")
   Rel(mirador, ollama, "REST /api/generate", "for /customers/id/enrich")
   Rel(mirador, grafana_cloud, "OTLP push (prod)", "traces + logs + metrics")

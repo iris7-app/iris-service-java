@@ -77,7 +77,7 @@ Three options considered for validation:
   Jenkinsfile is a demonstrator, the adopting team runs the real
   pipeline in their own environment and surfaces those errors there.
 
-The helper lives at [`bin/jenkins-lint.sh`](../../bin/jenkins-lint.sh).
+The helper lives at [`bin/ci/jenkins-lint.sh`](../../bin/jenkins-lint.sh).
 Idempotent, self-cleaning, pinned Jenkins image.
 
 ## Consequences
@@ -85,7 +85,7 @@ Idempotent, self-cleaning, pinned Jenkins image.
 ### Positive
 
 - **Adoption question answered.** A team evaluating Mirador for their
-  Jenkins shop can clone, run `bin/jenkins-lint.sh`, get a pass in
+  Jenkins shop can clone, run `bin/ci/jenkins-lint.sh`, get a pass in
   under a minute, read [`docs/ops/jenkins.md`](../ops/jenkins.md),
   and know the stack fits.
 - **Low maintenance.** The Jenkinsfile doesn't need to run on every
@@ -127,11 +127,11 @@ Idempotent, self-cleaning, pinned Jenkins image.
 
 - **A real team adopts Mirador on Jenkins.** The Jenkinsfile becomes
   a canary at that point — promote it, stop treating it as a
-  demonstrator, wire it into `bin/mirador-doctor`.
+  demonstrator, wire it into `bin/dev/mirador-doctor`.
 - **GitLab SaaS becomes unavailable** (paid-tier only, private
   networks, outages). Jenkins may become canonical.
 - **Jenkins releases a trustworthy hosted linter** (unlikely but
-  would simplify `bin/jenkins-lint.sh` to a curl call).
+  would simplify `bin/ci/jenkins-lint.sh` to a curl call).
 - **The Jenkinsfile drifts > 10 stages behind** `.gitlab-ci.yml`.
   That's the threshold where the parity claim stops being credible
   and we should either catch up or document the gap.

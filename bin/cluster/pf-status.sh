@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/pf-status.sh — list active kind + prod tunnels and probe each.
+# bin/cluster/pf-status.sh — list active kind + prod tunnels and probe each.
 #
 # Three-environment policy (docs/architecture/environments-and-flows.md):
 #   Local compose = upstream ports
-#   Kind          = upstream + 10000   (bin/pf-kind.sh)
-#   Prod          = upstream + 20000   (bin/pf-prod.sh)
+#   Kind          = upstream + 10000   (bin/cluster/pf-kind.sh)
+#   Prod          = upstream + 20000   (bin/cluster/pf-prod.sh)
 # Compose is not listed here — those are regular docker containers, checked
 # with `docker compose ps`.
 # =============================================================================
