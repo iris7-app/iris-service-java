@@ -58,16 +58,28 @@ kind create cluster --name "$KIND_CLUSTER" --config "$KIND_CONFIG" --wait 2m
 # writes targets 127.0.0.1:<randomPort> — which from inside the job
 # container points at its own loopback, not the kind control-plane.
 #
-# Fix:
-# 1. Ask kind for the internal kubeconfig (apiserver on the kind bridge IP).
-# 2. Connect the job container to the `kind` Docker network so it can
-#    actually reach that IP. Idempotent — skip if we're not in a container
-#    (local dev) or the connect fails (already connected).
+# Fix (three steps, each needed for a different reason):
+# 1. Connect the job container to the `kind` Docker network — makes the
+#    control-plane IP reachable at L3.
+# 2. Pin the control-plane hostname in /etc/hosts — Docker's embedded DNS
+#    (127.0.0.11) is only baked into resolv.conf at container *start*, so
+#    connecting the network later doesn't give us DNS. The TLS cert is
+#    issued for the hostname, not the IP, so we resolve statically rather
+#    than use --insecure-skip-tls-verify.
+# 3. Switch kubeconfig to `--internal` — apiserver URL becomes
+#    https://<cluster>-control-plane:6443, which now resolves.
 if [ -f /.dockerenv ] || grep -q "docker\|kubepods" /proc/1/cgroup 2>/dev/null; then
   JOB_CTR=$(hostname)   # GitLab job containers use container-id as hostname
+  CP_CTR="${KIND_CLUSTER}-control-plane"
   docker network connect kind "$JOB_CTR" 2>/dev/null || true
+  CP_IP=$(docker inspect -f '{{.NetworkSettings.Networks.kind.IPAddress}}' "$CP_CTR" 2>/dev/null)
+  if [ -n "$CP_IP" ]; then
+    echo "$CP_IP $CP_CTR" >> /etc/hosts
+    echo "🔌  $JOB_CTR → kind network; $CP_CTR pinned at $CP_IP in /etc/hosts."
+  else
+    echo "⚠️  Could not inspect $CP_CTR on kind network — falling back to default kubeconfig."
+  fi
   kind export kubeconfig --name "$KIND_CLUSTER" --internal
-  echo "🔌  Wired job container $JOB_CTR onto kind network (internal kubeconfig)."
 fi
 
 echo "📋  kubectl version"
