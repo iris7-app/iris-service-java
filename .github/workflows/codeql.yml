@@ -33,6 +33,8 @@ on:
     # when the last push happened. Monday 06:00 UTC = 07:00 CET, runs
     # before any real user opens the repo.
     - cron: '0 6 * * 1'
+  # Manual trigger — useful when tuning query suite.
+  workflow_dispatch: {}
 
 permissions:
   # Least-privilege. `security-events: write` is what lets CodeQL
