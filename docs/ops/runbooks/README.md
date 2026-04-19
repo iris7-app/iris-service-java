@@ -18,7 +18,7 @@ Run them cold after a week away from the project.
 | Kafka `/customers/{id}/enrich` times out | [kafka-enrich-timeout.md](kafka-enrich-timeout.md) |
 | Ollama `/customers/{id}/bio` returns fallback "Bio temporarily unavailable." | [ollama-bio-fallback.md](ollama-bio-fallback.md) |
 | CI pipeline auto-merge not firing | [auto-merge-stuck.md](auto-merge-stuck.md) |
-| GCP bill higher than expected | see `docs/ops/cost-control.md` + `bin/gcp-cost-audit.sh` |
+| GCP bill higher than expected | see `docs/ops/cost-control.md` + `bin/budget/gcp-cost-audit.sh` |
 | Playwright E2E fails in CI but passes locally | [e2e-ci-diff.md](e2e-ci-diff.md) *(pending — ROADMAP Tier-1 #2)* |
 
 ## Writing a new runbook

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/ship.sh — one-command dev → main shipping.
+# bin/ship/ship.sh — one-command dev → main shipping.
 #
 # The manual sequence that used to be: commit → push → open MR → arm
 # auto-merge → wait for green → pull main → sync dev → push GitHub
@@ -16,17 +16,17 @@
 #      b. Mirror-push to the GitHub mirror (if GitHub remote known).
 #
 # Usage:
-#   bin/ship.sh "fix(scope): subject"       # commits any staged changes
+#   bin/ship/ship.sh "fix(scope): subject"       # commits any staged changes
 #                                           # with the message, then ships
-#   bin/ship.sh                             # commits nothing, just ships
+#   bin/ship/ship.sh                             # commits nothing, just ships
 #                                           # the current dev HEAD
-#   bin/ship.sh --wait                      # block until merged, then sync
+#   bin/ship/ship.sh --wait                      # block until merged, then sync
 #                                           # dev + push GitHub mirror
-#   bin/ship.sh --release v1.2              # after merge, tag main with
+#   bin/ship/ship.sh --release v1.2              # after merge, tag main with
 #                                           # the given version (implies --wait)
-#   bin/ship.sh --notify                    # macOS notification on merge
-#   bin/ship.sh --status                    # print MR + pipeline state, exit
-#   bin/ship.sh --dry-run                   # print the plan, do nothing
+#   bin/ship/ship.sh --notify                    # macOS notification on merge
+#   bin/ship/ship.sh --status                    # print MR + pipeline state, exit
+#   bin/ship/ship.sh --dry-run                   # print the plan, do nothing
 #
 # Conventions (enforced by lefthook commit-msg + 72-char limit):
 #   * Conventional Commits subject (feat|fix|docs|...)
@@ -154,7 +154,7 @@ if [[ -n "$COMMIT_MSG" ]]; then
     ok "no staged changes — skipping commit, shipping current HEAD"
   fi
 elif [[ -n "$(git status --porcelain)" ]]; then
-  bad "Working tree dirty and no commit message given. Stage + re-run with bin/ship.sh \"message\" or commit manually first."
+  bad "Working tree dirty and no commit message given. Stage + re-run with bin/ship/ship.sh \"message\" or commit manually first."
 fi
 
 # ── Push ────────────────────────────────────────────────────────────────────
@@ -298,7 +298,7 @@ if [[ -n "$RELEASE" ]]; then
   # We're already at origin/main after the reset above; tag the
   # annotated reference with a short message. User can always amend
   # the message afterward with `git tag -a $RELEASE -F <file> -f`.
-  tag_msg="$(basename "$GITLAB_PROJECT") $RELEASE — shipped via bin/ship.sh"
+  tag_msg="$(basename "$GITLAB_PROJECT") $RELEASE — shipped via bin/ship/ship.sh"
   run git tag -a "$RELEASE" -m "\"$tag_msg\""
   run git push origin "$RELEASE"
   ok "tag $RELEASE pushed"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/pre-sync.sh — guard against `reset --hard` data loss.
+# bin/ship/pre-sync.sh — guard against `reset --hard` data loss.
 #
 # Why this exists: this session lost work 3× to the pattern
 #   git reset --hard origin/main && git push --force-with-lease origin dev
@@ -9,12 +9,12 @@
 # mistake. Prevention is one extra command.
 #
 # Usage (run before ANY `reset --hard` you're about to do):
-#   bin/pre-sync.sh
+#   bin/ship/pre-sync.sh
 #
 # Exit code: 0 if safe to reset, 1 otherwise. Designed to be wired
 # into a wrapper like `bin/safe-sync.sh` (below) or just sourced
 # inline:
-#   bin/pre-sync.sh && git reset --hard origin/main && git push -f origin dev
+#   bin/ship/pre-sync.sh && git reset --hard origin/main && git push -f origin dev
 #
 # Checks:
 #   1. Uncommitted files in working tree (staged or not)

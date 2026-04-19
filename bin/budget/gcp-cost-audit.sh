@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/gcp-cost-audit.sh — scan the GCP project for silent monthly costs.
+# bin/budget/gcp-cost-audit.sh — scan the GCP project for silent monthly costs.
 #
 # Why this exists. The ADR-0022 ephemeral-cluster pattern assumes the
 # cluster lifecycle (create + 2h demo + destroy) produces ~€2/month. That
@@ -16,11 +16,11 @@
 # Designed to be rerun monthly (cron) or after every demo.
 #
 # Usage:
-#   bin/gcp-cost-audit.sh              # report only (safe, read-only)
-#   bin/gcp-cost-audit.sh --delete     # prompt-per-class deletion
-#   bin/gcp-cost-audit.sh --yes        # non-interactive purge (CI)
+#   bin/budget/gcp-cost-audit.sh              # report only (safe, read-only)
+#   bin/budget/gcp-cost-audit.sh --delete     # prompt-per-class deletion
+#   bin/budget/gcp-cost-audit.sh --yes        # non-interactive purge (CI)
 #
-# bin/demo-down.sh already embeds the PVC cleanup for the happy path.
+# bin/cluster/demo-down.sh already embeds the PVC cleanup for the happy path.
 # This script is the safety net + the answer to "what am I paying now?"
 # when demo-down wasn't run or crashed mid-flight.
 # =============================================================================
@@ -140,7 +140,7 @@ else
   echo "$clusters" | while IFS=$'\t' read -r n l s nodes; do
     printf "   - %-20s %-18s status=%-8s nodes=%s\n" "$n" "$l" "$s" "${nodes:-0}"
   done
-  echo "     → if demo is over, run: bin/demo-down.sh"
+  echo "     → if demo is over, run: bin/cluster/demo-down.sh"
 fi
 echo
 
@@ -159,5 +159,5 @@ pipeline against this repo). Typical idle target: <€1/month on an
 ephemeral cluster project, provided demo-down runs after every demo.
 
 Cron one-liner (monthly, silent delete):
-  0 2 1 * *  cd $(cd "$(dirname "$0")/.." && pwd) && bin/gcp-cost-audit.sh --yes
+  0 2 1 * *  cd $(cd "$(dirname "$0")/.." && pwd) && bin/budget/gcp-cost-audit.sh --yes
 EOF

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/cluster-status.sh — one-glance ephemeral GKE cluster status + burn rate.
+# bin/cluster/cluster-status.sh — one-glance ephemeral GKE cluster status + burn rate.
 #
 # Why this exists: the demo cluster is ephemeral (ADR-0022, €2/month
 # budget). Every `demo-up.sh` you forget to `demo-down.sh` burns
@@ -17,8 +17,8 @@
 # ADR-0022 we DO wire one because the cluster auto-destroys on cap).
 #
 # Usage:
-#   bin/cluster-status.sh           # one-off snapshot (default)
-#   bin/cluster-status.sh --watch   # auto-refresh every 15 s
+#   bin/cluster/cluster-status.sh           # one-off snapshot (default)
+#   bin/cluster/cluster-status.sh --watch   # auto-refresh every 15 s
 # =============================================================================
 
 set -uo pipefail
@@ -88,12 +88,12 @@ except Exception:
     echo -e "  ${DIM}Latest GCP budget snapshot:${NC}"
     "$(dirname "$0")/budget.sh" status 2>/dev/null | sed 's/^/    /' | head -10
   else
-    echo -e "  ${DIM}(install bin/budget.sh for live spend vs €10/month cap)${NC}"
+    echo -e "  ${DIM}(install bin/budget/budget.sh for live spend vs €10/month cap)${NC}"
   fi
 
   echo "  ─────────────────────────────────────────────────────────"
   if [[ "$cluster_status" == "RUNNING" ]]; then
-    echo -e "  ${YELLOW}Tip${NC}: \`bin/demo-down.sh\` if you're done — burn stops immediately."
+    echo -e "  ${YELLOW}Tip${NC}: \`bin/cluster/demo-down.sh\` if you're done — burn stops immediately."
   fi
 }
 

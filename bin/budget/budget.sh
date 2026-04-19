@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/budget.sh — one-stop wrapper for the Mirador GCP budget alert.
+# bin/budget/budget.sh — one-stop wrapper for the Mirador GCP budget alert.
 #
 # The budget is described in detail in docs/ops/cost-control.md. This
 # script wraps the `gcloud billing budgets` CLI so the common operations
@@ -10,13 +10,13 @@
 # gcloud call if you ever need something the wrapper doesn't cover.
 #
 # Usage:
-#   bin/budget.sh status            # current spend vs budget, thresholds, last alert date
-#   bin/budget.sh show              # full `budgets describe` dump
-#   bin/budget.sh list              # all budgets on the billing account
-#   bin/budget.sh set <amount>      # raise / lower cap, e.g. bin/budget.sh set 20
-#   bin/budget.sh recreate          # nuke + re-create (if ever deleted)
-#   bin/budget.sh spend             # month-to-date actual spend (requires BigQuery export — see note)
-#   bin/budget.sh help
+#   bin/budget/budget.sh status            # current spend vs budget, thresholds, last alert date
+#   bin/budget/budget.sh show              # full `budgets describe` dump
+#   bin/budget/budget.sh list              # all budgets on the billing account
+#   bin/budget/budget.sh set <amount>      # raise / lower cap, e.g. bin/budget/budget.sh set 20
+#   bin/budget/budget.sh recreate          # nuke + re-create (if ever deleted)
+#   bin/budget/budget.sh spend             # month-to-date actual spend (requires BigQuery export — see note)
+#   bin/budget/budget.sh help
 # =============================================================================
 
 set -u
@@ -35,7 +35,7 @@ require_budget() {
   if ! gcloud billing budgets describe "$BUDGET_ID" \
        --billing-account="$BILLING_ACCOUNT" >/dev/null 2>&1; then
     echo "❌  Budget $BUDGET_ID not found on billing account $BILLING_ACCOUNT."
-    echo "    Did you delete it? Recreate with: bin/budget.sh recreate"
+    echo "    Did you delete it? Recreate with: bin/budget/budget.sh recreate"
     exit 1
   fi
 }
@@ -65,7 +65,7 @@ status)
       done
   echo
   echo "ℹ️   GCP updates actual-spend every ~6 h. For real-time idle cost,"
-  echo "    run: bin/gcp-cost-audit.sh"
+  echo "    run: bin/budget/gcp-cost-audit.sh"
   ;;
 
 show)
@@ -82,14 +82,14 @@ list)
 set)
   amount="${2:-}"
   if [[ -z "$amount" ]]; then
-    echo "usage: bin/budget.sh set <amount-in-EUR>    # e.g. set 20"
+    echo "usage: bin/budget/budget.sh set <amount-in-EUR>    # e.g. set 20"
     exit 1
   fi
   require_budget
   gcloud billing budgets update "$BUDGET_ID" \
     --billing-account="$BILLING_ACCOUNT" \
     --budget-amount="${amount}EUR"
-  echo "✅  cap updated to ${amount}EUR. Re-run: bin/budget.sh status"
+  echo "✅  cap updated to ${amount}EUR. Re-run: bin/budget/budget.sh status"
   ;;
 
 recreate)
@@ -110,7 +110,7 @@ recreate)
     --filter-projects="projects/$PROJECT" \
     --format="value(name.basename())" 2>&1)
   echo "✅  created budget id: $created"
-  echo "    Update bin/budget.sh if this ID differs from the pinned default."
+  echo "    Update bin/budget/budget.sh if this ID differs from the pinned default."
   ;;
 
 spend)
@@ -124,7 +124,7 @@ spend)
   echo "  https://console.cloud.google.com/billing/$BILLING_ACCOUNT/reports;projects=$PROJECT"
   echo
   echo "Structural estimate from live resources:"
-  echo "  bin/gcp-cost-audit.sh"
+  echo "  bin/budget/gcp-cost-audit.sh"
   ;;
 
 help|-h|--help)

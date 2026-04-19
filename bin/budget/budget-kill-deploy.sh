@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/budget-kill-deploy.sh — wire the budget alert to auto-destroy.
+# bin/budget/budget-kill-deploy.sh — wire the budget alert to auto-destroy.
 #
 # One-time setup (idempotent). Creates:
 #   1. Pub/Sub topic `mirador-budget-kill`
@@ -18,8 +18,8 @@
 # function code or the budget cap — all steps are idempotent.
 #
 # Usage:
-#   bin/budget-kill-deploy.sh           # full deploy
-#   bin/budget-kill-deploy.sh --dry-run # print what would happen
+#   bin/budget/budget-kill-deploy.sh           # full deploy
+#   bin/budget/budget-kill-deploy.sh --dry-run # print what would happen
 # =============================================================================
 
 set -eu
@@ -128,9 +128,9 @@ new_id=$(run gcloud billing budgets create \
 echo "     ✓ new budget id: $new_id"
 echo
 echo "⚠️  Update these constants with the new budget id:"
-echo "     bin/budget.sh                          BUDGET_ID=\"$new_id\""
+echo "     bin/budget/budget.sh                          BUDGET_ID=\"$new_id\""
 echo "     docs/ops/cost-control.md               (Live configuration table)"
-echo "     bin/budget-kill-deploy.sh              BUDGET_ID=\"$new_id\" (default)"
+echo "     bin/budget/budget-kill-deploy.sh              BUDGET_ID=\"$new_id\" (default)"
 echo
 echo "✅  budget-kill wired. Test with:"
 echo "     gcloud functions logs read $FUNCTION_NAME --region=$REGION --limit=10"

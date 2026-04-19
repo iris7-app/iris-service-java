@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/auto-pause-spring.sh — kill the local Spring app if idle for N min.
+# bin/dev/auto-pause-spring.sh — kill the local Spring app if idle for N min.
 #
 # Why this exists: when the laptop is the dev machine + the GitLab CI runner
 # (ADR-0004), every Mac process competes for the same Docker Desktop VM
@@ -11,8 +11,8 @@
 # doesn't move for IDLE_MINUTES.
 #
 # Usage (run in a separate terminal alongside `./run.sh app`):
-#   bin/auto-pause-spring.sh           # default: 10 min idle
-#   IDLE_MINUTES=5 bin/auto-pause-spring.sh
+#   bin/dev/auto-pause-spring.sh           # default: 10 min idle
+#   IDLE_MINUTES=5 bin/dev/auto-pause-spring.sh
 #
 # Restart manually: `./run.sh app` (the script doesn't relaunch).
 # =============================================================================

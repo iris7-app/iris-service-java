@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/pf-stop.sh — kill every kubectl port-forward started by pf-prod.sh or pf-kind.sh.
+# bin/cluster/pf-stop.sh — kill every kubectl port-forward started by pf-prod.sh or pf-kind.sh.
 #
 # Reads both /tmp/pf-prod.pids and /tmp/pf-kind.pids, kills each PID (and its
 # auto-reconnect wrapper so it does not immediately spawn a new kubectl).

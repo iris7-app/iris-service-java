@@ -48,7 +48,7 @@
     {
       "label": "ship: open MR + arm auto-merge",
       "type": "shell",
-      "command": "bin/ship.sh --wait",
+      "command": "bin/ship/ship.sh --wait",
       "presentation": { "reveal": "always", "panel": "dedicated" },
       "problemMatcher": []
     }

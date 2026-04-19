@@ -11,7 +11,7 @@
 #
 # Prerequisite: gcloud auth application-default login (user's laptop only).
 # Cost while cluster is running: ~€0.26/h (see ADR-0022).
-# Run `bin/demo-down.sh` when the demo is over to stop paying.
+# Run `bin/cluster/demo-down.sh` when the demo is over to stop paying.
 # =============================================================================
 set -euo pipefail
 
@@ -139,7 +139,7 @@ helm upgrade --install chaos-mesh chaos-mesh/chaos-mesh \
 
 # cert-manager, argocd Ingress, DuckDNS update and TLS wiring removed with
 # ADR-0025 — the cluster no longer exposes anything to the public internet.
-# Access is through bin/pf-prod.sh (kubectl port-forward) from the laptop.
+# Access is through bin/cluster/pf-prod.sh (kubectl port-forward) from the laptop.
 
 # 5. Apply the Argo CD Application — reconciles the app from main.
 kubectl apply -f "$REPO_ROOT/deploy/argocd/application.yaml"
@@ -157,9 +157,9 @@ cat <<EOF
 ---
 Cluster has NO public ingress (ADR-0025). Access from your laptop:
 
-  bin/pf-prod.sh        # start tunnels for every service (prod = +20000)
-  bin/pf-status.sh      # list active tunnels + local ports
-  bin/pf-stop.sh        # tear them all down
+  bin/cluster/pf-prod.sh        # start tunnels for every service (prod = +20000)
+  bin/cluster/pf-status.sh      # list active tunnels + local ports
+  bin/cluster/pf-stop.sh        # tear them all down
 
 Then in the Angular UI topbar pick "Prod tunnel" as the environment.
 
@@ -169,5 +169,5 @@ Backend API    : http://localhost:28080
 Grafana        : http://localhost:23000
 Unleash        : http://localhost:24242
 
-Shut everything down with: bin/demo-down.sh
+Shut everything down with: bin/cluster/demo-down.sh
 EOF

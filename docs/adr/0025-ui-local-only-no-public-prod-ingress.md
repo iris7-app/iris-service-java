@@ -106,7 +106,7 @@ which tunnel is active):
   Chaos Mesh are invisible to the internet.
 - **No TLS cert lifecycle to manage.** No Let's Encrypt rate limits,
   no "cert expired while the demo slept" incidents, no cert-manager
-  upgrade pain. `bin/demo-up.sh` drops ~30 lines.
+  upgrade pain. `bin/cluster/demo-up.sh` drops ~30 lines.
 - **No DuckDNS IP updates on every spin-up.** The ephemeral pattern
   now touches only GKE and GSM.
 - **Single UI codebase.** No `customer-ui` image rebuild in CI, no
@@ -121,11 +121,11 @@ which tunnel is active):
 
 - **Recruiters can't click a URL.** The GitLab Pages static landing
   page (`public/index.html`) becomes the only public artefact. It
-  links to the repo + instructions for cloning + `bin/pf-prod.sh`.
+  links to the repo + instructions for cloning + `bin/cluster/pf-prod.sh`.
   Higher friction for demo viewing, much lower risk.
 - **Port-forward fragility.** `kubectl port-forward` drops when the
   pod is killed or restarted (Chaos Mesh pod-kill experiments will
-  regularly take down the backend tunnel). `bin/pf-prod.sh` includes
+  regularly take down the backend tunnel). `bin/cluster/pf-prod.sh` includes
   an auto-restart inner loop to recover within ~2 s of pod churn.
 - **13 processes in the background.** The `pf-prod.sh` script starts
   one `kubectl` subprocess per service. Memory is negligible (~5 MB
@@ -153,10 +153,10 @@ which tunnel is active):
 - **Edit**: `overlays/gke/image-tags-patch.yaml` loses the customer-ui
   entry; `overlays/gke/kustomization.yaml` drops deleted files;
   `base/kustomization.yaml` drops frontend + ingress refs;
-  `bin/demo-up.sh` drops cert-manager install + DuckDNS step +
+  `bin/cluster/demo-up.sh` drops cert-manager install + DuckDNS step +
   Argo CD Ingress apply.
-- **Add**: `bin/pf-prod.sh`, `bin/pf-kind.sh`, `bin/pf-stop.sh`,
-  `bin/pf-status.sh`. The port offsets (Kind +10000, Prod +20000) were
+- **Add**: `bin/cluster/pf-prod.sh`, `bin/cluster/pf-kind.sh`, `bin/cluster/pf-stop.sh`,
+  `bin/cluster/pf-status.sh`. The port offsets (Kind +10000, Prod +20000) were
   finalised on 2026-04-18 — see the port map above.
 - **Update**: `public/index.html` (landing points at clone + tunnel
   flow), `README.md` (swap public URLs for tunnel ports).
@@ -170,8 +170,8 @@ Environment: ( • Local ) ( Kind ) ( Prod tunnel )
 ```
 
 - `Local`  → compose defaults (`localhost:8080` etc.)
-- `Kind`   → kind cluster via bin/pf-kind.sh, ports `1xxxx`
-- `Prod tunnel` → GKE cluster via bin/pf-prod.sh, ports `2xxxx`
+- `Kind`   → kind cluster via bin/cluster/pf-kind.sh, ports `1xxxx`
+- `Prod tunnel` → GKE cluster via bin/cluster/pf-prod.sh, ports `2xxxx`
 
 Selection persists in `localStorage`. Signals downstream recompute.
 Env-specific URLs (`unleashUrl`, `argocdUrl`, `chaosMeshUrl`, `pgwebUrl`)

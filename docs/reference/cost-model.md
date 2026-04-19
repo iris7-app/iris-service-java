@@ -15,7 +15,7 @@ we keep it honest.
 - **When the bill drifts**, cross-reference the component section —
   whatever crept in since the last clean audit shows up here.
 - When a cost row changes (GCP price list update), bump it here
-  together with the live `bin/budget.sh set <amount>` call. The two
+  together with the live `bin/budget/budget.sh set <amount>` call. The two
   should never disagree.
 
 Prices in EUR, europe-west1, standard tier, as of 2026-04 (spot-check
@@ -103,7 +103,7 @@ demo volume is small; Grafana Cloud wins once we have real users.
 
 ## What doesn't appear here
 
-- **Human time.** The script `bin/mirador-doctor` + runbooks exist
+- **Human time.** The script `bin/dev/mirador-doctor` + runbooks exist
   specifically to make operator time cheap, but they're not a GCP
   line item.
 - **Email / notifications.** GCP budget alerts' default email is free.
@@ -121,4 +121,4 @@ demo volume is small; Grafana Cloud wins once we have real users.
   incident report in `docs/ops/runbooks/` with the line item that
   caused the drift.
 - GCP publishes a price update for europe-west1 → refresh the
-  relevant row here, update `bin/budget.sh` if the cap changes.
+  relevant row here, update `bin/budget/budget.sh` if the cap changes.

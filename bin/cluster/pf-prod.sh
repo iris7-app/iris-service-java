@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/pf-prod.sh — one kubectl port-forward per service to reach the GKE demo.
+# bin/cluster/pf-prod.sh — one kubectl port-forward per service to reach the GKE demo.
 #
 # Port scheme (three-environment policy, decided 2026-04-18):
 #   Local compose     = upstream ports          (e.g. backend 8080)
-#   Local kind         = upstream + 10000       (e.g. backend 18080)  — bin/pf-kind.sh
+#   Local kind         = upstream + 10000       (e.g. backend 18080)  — bin/cluster/pf-kind.sh
 #   GKE prod tunnel    = upstream + 20000       (e.g. backend 28080)  — this script
 # The fixed 10k-per-env offset lets you run all three simultaneously without
 # port conflicts. See docs/architecture/environments-and-flows.md for the
@@ -29,8 +29,8 @@
 #   Chaos Mesh dashboard 22333
 #
 # Usage:
-#   bin/pf-prod.sh               # foreground, Ctrl-C to stop
-#   bin/pf-prod.sh --daemon      # background, logs in /tmp/pf-prod-*.log
+#   bin/cluster/pf-prod.sh               # foreground, Ctrl-C to stop
+#   bin/cluster/pf-prod.sh --daemon      # background, logs in /tmp/pf-prod-*.log
 #
 # Auto-restart: each tunnel runs inside an `until kubectl port-forward`
 # loop so a pod kill (common under Chaos Mesh) is recovered in ~2 s without
@@ -49,7 +49,7 @@ rm -f "$PID_FILE"
 
 # Sanity: a cluster is reachable.
 if ! kubectl cluster-info >/dev/null 2>&1; then
-  echo "❌  kubectl cannot reach a cluster. Run bin/demo-up.sh first."
+  echo "❌  kubectl cannot reach a cluster. Run bin/cluster/demo-up.sh first."
   exit 1
 fi
 
@@ -101,13 +101,13 @@ done
 if $DAEMON; then
   echo ""
   echo "✅  ${#TUNNELS[@]} tunnels running in background. PIDs in $PID_FILE."
-  echo "   bin/pf-status.sh   list + test connectivity"
-  echo "   bin/pf-stop.sh     tear everything down"
+  echo "   bin/cluster/pf-status.sh   list + test connectivity"
+  echo "   bin/cluster/pf-stop.sh     tear everything down"
   exit 0
 fi
 
 # Foreground: wait forever; Ctrl-C triggers trap which kills all children.
-trap 'echo ""; echo "⏹   stopping tunnels…"; bin/pf-stop.sh >/dev/null 2>&1; exit 0' INT TERM
+trap 'echo ""; echo "⏹   stopping tunnels…"; bin/cluster/pf-stop.sh >/dev/null 2>&1; exit 0' INT TERM
 echo ""
 echo "✅  ${#TUNNELS[@]} tunnels running. Ctrl-C to stop all."
 wait

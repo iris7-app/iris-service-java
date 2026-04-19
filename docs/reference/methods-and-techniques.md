@@ -93,7 +93,7 @@ their place survive.
 - **What it does**: All work lands on `main` via a single working branch
   (`dev`). Squash-merge keeps `main` linear, one commit per MR.
 - **Why here**: Two reasons. (1) Simplified linear history makes
-  `release-please` changelogs clean. (2) `bin/ship.sh` workflow depends
+  `release-please` changelogs clean. (2) `bin/ship/ship.sh` workflow depends
   on squash so each MR becomes one commit on main (ADR-0029
   ci-philosophy Rule 1).
 

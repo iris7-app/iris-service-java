@@ -55,7 +55,7 @@ check belongs on the canonical repo's CI, it stays on GitLab.
 
 ## Sync mechanism
 
-The mirror push happens **locally** via `bin/ship.sh --wait`. The
+The mirror push happens **locally** via `bin/ship/ship.sh --wait`. The
 developer's authenticated `gh` CLI pushes to GitHub as part of the
 ship workflow. No GitLab CI job is involved — by choice.
 
@@ -71,7 +71,7 @@ Alternatives considered:
 | Upgrade org to Team plan | $4/user/month — blows the €2/month project budget |
 | Fine-grained PAT | Works but 12-month expiration + user-bound identity to rotate |
 | Machine user account | An extra GitHub login to maintain |
-| **Local `bin/ship.sh --wait` push** | Zero identity to maintain, mirror runs when a release ships |
+| **Local `bin/ship/ship.sh --wait` push** | Zero identity to maintain, mirror runs when a release ships |
 
 The local-push option wins because:
 
@@ -86,7 +86,7 @@ The local-push option wins because:
 
 ```bash
 # Full workflow — commit, MR, wait for merge, sync dev, mirror push
-bin/ship.sh --wait
+bin/ship/ship.sh --wait
 
 # Mirror only (catch-up after a manual merge)
 git clone --mirror https://gitlab.com/mirador1/mirador-service.git /tmp/m.git
@@ -122,7 +122,7 @@ github=$(git ls-remote https://github.com/mirador1/mirador-service main | awk '{
 [ "$gitlab" = "$github" ] && echo "✅ in sync" || echo "❌ drift: GitLab=$gitlab GitHub=$github"
 ```
 
-This is one of the checks in `bin/mirador-doctor` (extend when a drift
+This is one of the checks in `bin/dev/mirador-doctor` (extend when a drift
 is ever observed).
 
 ## If you ever need to disable the mirror

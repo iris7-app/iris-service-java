@@ -33,7 +33,7 @@ glab auth login                               # one-shot token setup
 - **Setup for this project**:
   - `kind-mirador-local` appears automatically after
     `kind create cluster --name mirador-local --config deploy/kubernetes/kind-config.yaml`.
-  - `gke_…mirador-prod` appears automatically after `bin/connect-prod.sh`
+  - `gke_…mirador-prod` appears automatically after `bin/cluster/connect-prod.sh`
     (or a manual `gcloud container clusters get-credentials`).
 - **What it's good at**: pod logs / exec / events, CRD browsing (Argo
   Rollouts, Chaos Mesh, ExternalSecret show up as first-class objects),
@@ -151,8 +151,8 @@ Three environments, three port decades (compose = upstream, kind = +10000, prod 
 | Environment    | Admin plane (kubeconfig)                        | App services (port-forward)     |
 |----------------|-------------------------------------------------|----------------------------------|
 | **compose**    | n/a                                             | `./run.sh all` — upstream ports  |
-| **kind**       | `kubectl config use-context kind-mirador-local` | `bin/pf-kind.sh --daemon` — 1xxxx |
-| **GKE prod**   | `bin/connect-prod.sh`                           | `bin/pf-prod.sh --daemon` — 2xxxx |
+| **kind**       | `kubectl config use-context kind-mirador-local` | `bin/cluster/pf-kind.sh --daemon` — 1xxxx |
+| **GKE prod**   | `bin/cluster/connect-prod.sh`                           | `bin/cluster/pf-prod.sh --daemon` — 2xxxx |
 
 ### Concretely
 
@@ -163,17 +163,17 @@ Three environments, three port decades (compose = upstream, kind = +10000, prod 
 # kind (local K8s mirror)
 kind create cluster --name mirador-local --config deploy/kubernetes/kind-config.yaml
 kubectl apply -k deploy/kubernetes/overlays/local
-bin/pf-kind.sh --daemon            # tunnels on 1xxxx (18080, 13000, 14242, …)
-bin/pgweb-kind-up.sh               # optional: pgweb on 8082 for the UI's Database page
+bin/cluster/pf-kind.sh --daemon            # tunnels on 1xxxx (18080, 13000, 14242, …)
+bin/cluster/pgweb-kind-up.sh               # optional: pgweb on 8082 for the UI's Database page
 
 # GKE (ephemeral prod — ADR-0022)
-bin/demo-up.sh                     # ~13 min
-bin/connect-prod.sh                # gcloud credentials + open OpenLens
-bin/pf-prod.sh --daemon            # tunnels on 2xxxx (28080, 23000, 24242, …)
-bin/pgweb-prod-up.sh               # optional: pgweb on 8083
+bin/cluster/demo-up.sh                     # ~13 min
+bin/cluster/connect-prod.sh                # gcloud credentials + open OpenLens
+bin/cluster/pf-prod.sh --daemon            # tunnels on 2xxxx (28080, 23000, 24242, …)
+bin/cluster/pgweb-prod-up.sh               # optional: pgweb on 8083
 # …work…
-bin/pf-stop.sh                     # stops both kind + prod tunnels
-bin/demo-down.sh
+bin/cluster/pf-stop.sh                     # stops both kind + prod tunnels
+bin/cluster/demo-down.sh
 ```
 
 ## Deep-link URIs (opt-in, for the UI)
@@ -197,9 +197,9 @@ registered app). Fails silently if the target app is not installed.
 
 ## Going further
 
-- `bin/connect-prod.sh` — one command to refresh GKE kubeconfig + open
-  OpenLens + reminder about `bin/pf-prod.sh`.
-- `bin/pf-prod.sh`, `bin/pf-status.sh`, `bin/pf-stop.sh` — the whole
+- `bin/cluster/connect-prod.sh` — one command to refresh GKE kubeconfig + open
+  OpenLens + reminder about `bin/cluster/pf-prod.sh`.
+- `bin/cluster/pf-prod.sh`, `bin/cluster/pf-status.sh`, `bin/cluster/pf-stop.sh` — the whole
   tunnel lifecycle for app services (per ADR-0025).
 - [ADR-0025](../adr/0025-ui-local-only-no-public-prod-ingress.md) —
   why prod has no public URL.

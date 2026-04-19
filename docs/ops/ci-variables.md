@@ -17,7 +17,7 @@ Configure variables at:
 | Variable | Scope | Type | Masked | Protected | What it's for |
 |---|---|---|---|---|---|
 | `SONAR_TOKEN` | main + MR | Secret text | ✅ | ✅ | SonarCloud auth. Obtained at https://sonarcloud.io/account/security. Without it, the `sonar-analysis` job self-disables (rule `if: $SONAR_TOKEN == null`) — pipeline stays green but code quality is not pushed. |
-| `GITHUB_MIRROR_SSH_KEY` | main | Secret text | ✅ | ✅ | **Currently unused.** Kept in the CI variables so a future re-enable of the `github-mirror` CI job (once the org upgrades to a plan with deploy keys) can reuse the same keypair. Today the mirror push runs locally via `bin/ship.sh --wait`. See [`docs/ops/github-mirror.md`](github-mirror.md) for the why. |
+| `GITHUB_MIRROR_SSH_KEY` | main | Secret text | ✅ | ✅ | **Currently unused.** Kept in the CI variables so a future re-enable of the `github-mirror` CI job (once the org upgrades to a plan with deploy keys) can reuse the same keypair. Today the mirror push runs locally via `bin/ship/ship.sh --wait`. See [`docs/ops/github-mirror.md`](github-mirror.md) for the why. |
 
 ## Optional — release automation
 
@@ -98,7 +98,7 @@ Minimum to get the canonical pipeline green (no optional features):
 # At https://gitlab.com/<project>/-/settings/ci_cd → Variables
 1. SONAR_TOKEN           — create at sonarcloud.io/account/security, mask + protect.
    (That's it for the current CI. The GitHub mirror is pushed locally
-   via `bin/ship.sh --wait` — no CI variable needed for it, see
+   via `bin/ship/ship.sh --wait` — no CI variable needed for it, see
    docs/ops/github-mirror.md.)
 ```
 
