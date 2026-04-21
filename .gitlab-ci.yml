@@ -931,6 +931,94 @@ test:k8s-apply:
     # Always tear down — leaked kind containers eat runner disk fast.
     - kind delete cluster --name "$KIND_CLUSTER" 2>/dev/null || true
 
+# ── test:k8s-apply-prom — same as test:k8s-apply but for the local-prom overlay ──
+#
+# Validates that the kube-prometheus-stack components added by the
+# `local-prom/` overlay (Prometheus Operator + Prometheus + node-exporter
+# + ksm + 6 ServiceMonitors + Mirador ServiceMonitor) apply cleanly in
+# kind AND the operator-managed Prometheus StatefulSet rolls out
+# successfully — catching CRD drift, manifest typos, label-selector
+# mismatches BEFORE they hit GKE via the gke-prom overlay.
+#
+# Path-filtered: only fires when `local-prom/` (or `gke-prom/` since
+# the manifests share ~90% of the rendered chart) actually changes.
+# Adds ~3 min to the pipeline; most MRs skip it entirely.
+#
+# Why kind and not GKE: the kube-prometheus-stack rendered file has
+# the same shape across overlays — the only deltas are Prometheus
+# memory limit + retention + storage (4 lines diff). If those values
+# break the CRDs in kind, they'll break in GKE too. Kind validation
+# costs nothing and runs every MR; GKE smoke costs €/min and runs on
+# `bin/cluster/demo-up.sh` cycles.
+test:k8s-apply-prom:
+  stage: k8s
+  interruptible: true
+  image: docker:28
+  tags:
+    - macbook-local
+  needs: []
+  # Same flakiness pattern as test:k8s-apply (kind-on-CI SIGPIPE),
+  # plus an extra unknown — Prometheus Operator's webhook validation
+  # may misbehave in kind's reduced API server. Keep shielded for the
+  # same dated window as the parent job, then flip together.
+  # TODO: flip to false by 2026-05-21 with test:k8s-apply.
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - deploy/kubernetes/overlays/local-prom/**/*
+        - deploy/kubernetes/overlays/gke-prom/**/*
+        # Also fire when the base or scripts that affect the apply behaviour change
+        - deploy/kubernetes/base/**/*
+        - scripts/ci-k8s-test.sh
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - deploy/kubernetes/overlays/local-prom/**/*
+        - deploy/kubernetes/overlays/gke-prom/**/*
+        - deploy/kubernetes/base/**/*
+        - scripts/ci-k8s-test.sh
+  variables:
+    KIND_VERSION: "v0.24.0"
+    KIND_CLUSTER: "ci-k8s-prom-${CI_JOB_ID}"
+    OVERLAY: "deploy/kubernetes/overlays/local-prom"
+    # Operator-managed Prometheus + chart-deployed node-exporter + ksm +
+    # operator itself. Keep in sync with the rendered chart in
+    # `deploy/kubernetes/overlays/local-prom/kube-prom-stack-rendered.yaml`
+    # — if a future chart bump renames any of these, update here too.
+    EXTRA_PODS: |-
+      monitoring/statefulset/prometheus-prometheus-stack-kube-prom-prometheus
+      monitoring/daemonset/prometheus-stack-prometheus-node-exporter
+      monitoring/deployment/prometheus-stack-kube-state-metrics
+      monitoring/deployment/prometheus-stack-kube-prom-operator
+    # Prometheus Operator's StatefulSet takes longer than the base infra
+    # to roll out (waits for CRD readiness + admission webhook + config
+    # reload). Bump the per-pod wait timeout from the default 5m to 8m.
+    TIMEOUT: "8m"
+  before_script:
+    - apk add --no-cache bash curl
+    - |
+      # arch detection (same as test:k8s-apply)
+      ARCH=$(uname -m)
+      case "$ARCH" in
+        aarch64) KARCH=arm64 ;;
+        x86_64)  KARCH=amd64 ;;
+        *) echo "unsupported arch: $ARCH"; exit 1 ;;
+      esac
+      curl -sSL "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-${KARCH}" \
+        -o /usr/local/bin/kind
+      chmod +x /usr/local/bin/kind
+      KUBECTL_VERSION=$(curl -sL https://dl.k8s.io/release/stable.txt)
+      curl -sSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${KARCH}/kubectl" \
+        -o /usr/local/bin/kubectl
+      chmod +x /usr/local/bin/kubectl
+      kubectl version --client --output=yaml | head -3
+  script:
+    - scripts/ci-k8s-test.sh
+  after_script:
+    - kind delete cluster --name "$KIND_CLUSTER" 2>/dev/null || true
+
 # Build the Docker image and push it to the GitLab Container Registry.
 #
 # Two tags are pushed:
