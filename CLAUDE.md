@@ -67,6 +67,7 @@ Always run the default `./mvnw verify` after any change unless testing a specifi
 - Never push directly to `main`.
 - Resolve merge conflicts by `git pull --rebase`, never by force-push.
 - **Tag stable-vX.Y.Z ONLY after the post-merge `main` pipeline goes green.** Don't tag right after the merge while main pipeline is still running with a "I'll move the tag if it goes red" recovery plan — that pattern silently produces tags on red commits when the recovery is forgotten or interrupted. The MR pipeline succeeding is NOT enough; the post-merge main pipeline runs the full main-branch ruleset (deploy steps, scheduled-only jobs) which can fail even when the MR pipeline passed. See `~/.claude/CLAUDE.md` → "Tag every green stability checkpoint, never tag on red" for the operational pattern (Monitor on the post-merge main pipeline).
+- **Surface pending decisions on your own initiative** — when a session accumulates real forks-in-the-road (choice changes WHAT gets built, not just WHEN), list them at the next natural checkpoint (batch landed, MR merged, idle moment). Don't wait for the user to ask "quoi à décider ?". Format: dense one-liner per decision with concrete trade-off; the user should answer "A1, B2, C: skip" in one line. See `~/.claude/CLAUDE.md` → "Surface pending decisions proactively — don't wait to be asked" for the full pattern.
 
 ## CI workflow rules
 

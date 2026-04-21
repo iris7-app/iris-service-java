@@ -27,6 +27,17 @@
 
 set -euo pipefail
 
+# Wrap a command that pipes into `head` or `grep -q` (which exits
+# early and causes SIGPIPE on the writer → exit 141 under pipefail).
+# Usage: sigpipe_safe <command>
+# Rationale: kind-on-CI runs that died with exit 141 "mid rollout-check"
+# (see .gitlab-ci.yml header) were classical producer-closes-first
+# SIGPIPE cases. Capturing the producer's output into a variable first,
+# THEN filtering it, avoids the pipe entirely. For the few cases below
+# where piping is cleaner, we explicitly tolerate SIGPIPE with trap.
+# Not inlined as a function because the capture pattern is more
+# readable at the call site.
+
 KIND_CLUSTER="${KIND_CLUSTER:-ci-k8s-${CI_JOB_ID:-local}}"
 KIND_CONFIG="${KIND_CONFIG:-deploy/kubernetes/kind-config.yaml}"
 OVERLAY="${OVERLAY:-deploy/kubernetes/overlays/local}"
@@ -98,7 +109,13 @@ if [ -f /.dockerenv ] || grep -q "docker\|kubepods" /proc/1/cgroup 2>/dev/null; 
 fi
 
 echo "📋  kubectl version"
-kubectl version --client=true --output=yaml | head -3
+# Capture → slice. Previous `kubectl version ... | head -3` was a
+# classic SIGPIPE trap: `head` exits after 3 lines while `kubectl`
+# keeps writing → SIGPIPE → exit 141 under pipefail. Taking 3
+# lines from a captured variable is equivalent + SIGPIPE-free.
+_kv=$(kubectl version --client=true --output=yaml)
+printf '%s\n' "$_kv" | awk 'NR<=3'
+unset _kv
 kubectl cluster-info
 
 # Install the third-party CRDs that the overlay's manifests reference.
@@ -132,11 +149,42 @@ for crd in podchaos.chaos-mesh.org networkchaos.chaos-mesh.org \
 done
 echo "  ✓ CRDs established."
 
-echo "🚀  kubectl apply -k $OVERLAY"
-# The server-side apply pass catches schema errors the `kubectl kustomize`
-# render in the pre-commit hook can't — missing CRDs, admission webhooks
-# rejecting resources, etc.
-if ! kubectl apply -k "$OVERLAY" 2>&1 | tee /tmp/apply.log; then
+# For overlays that include Prometheus Operator CRDs (local-prom,
+# gke-prom), pre-install the CRDs server-side FIRST — otherwise the
+# subsequent `kubectl apply -k` races the ServiceMonitor / Prometheus
+# resources against the CRD Establishment and fails with
+# "no matches for kind ServiceMonitor". `kustomize apply` submits
+# everything at once; server-side has improved ordering but is not a
+# strict two-phase commit, so we split the two phases explicitly.
+KUBE_PROM_CRDS_FILE="$OVERLAY/kube-prom-stack-crds.yaml"
+if [[ -f "$KUBE_PROM_CRDS_FILE" ]]; then
+  echo "📦  Pre-installing kube-prometheus-stack CRDs server-side…"
+  kubectl apply --server-side=true --force-conflicts -f "$KUBE_PROM_CRDS_FILE" >/dev/null
+  # Wait for the core CRDs we know are referenced by the overlay's
+  # ServiceMonitors / Prometheus / Alertmanager resources.
+  for crd in prometheuses.monitoring.coreos.com \
+             servicemonitors.monitoring.coreos.com \
+             alertmanagers.monitoring.coreos.com \
+             podmonitors.monitoring.coreos.com \
+             prometheusrules.monitoring.coreos.com; do
+    kubectl wait --for=condition=established --timeout=30s "crd/$crd" >/dev/null
+  done
+  echo "  ✓ kube-prom-stack CRDs established."
+fi
+
+echo "🚀  kubectl apply --server-side -k $OVERLAY"
+# `--server-side=true` (Server-Side Apply, SSA) is required for the
+# `local-prom` / `gke-prom` overlays because the vendored kube-prom-
+# stack CRDs (alertmanagerconfigs, prometheuses, scrapeconfigs, etc.)
+# exceed the 256KB `last-applied-configuration` annotation limit that
+# client-side apply stores — kubectl fails with "metadata.annotations:
+# Too long: must have at most 262144 bytes". Server-side apply stores
+# field ownership on the cluster side instead of stamping the full
+# manifest into an annotation, so the size limit does not apply.
+# `--force-conflicts` lets us own fields previously set by a no-longer-
+# present kustomize label patch (needed on re-applies after a rerun).
+# Pattern already used above for the chaos-mesh + ESO CRDs.
+if ! kubectl apply --server-side=true --force-conflicts -k "$OVERLAY" 2>&1 | tee /tmp/apply.log; then
   echo "❌  kubectl apply failed (see log above)."
   exit 1
 fi
@@ -164,8 +212,15 @@ fi
 # a restricted-enforced namespace (app) accumulate drift.
 if grep -q "would violate PodSecurity" /tmp/apply.log; then
   echo "ℹ️  PodSecurity warnings (informational — baseline policy in effect):"
-  grep "would violate PodSecurity" /tmp/apply.log | head -3
+  # Same SIGPIPE rewrite as the kubectl version block above: capture
+  # the matching lines FIRST (grep can't SIGPIPE to a file), then
+  # print the first 3 via awk. Previous `grep ... | head -3` sometimes
+  # died with exit 141 on noisy apply logs.
+  _psw=$(grep "would violate PodSecurity" /tmp/apply.log)
+  printf '%s\n' "$_psw" | awk 'NR<=3'
+  # grep -c is in a command substitution (no pipe, no SIGPIPE risk).
   echo "   …$(grep -c 'would violate PodSecurity' /tmp/apply.log) total."
+  unset _psw
 fi
 
 echo "⏳  Waiting for core pods to become Ready (timeout=$TIMEOUT)…"
@@ -178,18 +233,50 @@ fi
 for target in "${ALL_PODS[@]}"; do
   IFS='/' read -r ns kind name <<< "$target"
   printf "  %-60s " "$target"
-  if kubectl rollout status "$kind/$name" -n "$ns" --timeout="$TIMEOUT" >/dev/null 2>&1; then
-    echo "✅"
-  else
-    echo "❌"
-    kubectl describe "$kind/$name" -n "$ns" | tail -30
-    failed=$((failed + 1))
-  fi
+  # Wait strategy depends on the resource kind:
+  #   - Deployment  : `kubectl wait --for=condition=Available`
+  #     (idiomatic, doesn't stream events → no SIGPIPE risk).
+  #   - StatefulSet : `kubectl rollout status` (StatefulSets do NOT
+  #     expose an Available condition; `kubectl wait --for=condition=
+  #     Available statefulset/X` silently times out — caught the hard
+  #     way in kind-on-CI pipeline #598 where postgresql hung).
+  #   - DaemonSet   : `kubectl rollout status` (same — no Available
+  #     condition).
+  # `rollout status` is the canonical wait for StatefulSet/DaemonSet
+  # and the streaming-SIGPIPE concern from the original TODO was
+  # rooted in `| head`/`| grep -v` pipes elsewhere in this script
+  # (fixed in the same commit), not in `rollout status` itself.
+  case "$kind" in
+    daemonset|statefulset)
+      if kubectl rollout status "$kind/$name" -n "$ns" --timeout="$TIMEOUT" >/dev/null 2>&1; then
+        echo "✅"
+      else
+        echo "❌"
+        kubectl describe "$kind/$name" -n "$ns" | tail -30
+        failed=$((failed + 1))
+      fi
+      ;;
+    *)
+      if kubectl wait --for=condition=Available --timeout="$TIMEOUT" \
+           "$kind/$name" -n "$ns" >/dev/null 2>&1; then
+        echo "✅"
+      else
+        echo "❌"
+        kubectl describe "$kind/$name" -n "$ns" | tail -30
+        failed=$((failed + 1))
+      fi
+      ;;
+  esac
 done
 
 if [ "$failed" -gt 0 ]; then
   echo "❌  $failed pod(s) did not reach Ready. Cluster state:"
-  kubectl get pods -A | grep -v Running
+  # Another SIGPIPE rewrite: previously `kubectl get pods -A | grep -v
+  # Running` could exit 141 if grep decided to close early on a large
+  # buffered response. awk on captured output is equivalent + safe.
+  _allpods=$(kubectl get pods -A)
+  printf '%s\n' "$_allpods" | awk 'NR==1 || $4 != "Running"'
+  unset _allpods
   exit 1
 fi
 

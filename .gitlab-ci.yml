@@ -270,11 +270,28 @@ openapi-lint:
     # Run Spectral with our ruleset. --fail-severity error = block only on errors.
     # Pin the CLI version — floating `latest` silently renamed/removed rules
     # (e.g. `operation-4xx-response` gone in 6.15 broke pipeline #474).
-    - npx --yes @stoplight/spectral-cli@6.15.1 lint /tmp/openapi.json --ruleset .spectral.yaml --fail-severity error
+    #
+    # Two output formats in one invocation (Spectral supports `-f X -f Y`):
+    #   - `stylish` to stdout for the CI log readability
+    #   - `sarif` to a file so SonarCloud can ingest the warnings as
+    #     "External Issues" via `sonar.sarifReportPaths` (see pom.xml).
+    #     This makes Spectral findings visible alongside Java/PMD/SpotBugs
+    #     issues on https://sonarcloud.io/project/issues without needing
+    #     a separate Sonar plugin.
+    - npx --yes @stoplight/spectral-cli@6.15.1 lint /tmp/openapi.json
+        --ruleset .spectral.yaml
+        --fail-severity error
+        -f stylish
+        -f sarif --output.sarif /tmp/spectral-report.sarif
+    # Copy the SARIF into the workspace so the artifact/sonar-pickup
+    # works (default workspace = $CI_PROJECT_DIR; /tmp doesn't survive
+    # the artifact upload step).
+    - cp /tmp/spectral-report.sarif "$CI_PROJECT_DIR/spectral-report.sarif"
   artifacts:
     when: always
     paths:
       - /tmp/openapi.json
+      - spectral-report.sarif
     expire_in: 1 week
   # (Previously had a second `allow_failure: true` here; removed 2026-04-21
   # alongside the top-of-job shield — see comment block above for the
@@ -642,6 +659,14 @@ sonar-analysis:
     - job: trivy:scan
       artifacts: true
       optional: true
+    # spectral-report.sarif from openapi-lint (path-filtered: only fires
+    # when *.java / pom.xml / .spectral.yaml change). When openapi-lint
+    # didn't run, the SARIF file is missing and Sonar silently skips it
+    # via the `optional: true` semantics on the artifact dependency
+    # combined with `sonar.sarifReportPaths` accepting missing files.
+    - job: openapi-lint
+      artifacts: true
+      optional: true
   rules:
     # MAIN ONLY — SonarCloud free tier does NOT support PR/MR analysis
     # (the "Project not found" error you see if you try). Branch+MR
@@ -882,28 +907,43 @@ test:k8s-apply:
   tags:
     - macbook-local   # needs host Docker socket for kind-in-docker
   needs: []           # no upstream dependency — parallel to unit-test
-  # Kind-on-CI is intrinsically flaky: kustomize apply succeeds but the
-  # script exits 141 (SIGPIPE) mid rollout-check ~50% of runs. Pipelines
-  # #550 + #551 (retry) both died this way despite full successful apply.
-  # TODO: flip to false by 2026-05-21 after migrating to `kubectl wait
-  # --for=condition=Ready` (no piped greps that can SIGPIPE).
-  allow_failure: true
+  # Shield removed 2026-04-21 — the SIGPIPE/exit-141 pattern at
+  # "mid rollout-check" was caused by `kubectl version ... | head -3`,
+  # `grep ... | head -3` (PodSecurity warning block) and
+  # `kubectl get pods -A | grep -v Running` (cleanup block) — all
+  # classic producer-closes-first SIGPIPE traps under pipefail.
+  # scripts/ci-k8s-test.sh rewrite of those blocks to capture-then-
+  # filter + migration of the main wait loop from `kubectl rollout
+  # status` to `kubectl wait --for=condition=Available` (or rollout
+  # status for DaemonSets) removes the flake source entirely. If a
+  # different flake class surfaces post-flip, re-shield with a dated
+  # TODO rather than silently tolerate it.
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
-    # MRs: only when manifests actually change — most MRs skip entirely.
+    # MRs: only when manifests OR the apply script change — most MRs
+    # skip entirely. Script is included so the kubectl-wait / SIGPIPE
+    # fix (2026-04-21) gets validated by the same job it targets.
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         - deploy/kubernetes/**/*
+        - scripts/ci-k8s-test.sh
     # main: same filter. Catches a drift merged via an unrelated MR.
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
         - deploy/kubernetes/**/*
+        - scripts/ci-k8s-test.sh
   variables:
     KIND_VERSION: "v0.24.0"
     # Unique cluster name per job so parallel runs don't collide on the
     # runner's shared Docker daemon.
     KIND_CLUSTER: "ci-k8s-${CI_JOB_ID}"
+    # 10 min per pod — keycloak on the arm64 macbook-local runner is
+    # slow to become Available (9m+ observed in pipeline #602 on a
+    # busy runner). 5 min default was too tight. test:k8s-apply-prom
+    # uses 8m for a similar reason (Prometheus Operator boot). Keep
+    # the two values close so behaviour is predictable across jobs.
+    TIMEOUT: "10m"
   before_script:
     - apk add --no-cache bash curl
     - |
@@ -957,12 +997,11 @@ test:k8s-apply-prom:
   tags:
     - macbook-local
   needs: []
-  # Same flakiness pattern as test:k8s-apply (kind-on-CI SIGPIPE),
-  # plus an extra unknown — Prometheus Operator's webhook validation
-  # may misbehave in kind's reduced API server. Keep shielded for the
-  # same dated window as the parent job, then flip together.
-  # TODO: flip to false by 2026-05-21 with test:k8s-apply.
-  allow_failure: true
+  # Shield removed 2026-04-21 together with test:k8s-apply — same
+  # SIGPIPE fix in scripts/ci-k8s-test.sh. If the Prometheus Operator
+  # webhook validation misbehaves in kind's reduced API server (a
+  # separate risk class flagged when this job shipped), re-shield
+  # with a dated TODO — do not mask it under a blanket allow_failure.
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
