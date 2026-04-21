@@ -398,28 +398,48 @@ for j in jobs:
 # notes nobody owns (delete). Uses `git blame` for accurate authoring date,
 # only checks first 50 hits per repo to keep runtime sub-second.
 section_stale_todos() {
-  echo "▸ Stale TODO/FIXME (>30 days)…"
+  echo "▸ Stale TODO/FIXME (>30 days, by author)…"
   local cutoff
   cutoff=$(date -v-30d +%s 2>/dev/null || date -d '30 days ago' +%s)
   for repo in "$SVC_DIR" "$UI_DIR"; do
     local name=$(basename "$repo")
     local stale_count=0
+    declare -A by_author=()
     cd "$repo"
     # First pass: get up to 50 candidate lines.
     while IFS=: read -r file line _; do
       [[ -z "$file" || -z "$line" ]] && continue
-      # git blame returns "%at" (author timestamp) for that line.
-      local ts
-      ts=$(git blame -L "$line,$line" --porcelain "$file" 2>/dev/null \
-        | grep "^author-time " | awk '{print $2}' | head -1)
+      # git blame --porcelain emits "author-time <ts>" + "author <name>"
+      # for the line. Capture both in one blame invocation.
+      local blame ts author
+      blame=$(git blame -L "$line,$line" --porcelain "$file" 2>/dev/null || true)
+      [[ -z "$blame" ]] && continue
+      ts=$(echo "$blame" | awk '/^author-time /{print $2; exit}')
+      author=$(echo "$blame" | awk '/^author /{$1=""; sub(/^ /,""); print; exit}')
       if [[ -n "$ts" && "$ts" -lt "$cutoff" ]]; then
         stale_count=$((stale_count + 1))
+        # Tally per author so the report shows WHO has the most
+        # outstanding stale TODOs. Useful on multi-author repos to
+        # nudge ownership; on single-author projects this just
+        # confirms the same author keeps rolling forward TODOs.
+        if [[ -n "$author" ]]; then
+          by_author["$author"]=$((${by_author["$author"]:-0} + 1))
+        fi
       fi
     done < <( (grep -rn -E "TODO|FIXME|XXX" --include="*.ts" --include="*.java" \
       --exclude-dir=node_modules --exclude-dir=target src 2>/dev/null || true) | head -50)
     if [[ "$stale_count" -gt 0 ]]; then
-      finding warn "$name: $stale_count TODO/FIXME comment(s) older than 30 days — move to TASKS.md or delete"
+      # Build a "Author1: N, Author2: M" string sorted by count desc.
+      local breakdown=""
+      if [[ "${#by_author[@]}" -gt 0 ]]; then
+        breakdown=$(for k in "${!by_author[@]}"; do echo "${by_author[$k]} $k"; done \
+          | sort -rn | awk '{c=$1; $1=""; sub(/^ /,""); printf "%s: %d, ", $0, c}' \
+          | sed 's/, $//')
+        breakdown=" — by author: $breakdown"
+      fi
+      finding warn "$name: $stale_count TODO/FIXME comment(s) older than 30 days — move to TASKS.md or delete$breakdown"
     fi
+    unset by_author 2>/dev/null || true
   done
 }
 

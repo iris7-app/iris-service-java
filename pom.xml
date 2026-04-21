@@ -189,7 +189,8 @@
         -->
         <sonar.sarifReportPaths>
             semgrep-report.sarif,
-            trivy-report.sarif
+            trivy-report.sarif,
+            spectral-report.sarif
         </sonar.sarifReportPaths>
         <sonar.exclusions>
             **/compat/**,**/*.java17/**,**/*.java21/**,**/*.sb3/**,
