@@ -42,9 +42,14 @@ projects. Gate ERROR persists because of:
 
 Each is an independent task; keep one MR per driver.
 
-### Re-enable `oas3-valid-*-example` Spectral rules
+### ~~Re-enable `oas3-valid-*-example` Spectral rules~~ — DONE 2026-04-21
 
-See ADR-0037 for rationale + 3 fix paths (A: per-DTO @Schema, B: OpenApiCustomizer bean, C: wait for springdoc). Revisit on next springdoc bump.
+ADR-0037 Path B implemented: `OpenApiCustomizer` bean in `OpenApiConfig`
+post-processes the springdoc-generated tree (drops MissingNode/NullNode
+defaults, empty-string defaults on non-string types, type-mismatched
+parameter examples). Both rules re-enabled. Spectral errors now: 0 from
+those rules, 1 unrelated (`oas3-schema` on bearerAuth, tracked below).
+13 unit tests in `OpenApiSchemaSanitizerTest`.
 
 ### UI npm audit — 5 CVEs in @compodoc/compodoc (1 HIGH picomatch)
 
