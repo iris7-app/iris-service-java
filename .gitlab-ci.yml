@@ -2021,6 +2021,55 @@ terraform-apply:
 # ${CLOUD_SQL_INSTANCE}, ${GCP_PROJECT}, etc. into the rendered YAML stream.
 .kubectl-apply:
   script:
+    # ── Defense-in-depth: re-verify the image signature at deploy time ──
+    # The pipeline already gates deploy via `needs: cosign:verify` in the
+    # package stage, which binds the signature to the image digest at that
+    # moment. In principle nothing can change the digest for a given tag
+    # between then and now. In practice: a compromised registry could
+    # swap the image (different digest, re-signed by an attacker with a
+    # different OIDC identity), AND a separate pipeline could re-push the
+    # same tag with a different signature. Re-verifying at deploy time
+    # catches both cases for ~12 s of CPU.
+    #
+    # The install idempotently writes cosign v2.5.0 into /usr/local/bin.
+    # Skip if already present (the docker-build / cosign stages may have
+    # left a cached binary).
+    - |
+      if ! command -v cosign >/dev/null 2>&1; then
+        ARCH="$(uname -m)"
+        case "$ARCH" in
+          x86_64)        CS_ARCH=amd64 ;;
+          aarch64|arm64) CS_ARCH=arm64 ;;
+          *) echo "Unsupported arch $ARCH — skipping cosign re-verify" >&2; CS_ARCH="" ;;
+        esac
+        if [ -n "$CS_ARCH" ]; then
+          # curl comes pre-installed on alpine/k8s, azure-cli, gcloud-sdk; on
+          # slim images (bitnami/kubectl) we fall back to apk/apt-get.
+          if ! command -v curl >/dev/null 2>&1; then
+            (apk add --no-cache curl ca-certificates 2>/dev/null) || \
+              (apt-get update -qq && apt-get install -y -qq --no-install-recommends curl ca-certificates)
+          fi
+          curl -sSL -o /usr/local/bin/cosign \
+            "https://github.com/sigstore/cosign/releases/download/v2.5.0/cosign-linux-${CS_ARCH}"
+          chmod +x /usr/local/bin/cosign
+        fi
+      fi
+    - |
+      if command -v cosign >/dev/null 2>&1; then
+        # Same identity-regexp + OIDC issuer as the cosign:verify job in
+        # the package stage. If the image was signed by a different project
+        # or a different branch (e.g. a fork's fly branch), verify fails
+        # and the deploy aborts — which is what we want.
+        COSIGN_EXPERIMENTAL=1 cosign verify \
+          --certificate-identity-regexp "^https://gitlab\.com/mirador1/mirador-service//\.gitlab-ci\.yml@refs/" \
+          --certificate-oidc-issuer "https://gitlab.com" \
+          "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA" \
+          > /tmp/cosign-verify.json
+        echo "cosign re-verify OK — deploy proceeds."
+      else
+        echo "cosign not available on this runner — skipped re-verify (primary verify still gates via needs:cosign:verify)." >&2
+      fi
+
     # Export substitution variables consumed by envsubst in the rendered manifests.
     # IMAGE_REGISTRY points to the registry sub-path so manifests resolve correctly:
     #   ${IMAGE_REGISTRY}/backend:${IMAGE_TAG} → registry.gitlab.com/<group>/<project>/backend:<sha>
