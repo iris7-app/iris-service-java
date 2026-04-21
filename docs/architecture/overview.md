@@ -17,7 +17,7 @@
 | Component | Role | Interfaces with |
 |-----------|------|-----------------|
 | `CustomerController` | REST layer. Maps HTTP verbs to service calls. Implements header-based API versioning (`X-API-Version: 2.0` → `CustomerDtoV2` with `createdAt`). Delegates all business logic to `CustomerService`. | `CustomerService`, Spring MVC |
-| `CustomerService` | Transactional service. Orchestrates persistence (`CustomerRepository`), event publishing, Redis ring buffer update, and enrichment replies. All writes are wrapped in a transaction; Kafka publish happens after commit to avoid phantom events on rollback. | `CustomerRepository` (PostgreSQL), `CustomerEventPublisher` (Kafka), `RecentCustomerBuffer` (Redis) |
+| `CustomerService` | Transactional service. Orchestrates persistence (`CustomerRepository`), event publishing, Redis ring buffer update, and enrichment replies. All writes are wrapped in a transaction; Kafka publish happens after commit to avoid phantom events on rollback. Depends on `CustomerEventPort` (interface), not directly on Kafka — see ADR-0044. | `CustomerRepository` (PostgreSQL), `CustomerEventPort` → `KafkaCustomerEventPublisher` (Kafka), `RecentCustomerBuffer` (Redis) |
 | `AggregationService` | Calls two independent sources concurrently using **Java 25 virtual threads** (`Thread.ofVirtual().start(...)`). Intentionally sleeps 200 ms in each sub-task to simulate I/O latency — verifiable in Tempo as two parallel spans finishing at the same wall-clock time. | `BioService` (Ollama), `TodoService` (HTTP) |
 | `RecentCustomerBuffer` | Maintains a fixed-size ring buffer of the 10 most recently created customers. Implemented with Redis `LPUSH + LTRIM + LRANGE` so it survives application restarts and is consistent across instances. Exposed via `GET /customers/recent`. | Redis |
 | `CustomerStatsScheduler` | Periodic background task (`@Scheduled`). Protected by **ShedLock** via JDBC — only one instance in a cluster acquires the lock and runs the task. Prevents duplicated stats computation when multiple replicas are running. | PostgreSQL (ShedLock table), Redis (stats cache) |
@@ -26,7 +26,7 @@
 
 | Component | Role | Topic | Interfaces with |
 |-----------|------|-------|-----------------|
-| `CustomerEventPublisher` | Fire-and-forget publish. After a successful `POST /customers`, sends a `CustomerCreatedEvent` to `customer.created`. Uses `KafkaTemplate<String, Object>` with Jackson JSON serialization and `__TypeId__` header for dynamic type resolution on the consumer side. | `customer.created` (produce) | Kafka |
+| `KafkaCustomerEventPublisher` | Fire-and-forget publish. Adapter implementing `CustomerEventPort` (ADR-0044 hexagonal-lite). After a successful `POST /customers`, sends a `CustomerCreatedEvent` to `customer.created`. Uses `KafkaTemplate<String, Object>` with Jackson JSON serialization and `__TypeId__` header for dynamic type resolution on the consumer side. | `customer.created` (produce) | Kafka |
 | `CustomerEventListener` | `@KafkaListener` on `customer.created`. Logs the event, increments a Micrometer counter (`kafka.customer.created.processed`). Demonstrates decoupled async consumption in the same process — in a real system this would be a separate microservice. | `customer.created` (consume) | Kafka, Micrometer |
 | `CustomerEnrichHandler` | Synchronous request-reply. `GET /customers/{id}/enrich` sends a `CustomerEnrichRequest` on `customer.request` via `ReplyingKafkaTemplate` (blocks up to 5 s). This handler listens on `customer.request`, builds a `displayName`, and uses `@SendTo` to publish the reply on `customer.reply`. The template correlates the reply back to the waiting caller via a UUID correlation header. Timeout → HTTP 504 with RFC 9457 Problem Details. | `customer.request` (consume), `customer.reply` (produce) | Kafka |
 
@@ -61,7 +61,8 @@
    ⑤a CustomerRepository   — INSERT INTO customers → id=1
    ⑤b RecentCustomerBuffer — LPUSH customer:recent id=1 + LTRIM 0 9
    ⑤c COMMIT
-   ⑤d CustomerEventPublisher — KafkaTemplate.send("customer.created", CustomerCreatedEvent{id=1})
+   ⑤d CustomerEventPort     — eventPort.publishCreated(id=1, name, email)
+                              (impl: KafkaCustomerEventPublisher → KafkaTemplate.send)
    ⑤e WebSocket             — SimpMessagingTemplate.convertAndSend("/topic/customers", dto)
 ⑥ → HTTP 201 {"id":1, "name":"Alice", "email":"alice@example.com"}
    (async, after 201)

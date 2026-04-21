@@ -108,6 +108,25 @@ class ArchitectureTest {
     }
 
     @Test
+    void domain_ports_must_not_depend_on_framework_packages() {
+        // Hexagonal-lite invariant (ADR-0044): classes in any `..port..`
+        // sub-package of a feature slice are domain interfaces — they must
+        // stay framework-free so the domain can be unit-tested without a
+        // Spring context and so swapping the adapter (e.g. Kafka → RabbitMQ,
+        // JPA → Mongo) is a true local change.
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("..port..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "org.springframework..",
+                        "jakarta.persistence..",
+                        "com.fasterxml.jackson..",
+                        "org.apache.kafka..",
+                        "io.fabric8..")
+                .because("domain ports must be framework-free (ADR-0044)");
+        rule.check(classes);
+    }
+
+    @Test
     void resilience_filters_should_not_depend_on_customer_domain() {
         // Cross-cutting filters (rate limit, idempotency) must be domain-agnostic.
         ArchRule rule = noClasses()
