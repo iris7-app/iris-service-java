@@ -1,7 +1,7 @@
 # ADR-0037 — Spectral `oas3-valid-*-example` rules disabled (temporary)
 
-- Status: Accepted (temporary, revisit on springdoc bump)
-- Date: 2026-04-20
+- Status: Superseded by Path B implemented in 2026-04-21
+- Date: 2026-04-20 (original) · 2026-04-21 (Path B addendum)
 - Deciders: @benoit.besson
 - Related: ADR-0013 (OpenAPI contract), ADR-0034 (CI memory budget)
 
@@ -119,3 +119,116 @@ portfolio project.
 - ADR-0013 — OpenAPI contract methodology.
 - [Spectral `oas3-valid-schema-example` docs](https://docs.stoplight.io/docs/spectral/4dec24461f3af-open-api-rules#oas3-valid-schema-example)
 - [springdoc-openapi issues tagged "example"](https://github.com/springdoc/springdoc-openapi/issues?q=label%3Aexample)
+
+---
+
+## Addendum (2026-04-21) — Path B implemented
+
+The `OpenApiCustomizer` outlined in **Path B** above was implemented in
+`com.mirador.api.OpenApiConfig#openApiSchemaSanitizer()` and the two
+Spectral rules were re-enabled in `.spectral.yaml`.
+
+### What the customizer actually does
+
+For every `Schema` reachable from `OpenAPI.components.schemas` (recursing
+into `properties`):
+
+- **Drops `default = MissingNode | NullNode` Jackson tokens.** Springdoc
+  3.0.x parks `MissingNode.instance` into `Schema._default` for every
+  parent schema synthesized from a `@Schema` annotation that omits
+  `defaultValue`. The swagger-core `SchemaSerializer` then emits
+  `"default": null` even though the Java field is logically empty. The
+  customizer detects the token by class-name suffix (avoids hard-linking
+  to a specific Jackson version since SB4 ships both 2.x and 3.x), then
+  calls `setDefault(null)` + `setDefaultSetFlag(false)` to suppress the
+  field entirely.
+- **Drops `default = ""` on non-string types.** Springdoc emits empty
+  string as the default for every primitive field (integer id,
+  format=email, format=date-time…). Empty string is never a valid
+  instance of those types.
+- **Drops `default = ""` on string types with a strict format.** Empty
+  string fails the format constraint (email, uri, date-time, uuid…).
+- **Plain `type: string` defaults are preserved** — empty string is a
+  legitimate default for an unconstrained string property.
+
+For every `Parameter` under `paths.[path].[verb].parameters`:
+
+- The parameter's own schema is recursively sanitized (same defaults
+  rule).
+- Parameter-level `example` values are normalised:
+  - If the example already matches the schema type → leave alone.
+  - If a primitive example can be coerced to the schema type without
+    loss (e.g. `42 → "42"` for a string schema, `"3" → 3L` for an
+    integer schema) → coerce and move into `schema.example` (parameter-
+    level example dropped to avoid duplication).
+  - If no safe coercion exists (e.g. a Map example on an integer
+    schema) → drop the example entirely. Better no example than a
+    wrong one.
+
+The `effectiveType()` helper falls back to the OpenAPI 3.1 plural
+`types` set when the OpenAPI 3.0 singular `type` field is null —
+required because springdoc populates either depending on the spec
+version.
+
+### What the customizer deliberately leaves alone
+
+- **Plain string defaults of `""` on properties without `format`.** They
+  are valid OAS and represent "no default" semantics in many DTO
+  conventions.
+- **Path-parameter schemas mistyped as `string` for `Long` fields.**
+  Fixing this would require either annotating every `@PathVariable`
+  with `@Schema(type = "integer")` (Path A), or rewriting the parameter
+  schema in the customizer — which would silently change the API
+  contract reported to clients. The customizer fixes the *example*
+  type-mismatch (which Spectral catches) without rewriting the schema
+  type.
+- **Real `@Schema(defaultValue = "10")` annotations on integers.** A
+  property with `default: 10` (numeric) and `type: integer` is left
+  untouched — the customizer only acts on `null`, `MissingNode`, or
+  empty-string defaults.
+
+### Verification (2026-04-21)
+
+| | Before Path B | After Path B |
+|---|---:|---:|
+| Spectral total errors | 24 | 0¹ |
+| Spectral warnings | 6 | 6 |
+| `oas3-valid-schema-example` errors | 13 | 0 |
+| `oas3-valid-media-example` errors | 11 | 0 |
+
+¹ One unrelated `oas3-schema` error remains on
+`components.securitySchemes.bearerAuth` (`unevaluated properties`) —
+tracked separately in `TASKS.md` under "openapi-lint flip
+allow_failure".
+
+### Tests
+
+`OpenApiSchemaSanitizerTest` (13 cases) covers the schema-walk
+defaults, the parameter-example coercion matrix, the MissingNode/NullNode
+detection, and the OpenAPI 3.1 `types` set fallback. Pure POJO
+manipulation, no Spring context.
+
+### Why Path A was not chosen in the end
+
+Path A (per-DTO `@Schema` annotations) would still be valid but
+requires touching every DTO field today AND every new field added in
+the future. Path B is a single bean that covers the spec mechanically
+and survives DTO additions. The risk Path B carries — coupling to
+springdoc's internal output shape — is mitigated by:
+
+1. Pinning `springdoc.version` in `pom.xml` (already in place).
+2. The ADR + tests document exactly which springdoc patterns are
+   handled, so a future upgrade that breaks the assumptions surfaces
+   as a clear test failure.
+3. The customizer is conservative — schemas with unrecognized shapes
+   pass through unchanged.
+
+### Revisit triggers
+
+- `springdoc.version` major bump → re-run the unit tests + capture a
+  fresh `/v3/api-docs` baseline; expect either no change (rules still
+  apply) or upstream finally fixed the noise (customizer becomes a
+  no-op and can be removed in a follow-up MR).
+- A new Spectral release adding rules sensitive to other springdoc
+  artifacts → extend the customizer with a dedicated case + test, do
+  not turn rules off.
