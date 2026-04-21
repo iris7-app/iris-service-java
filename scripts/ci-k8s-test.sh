@@ -149,6 +149,29 @@ for crd in podchaos.chaos-mesh.org networkchaos.chaos-mesh.org \
 done
 echo "  ✓ CRDs established."
 
+# For overlays that include Prometheus Operator CRDs (local-prom,
+# gke-prom), pre-install the CRDs server-side FIRST — otherwise the
+# subsequent `kubectl apply -k` races the ServiceMonitor / Prometheus
+# resources against the CRD Establishment and fails with
+# "no matches for kind ServiceMonitor". `kustomize apply` submits
+# everything at once; server-side has improved ordering but is not a
+# strict two-phase commit, so we split the two phases explicitly.
+KUBE_PROM_CRDS_FILE="$OVERLAY/kube-prom-stack-crds.yaml"
+if [[ -f "$KUBE_PROM_CRDS_FILE" ]]; then
+  echo "📦  Pre-installing kube-prometheus-stack CRDs server-side…"
+  kubectl apply --server-side=true --force-conflicts -f "$KUBE_PROM_CRDS_FILE" >/dev/null
+  # Wait for the core CRDs we know are referenced by the overlay's
+  # ServiceMonitors / Prometheus / Alertmanager resources.
+  for crd in prometheuses.monitoring.coreos.com \
+             servicemonitors.monitoring.coreos.com \
+             alertmanagers.monitoring.coreos.com \
+             podmonitors.monitoring.coreos.com \
+             prometheusrules.monitoring.coreos.com; do
+    kubectl wait --for=condition=established --timeout=30s "crd/$crd" >/dev/null
+  done
+  echo "  ✓ kube-prom-stack CRDs established."
+fi
+
 echo "🚀  kubectl apply --server-side -k $OVERLAY"
 # `--server-side=true` (Server-Side Apply, SSA) is required for the
 # `local-prom` / `gke-prom` overlays because the vendored kube-prom-
