@@ -4,11 +4,13 @@ import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResourceBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.base.ResourceDefinitionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 
@@ -79,13 +81,30 @@ public class ChaosService {
                 .build();
         cr.setAdditionalProperty("spec", buildSpec(experiment));
 
+        // Build the ResourceDefinitionContext explicitly instead of relying
+        // on client.resource() — the latter requires server-side CRD
+        // discovery to register a handler, which (a) fails on mock clusters
+        // in tests and (b) produces an opaque "Could not find a registered
+        // handler" error in production when Chaos Mesh isn't installed.
+        // Explicit RDC gives us a predictable KubernetesClientException with
+        // a real HTTP status code we can map to actionable errors below.
+        //
+        // Plural naming for chaos-mesh CRDs is kind-lowercased (no trailing
+        // 's'): PodChaos → podchaos, NetworkChaos → networkchaos, etc. This
+        // matches the actual CRD registration in Chaos Mesh v2.7+.
+        ResourceDefinitionContext rdc = new ResourceDefinitionContext.Builder()
+                .withGroup("chaos-mesh.org")
+                .withVersion("v1alpha1")
+                .withKind(experiment.kind())
+                .withNamespaced(true)
+                .withPlural(experiment.kind().toLowerCase(Locale.ROOT))
+                .build();
+
         try {
-            // client.resource() derives the right REST endpoint from the
-            // resource's apiVersion + kind via the server's CRD discovery.
-            // No need to hardcode the plural (podchaos vs podchaoses vs
-            // podchaoss — the plural rules for kinds ending in 'Chaos'
-            // are unusual, discovery handles it safely).
-            client.resource(cr).create();
+            client.genericKubernetesResources(rdc)
+                    .inNamespace(APP_NAMESPACE)
+                    .resource(cr)
+                    .create();
             log.info("chaos_experiment_triggered name={} kind={} duration={}",
                     name, experiment.kind(), experiment.duration());
             return name;

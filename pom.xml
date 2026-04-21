@@ -398,6 +398,19 @@
             <artifactId>kubernetes-client</artifactId>
             <version>${fabric8-kubernetes-client.version}</version>
         </dependency>
+        <!--
+          Test-scoped mock Kubernetes API server for ChaosServiceTest.
+          Shares the kubernetes-client version so the client + server
+          speak the same API shape. Provides the @EnableKubernetesMockClient
+          JUnit extension which injects a stubbed KubernetesClient +
+          KubernetesMockServer into the test class.
+        -->
+        <dependency>
+            <groupId>io.fabric8</groupId>
+            <artifactId>kubernetes-server-mock</artifactId>
+            <version>${fabric8-kubernetes-client.version}</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Pyroscope — continuous profiling agent (CPU, alloc, wall clock).
              Pushes JFR profiles to the Pyroscope server every 10s.

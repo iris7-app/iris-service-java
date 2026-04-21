@@ -131,26 +131,18 @@ hard cases. Each blocked by a specific issue:
 - `native-image-build` — manual-only, 30-min Kaniko AOT build never
   fired in observed window.
 
-#### Spectral warnings cleanup (was: openapi-lint shield flip — DONE 2026-04-21)
+#### ~~Spectral warnings cleanup~~ — DONE 2026-04-21
 
-The `openapi-lint` job is now `allow_failure: false` (default) — any
-`--fail-severity error` finding goes red. 6 warnings remain that don't
-trip the gate but are real API-contract polishing:
-
-- `operation-description` missing on `/customers/{id}.get`,
-  `/scheduled/jobs.get`, `/customers/summary.get` — add
-  `@Operation(description=...)` on the controllers.
-- `operation-tag-defined` on `/scheduled/jobs.get.tags[0]` —
-  either add the tag to `GroupedOpenApi.tags()` or drop the
-  controller-level `@Tag`.
-- 2× `no-script-tags-in-markdown` on `/demo/security/xss-*` —
-  these are literal XSS demo endpoints; either `@Hidden` them in
-  prod OpenAPI groups or escape the `<script>` in the Javadoc.
-
-If we want to gate on warnings too: drop `--fail-severity error` for
-`--fail-severity warn` on the spectral CLI invocation. Decide as a
-separate session — for now warnings are visible in the report
-artifact + Sonar issues UI.
+Re-ran Spectral against live `/v3/api-docs` with
+`--fail-severity warn` against `.spectral.yaml`: zero warnings, zero
+errors. The 6 warnings previously listed (`operation-description`
+missing, `operation-tag-defined`, 2× `no-script-tags-in-markdown`)
+were all resolved by incremental commits — the ClassLevel `@Tag`
+on `ScheduledJobController`, the fence-code-block + HTML-entity
+escape in `SecurityDemoController` XSS demos, and full `description`
+coverage on every `@Operation`. The `openapi-lint` job stays on
+`--fail-severity error` default — bumping to warn is a future
+opt-in if we ever want zero-warning as the MR contract.
 
 ### Follow-ups from ADR-0039 (kube-prometheus-stack overlay)
 
