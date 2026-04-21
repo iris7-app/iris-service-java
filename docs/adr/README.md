@@ -21,8 +21,8 @@ navigational, no file layout change.
 
 ## Status snapshot
 
-- **Accepted**: 43
-- **Superseded**: 2 (ADR-0003 → ADR-0013; ADR-0008 → ADR-0044)
+- **Accepted**: 42
+- **Superseded**: 3 (ADR-0003 → ADR-0013; ADR-0008 → ADR-0044; ADR-0037 → Path B embedded)
 - **Deprecated**: 0
 
 ## Format
@@ -40,10 +40,16 @@ monotonic across supersessions.
 
 ## Flat index (by chronological number)
 
+> The table below is **auto-regenerated** from the ADR files by
+> `bin/dev/regen-adr-index.sh`. Do not edit by hand — changes are
+> overwritten on the next CI pass. `bin/dev/stability-check.sh` reports
+> drift when the table no longer matches the ADR files.
+
+<!-- ADR-INDEX:START -->
 | ID | Status | Title |
 |---|---|---|
 | 0001 | Accepted | [Record architecture decisions](0001-record-architecture-decisions.md) |
-| 0002 | Accepted | [Kustomize over Helm for K8s manifests](0002-kustomize-over-helm.md) |
+| 0002 | Accepted | [Kustomize over Helm for Kubernetes manifests](0002-kustomize-over-helm.md) |
 | 0003 | Superseded | [Cloud SQL over in-cluster Postgres on GKE](0003-cloud-sql-over-in-cluster-postgres.md) → [ADR-0013](0013-in-cluster-postgres-on-gke-for-the-demo.md) |
 | 0004 | Accepted | [Local CI runner, no paid SaaS quota](0004-local-ci-runner.md) |
 | 0005 | Accepted | [In-cluster Kafka (not Managed) for cost reasons](0005-in-cluster-kafka.md) |
@@ -52,41 +58,42 @@ monotonic across supersessions.
 | 0008 | Superseded | [Feature-sliced package layout in `com.mirador.*`](0008-feature-sliced-packages.md) → [ADR-0044](0044-hexagonal-considered-feature-slicing-retained.md) |
 | 0009 | Accepted | [Container runtime base image — `eclipse-temurin:25-jre`](0009-container-runtime-base-image.md) |
 | 0010 | Accepted | [OpenTelemetry OTLP push to a Collector (not Prometheus scrape)](0010-otlp-push-to-collector.md) |
-| 0011 | Accepted | [Minimal `@Transactional` surface](0011-transactional-read-strategy.md) |
+| 0011 | Accepted | [Minimal `@Transactional` surface, no `@Transactional(readOnly = true)`](0011-transactional-read-strategy.md) |
 | 0012 | Accepted | [Stay on LGTM with Loki bloom filters — defer OpenSearch](0012-stay-on-lgtm-with-bloom-filters.md) |
-| 0013 | Accepted | [In-cluster Postgres on GKE (supersedes ADR-0003)](0013-in-cluster-postgres-on-gke-for-the-demo.md) |
+| 0013 | Accepted | [In-cluster Postgres on GKE (revisits ADR-0003)](0013-in-cluster-postgres-on-gke-for-the-demo.md) |
 | 0014 | Accepted | [Single-replica deployments for the demo cluster](0014-single-replica-for-demo.md) |
 | 0015 | Accepted | [Argo CD for GitOps deployment on GKE](0015-argocd-for-gitops-deployment.md) |
 | 0016 | Accepted | [External Secrets Operator + Google Secret Manager](0016-external-secrets-operator.md) |
 | 0017 | Accepted | [Java 25 + Spring Boot 4 (bleeding-edge stack)](0017-jvm-25-spring-boot-4-strategy.md) |
-| 0018 | Accepted | [JWT strategy — HMAC + single-use refresh + Redis blacklist](0018-jwt-strategy-hmac-refresh-rotation.md) |
-| 0019 | Accepted | [Resilience4J (CB+Retry) + Bucket4J + idempotency filter](0019-resilience4j-circuitbreaker-retry-bucket4j.md) |
-| 0020 | Accepted | [API versioning via `X-API-Version` header (Spring 7)](0020-api-versioning-via-header.md) |
+| 0018 | Accepted | [JWT strategy — HMAC access tokens + single-use refresh rotation + Redis blacklist](0018-jwt-strategy-hmac-refresh-rotation.md) |
+| 0019 | Accepted | [Resilience4J (CB + Retry) + Bucket4J rate-limit + idempotency filter](0019-resilience4j-circuitbreaker-retry-bucket4j.md) |
+| 0020 | Accepted | [API versioning via `X-API-Version` header (Spring Framework 7)](0020-api-versioning-via-header.md) |
 | 0021 | Accepted | [Cost-deferred industrial patterns](0021-cost-deferred-industrial-patterns.md) |
 | 0022 | Accepted | [Ephemeral demo cluster (bring up on demand)](0022-ephemeral-demo-cluster.md) |
 | 0023 | Accepted | [Stay on GKE Autopilot (over GKE Standard)](0023-stay-on-autopilot.md) |
-| 0024 | Accepted | [BFF observability proxy + Unleash without SDK](0024-bff-observability-proxy-and-unleash-without-sdk.md) |
-| 0025 | Accepted | [UI local-only, no public prod ingress](0025-ui-local-only-no-public-prod-ingress.md) |
-| 0026 | Accepted | [Spring Boot scope limit — no third-party tool awareness](0026-spring-boot-scope-limit-no-third-party-tool-awareness.md) |
-| 0027 | Accepted | [Decline service mesh for the portfolio demo](0027-decline-service-mesh-for-portfolio-demo.md) |
-| 0028 | Accepted | [kind cluster in CI for manifest validation](0028-kind-cluster-in-ci-for-manifest-validation.md) |
-| 0029 | Accepted | [Jenkinsfile parity demonstrator + declarative linter](0029-jenkinsfile-parity-and-declarative-linter.md) |
+| 0024 | Accepted | [BFF pattern for observability + Unleash without the SDK](0024-bff-observability-proxy-and-unleash-without-sdk.md) |
+| 0025 | Accepted | [One UI, run locally; no public ingress in prod; port-forward tunnels for prod access](0025-ui-local-only-no-public-prod-ingress.md) |
+| 0026 | Accepted | [Spring Boot scope = app domain + self-admin only; no awareness of third-party tools](0026-spring-boot-scope-limit-no-third-party-tool-awareness.md) |
+| 0027 | Accepted | [Decline service mesh (Istio / Linkerd) for the portfolio demo](0027-decline-service-mesh-for-portfolio-demo.md) |
+| 0028 | Accepted | [kind-in-CI for K8s manifest validation before GKE](0028-kind-cluster-in-ci-for-manifest-validation.md) |
+| 0029 | Accepted | [Jenkinsfile parity demonstrator + declarative-linter validation](0029-jenkinsfile-parity-and-declarative-linter.md) |
 | 0030 | Accepted | [Choose GCP (GKE) as the Kubernetes target](0030-choose-gcp-as-the-kubernetes-target.md) |
-| 0031 | Accepted | [Version adoption policy — patch / minor / major](0031-version-adoption-policy.md) |
-| 0032 | Accepted | [Community standards + hierarchical ADR index](0032-community-standards-and-hierarchical-adr-index.md) |
+| 0031 | Accepted | [Version adoption policy (patch / minor / major)](0031-version-adoption-policy.md) |
+| 0032 | Accepted | [Community standards files + hierarchical ADR index](0032-community-standards-and-hierarchical-adr-index.md) |
 | 0033 | Accepted | [Playwright E2E in kind-in-CI](0033-playwright-e2e-in-kind-in-ci.md) |
-| 0034 | Accepted | [CI memory budget + Testcontainers-heavy ITs](0034-ci-memory-budget-testcontainers.md) |
-| 0035 | Accepted | [Defer Pact + Biome adoption](0035-defer-pact-and-biome.md) |
+| 0034 | Accepted | [CI memory budget + Testcontainers-heavy integration tests](0034-ci-memory-budget-testcontainers.md) |
+| 0035 | Accepted | [Defer Pact + Biome adoption (proposals #5 + #17)](0035-defer-pact-and-biome.md) |
 | 0036 | Accepted | [Multi-cloud Terraform posture](0036-multi-cloud-terraform-posture.md) |
-| 0037 | Accepted | [Spectral oas3-valid-* rules disabled](0037-spectral-oas3-valid-example-rules-disabled.md) |
-| 0038 | Accepted | [Cluster metrics via OTel Collector receivers in lgtm](0038-kubeletstats-receiver-in-lgtm-not-kube-prometheus-stack.md) |
+| 0037 | Superseded | [Spectral `oas3-valid-*-example` rules disabled (temporary)](0037-spectral-oas3-valid-example-rules-disabled.md) |
+| 0038 | Accepted | [Cluster metrics via OTel Collector receivers in lgtm, not kube-prometheus-stack](0038-kubeletstats-receiver-in-lgtm-not-kube-prometheus-stack.md) |
 | 0039 | Accepted | [Two observability deployment modes (OTel-native vs Prometheus-community)](0039-two-observability-deployment-modes.md) |
 | 0040 | Accepted | [Accept `insecureSkipVerify: true` on GKE kubelet ServiceMonitor](0040-accept-insecureskipverify-on-gke-kubelet-scrape.md) |
-| 0041 | Accepted | [CI hygiene: honest green discipline (scope-out + tag-on-green)](0041-ci-hygiene-honest-green-discipline.md) |
-| 0042 | Accepted | [Quality reports routing: SonarCloud vs Maven Site (ESLint, Pitest, Trivy, Semgrep, Spectral)](0042-quality-reports-routing-sonarcloud-vs-maven-site.md) |
+| 0041 | Accepted | [CI hygiene: honest green discipline](0041-ci-hygiene-honest-green-discipline.md) |
+| 0042 | Accepted | [Quality reports routing: SonarCloud vs Maven Site](0042-quality-reports-routing-sonarcloud-vs-maven-site.md) |
 | 0043 | Accepted | [Pin GitHub Actions by full commit SHA (not tag)](0043-pin-github-actions-by-commit-sha.md) |
-| 0044 | Accepted | [Hexagonal considered, feature-slicing retained (supersedes ADR-0008)](0044-hexagonal-considered-feature-slicing-retained.md) |
+| 0044 | Accepted | [Hexagonal considered, feature-slicing retained (with ports-and-adapters lite on outbound events)](0044-hexagonal-considered-feature-slicing-retained.md) |
 | 0047 | Accepted | [Auth0 consent screen stays for social logins (Google OAuth2)](0047-auth0-consent-for-social-logins.md) |
+<!-- ADR-INDEX:END -->
 
 ## Hierarchical index (by theme)
 
