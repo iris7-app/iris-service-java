@@ -5,6 +5,32 @@ adding/starting/finishing a task. Delete when empty (per CLAUDE.md).
 
 ## ✅ Closed this session
 
+### 2026-04-21 (latest — Auth0 login fully working + CHAOS-1 wired)
+
+- **Auth0 login round-trip working end-to-end** with Google social
+  connection on the existing tenant (`dev-ksxj46zlkhk2gcvo`) — see
+  commits `bc12524` (svc AUTH0_* env vars), `3d28e11`/`7a77eef`/
+  `79530e7` (UI interceptor Auth0-aware + multi-role isAdmin), and
+  ADR-0047 for the consent-screen trade-off decision.
+- **CHAOS-1 shipped**: `com.mirador.chaos` feature slice with Fabric8
+  backend + RBAC + 3 experiments (PodChaos/NetworkChaos/StressChaos)
+  + UI buttons + 14 unit tests across 3 test classes (svc `2c97aa8`,
+  `5a12d47`, `b657253`, `161b17a`; UI `a596a90`).
+- **B hexagonal-lite shipped**: `CustomerEventPort` extracted with
+  Kafka adapter `KafkaCustomerEventPublisher` + ArchUnit rule for
+  port-layer purity (svc `c6eb86c`). ADR-0044 documents the pattern.
+- **ADR consolidation**: 41-45 merged/renumbered into 41-44 (CI
+  hygiene, quality reports routing, pin GH Actions, hexagonal
+  considered) + ADR-0047 Auth0 consent. Count: 43 Accepted, 2
+  Superseded.
+- **Chaos Mesh smoke test on kind** (P5 A): kind v0.31 +
+  Chaos Mesh v2.7.2 official install. Applied
+  `deploy/kubernetes/base/chaos/experiments.yaml` → all 3 CRs
+  created successfully (PodChaos, NetworkChaos, StressChaos).
+  Validates that the YAML schema + the programmatic equivalent in
+  `ChaosService.java` (same CRD structure) work against a real
+  cluster. Cluster torn down after test.
+
 ### 2026-04-21 (later — checkpoint stable-v1.0.6)
 
 - New global rule "Reference pipelines, MRs and config files as
