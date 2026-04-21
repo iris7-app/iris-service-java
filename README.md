@@ -79,9 +79,17 @@
 **Mirador** — Spanish for *watchtower* — is a vantage point. The project
 picks a concrete Customer API backend and stands watch over it from every
 angle at once: **the code, the runtime metrics, the CI/CD pipelines, and
-the industry-standard tooling wired around it**. Everything you see in the
-paired UI ([`mirador-ui`](https://gitlab.com/mirador1/mirador-ui)) and in
-Grafana is the same live system observed from two windows.
+the industry-standard tooling wired around it**. The same live backend is
+visible through two complementary "windows":
+
+- the paired UI ([`mirador-ui`](https://gitlab.com/mirador1/mirador-ui))
+  shows it from the **business angle** — REST endpoints, customer data,
+  request/response payloads, the UX layer;
+- Grafana shows it from the **observability angle** — Prometheus
+  metrics, Tempo traces, Loki logs, all flowing through OpenTelemetry.
+
+Both panes look at the exact same `mirador-service` instance; nothing
+is mocked between them.
 
 This repository is the **Spring Boot 4 / Java 25 backend**. It is the one
 being watched.

@@ -20,9 +20,17 @@
 Le projet prend un backend concret de gestion de clients (API Customer)
 et l'observe sous tous les angles en même temps : **le code, les métriques
 runtime, les pipelines CI/CD, et l'outillage industriel standard câblé
-autour**. Tout ce que tu vois dans l'UI associée
-([`mirador-ui`](https://gitlab.com/mirador1/mirador-ui)) et dans Grafana
-est le même système live observé par deux fenêtres différentes.
+autour**. Le même backend live est visible à travers deux « fenêtres »
+complémentaires :
+
+- l'UI associée ([`mirador-ui`](https://gitlab.com/mirador1/mirador-ui))
+  le montre du **côté métier** — endpoints REST, données clients,
+  payloads requête/réponse, couche UX ;
+- Grafana le montre du **côté observabilité** — métriques Prometheus,
+  traces Tempo, logs Loki, le tout via OpenTelemetry.
+
+Les deux vues regardent exactement la même instance `mirador-service` ;
+rien n'est mocké entre les deux.
 
 Ce repo contient le **backend Spring Boot 4 / Java 25**. C'est celui qui
 est observé.

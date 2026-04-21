@@ -5,7 +5,47 @@ adding/starting/finishing a task. Delete when empty (per CLAUDE.md).
 
 ## ✅ Closed this session
 
-### 2026-04-21 (current — checkpoint stable-v1.0.5)
+### 2026-04-21 (later — checkpoint stable-v1.0.6)
+
+- New global rule "Reference pipelines, MRs and config files as
+  clickable URLs" added to ~/.claude/CLAUDE.md and mirrored to both
+  project CLAUDE.md (svc !112, UI !63).
+- bearerAuth `oas3-schema` "unevaluated properties: name" error
+  cleared by removing the invalid `.name(securitySchemeName)` setter
+  on the HTTP SecurityScheme — `name` is only valid for `apiKey`
+  schemes (svc !112).
+- `openapi-lint` job `allow_failure: true` shield removed (svc !112).
+- compodoc CVE batch (5 → 0 vulns) via npm `overrides` forcing
+  `@compodoc/compodoc → @angular-devkit/{core,schematics}@21.2.7`.
+  Top-level `"//-overrides"` JSON-comment key documents the rationale
+  + revisit trigger (UI !64).
+- `.github/workflows/scorecard.yml` `permissions: read-all` narrowed
+  to `contents: read` — closes Sonar `githubactions:S8234` and the
+  `new_security_rating = 3` driver (svc !113).
+- Workflow `.gitlab-ci.yml` `changes:` allowlist widened with
+  `bin/**`, `.github/**`, `.spectral.yaml`, README.fr.md, CLAUDE.md
+  — without these, MRs touching only those paths produced no
+  pipeline at all and were BLOCKED by the branch-protection rule
+  (svc !113).
+- 4 stable `allow_failure: true` shields dropped (sonar-analysis,
+  code-quality, trivy:scan, dockle, release-please) — each ran 7/7
+  green on main between pipelines #557→#565. Remaining shields:
+  svc 30 → 25 (svc !113).
+- `sonar-analysis` rules scoped to MAIN ONLY — SonarCloud free tier
+  has no PR/MR analysis ("Project not found" 404 on every MR
+  pipeline). The previous shield was hiding 4 consecutive failures
+  on MRs 109/110/112/113. Per-MR quality feedback continues via
+  `code-quality` (svc !113).
+- 2 new `bin/dev/stability-check.sh` sections: `section_adr_proposed`
+  (flags ADRs stuck in "Proposed" >30d via git blame) +
+  `section_helm_lint` (no-op until `deploy/helm/**` exists). 25 → 27
+  sections (svc !113).
+- UI features grouping audit — `src/app/features/` is ALREADY
+  organised into 4 categories (`core-ux`, `customer`, `infra-ops`,
+  `obs`) with 15 features distributed. The TASKS.md item was stale;
+  no work needed.
+
+### 2026-04-21 (earlier — checkpoint stable-v1.0.5)
 
 - ServiceMonitor for Mirador in local-prom overlay (svc !108, 1b9acbd)
 - gke-prom/ overlay: kube-prom-stack on GKE Autopilot (svc !109,
@@ -39,52 +79,37 @@ adding/starting/finishing a task. Delete when empty (per CLAUDE.md).
 
 ## 🟡 Improvements
 
-### SonarCloud Quality Gate — remaining drivers after 2026-04-20-2315 fix
+### SonarCloud Quality Gate — remaining drivers (after stable-v1.0.6)
 
-The session 2026-04-20-2315 merged `fix(sonar): 4 BLOCKER
-missing-assertion + 1 CRITICAL complexity` (svc MR !104, commit
-16ca5d9 → squash on main) and the symmetric UI fix (UI !62, commit
-9287def). That clears **all** open BLOCKER/CRITICAL issues on both
-projects. Gate ERROR persists because of:
+stable-v1.0.6 closed `new_security_rating = 3` (scorecard.yml perms
+narrow). Remaining drivers all need REAL test work, not config
+tweaks — keep one MR per driver:
 
-- **svc `new_security_rating = 3`** — 1 MAJOR `githubactions:S8234`
-  on `.github/workflows/scorecard.yml:28` (`permissions: read-all`).
-  Fix: narrow to the specific scopes OSSF scorecard needs
-  (`contents: read`, `id-token: write`, probably `pull-requests: read`).
 - **svc `new_coverage = 47.3%`** < 80% — new code added this period
   without matching tests. Hotspots: `CustomerController` (classify
   helper + enrich path), and the authz paths added in the Auth0 JWT
   validation ITest session.
 - **svc `new_security_hotspots_reviewed = 0%`** — hotspots on new code
   need the Sonar "Review" click (mark as "safe" with justification).
+  Manual UI step, no code change.
 - **UI `new_coverage = 0%`** + **UI `new_security_hotspots_reviewed = 0%`**
   — same shape.
 
-Each is an independent task; keep one MR per driver.
-
-### UI npm audit — 5 CVEs in @compodoc/compodoc (1 HIGH picomatch)
-
-Dev-only dependency (Angular API doc generator, not shipped to browser).
-Fix requires breaking upgrade to `@compodoc/compodoc@1.1.16`. Low
-real-world impact — log for next session to decide whether to pin +
-upgrade, or drop compodoc if it's no longer valuable. Check again when
-next major compodoc release lands.
-
 ### Reduce `allow_failure: true` shields
 
-Inventory from stability-check: svc had 30, UI had 15. Session
-2026-04-20 removed 4 stable shields and dated 1 flaky one:
-- svc `owasp-dependency-check` → REMOVED (4x success, "initially"
-  clause satisfied, genuine CVEs should now go red)
-- svc `cosign:sign` → REMOVED (4x success, deploy-side `cosign:verify`
-  already strict; signing failures are supply-chain breakage)
-- svc `openapi-lint` → DATED, flip to false by 2026-05-20
-- UI `bundle-size-check` → REMOVED (script never exits non-zero,
-  shield was redundant)
-- UI `typedoc` → REMOVED (`| tee` already masks typedoc's exit code,
-  shield was redundant)
+Running history:
+- 2026-04-20: removed 4 (svc owasp-dependency-check, svc cosign:sign,
+  UI bundle-size-check, UI typedoc).
+- 2026-04-21 stable-v1.0.5: removed 1 (svc openapi-lint via Path B).
+- 2026-04-21 stable-v1.0.6: removed 5 (svc sonar-analysis,
+  code-quality, trivy:scan, dockle, release-please) +
+  scoped sonar-analysis to main only (free-tier limitation).
 
-Remaining: svc ~28, UI ~13. Next sessions: continue 5/session.
+Counts: svc 30 → 25, UI 14 → 14. Next sessions: continue 5/session.
+Priority candidates with KNOWN flakiness (manual investigation
+needed before flipping): `test:k8s-apply` (kubectl wait migration
+TODO), `grype:scan` (arm64 panic — deferred to upstream fix),
+`terraform-plan` (state bucket dependency).
 
 #### Spectral warnings cleanup (was: openapi-lint shield flip — DONE 2026-04-21)
 
@@ -144,22 +169,30 @@ both. Remaining follow-ups:
 
 ## 🟢 Nice-to-have
 
-### Extend `bin/dev/stability-check.sh`
+### Extend `bin/dev/stability-check.sh` — 4 ideas remain
 
-Each new section adds ~10 lines. Backlog of ideas:
-- ADR "proposed" status check (none today, but watch)
-- Lighthouse score regression vs baseline (`docs/audit/lighthouse.html`)
-- Mermaid diagram syntax check (escape pitfalls re-occur)
-- Trivy CVE delta vs last report (only flag NEW)
-- TODO/FIXME age scanner (`>30d`)
-- Helm chart lint when `deploy/helm/**` exists
+stable-v1.0.6 added 2 sections (`section_adr_proposed`,
+`section_helm_lint`). Backlog of remaining ideas:
 
-### Group `src/app/features/` into one level of subdirs (UI)
+- Lighthouse score regression vs baseline beyond the existing simple
+  delta (e.g. fail-on-degradation thresholds for perf/a11y/bp/seo).
+- Mermaid diagram syntax check (escape pitfalls re-occur in
+  long-form architecture docs).
+- Trivy CVE delta beyond the existing simple delta — currently flags
+  count change; could flag NEW CVE IDs vs last report so a 0→0 with
+  one CVE replaced by another is detected.
+- TODO/FIXME age scanner already exists (`section_stale_todos`); a
+  `git blame --porcelain` extension to attribute by author would be
+  the next step.
 
-Per CLAUDE.md "Subdirectory hygiene", 15 features ≥ 10 threshold.
-Suggested grouping: `customer/`, `observability/`, `ops/`, `auth/`.
+### Move root-level files to `config/` (UI + svc) — defer
 
-### Move root-level files to `config/` (UI + svc)
-
-Both repos over the 15-file root budget. Listed in last stability
-check report.
+Audit 2026-04-21: only ~2 candidates per repo are realistically
+movable without breaking tool conventions (e.g. `.spectral.yaml` →
+`config/` would need a CI invocation update; `run.sh` → `bin/`).
+The CLAUDE.md "≤ 15 files" rule was not met today (24 files in
+each), but the bulk of the count is dotfiles that tools require at
+root (`.gitignore`, `.gitattributes`, `.dockerignore`,
+`.gitleaks.toml`, `.mise.toml`, `.editorconfig`, `.prettierrc`,
+`.release-please-manifest.json`, etc.). Defer until a session has
+explicit appetite to update CI invocations + tool docs.
