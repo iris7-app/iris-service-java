@@ -202,26 +202,26 @@ fi
 for target in "${ALL_PODS[@]}"; do
   IFS='/' read -r ns kind name <<< "$target"
   printf "  %-60s " "$target"
-  # `kubectl wait --for=condition=Available` — the idiomatic idle
-  # loop for Deployments + StatefulSets (both support the Available
-  # condition since k8s 1.22). DaemonSets don't have Available; fall
-  # back to rollout status for those. Migrated from `kubectl rollout
-  # status` per the dated TODO in .gitlab-ci.yml — rollout status
-  # watches the stream of controller events, which produces rare
-  # buffer-flush SIGPIPEs that ci pipelines intermittently surfaced
-  # as exit 141. `kubectl wait` does not stream — it polls status
-  # conditions directly.
+  # Wait strategy depends on the resource kind:
+  #   - Deployment  : `kubectl wait --for=condition=Available`
+  #     (idiomatic, doesn't stream events → no SIGPIPE risk).
+  #   - StatefulSet : `kubectl rollout status` (StatefulSets do NOT
+  #     expose an Available condition; `kubectl wait --for=condition=
+  #     Available statefulset/X` silently times out — caught the hard
+  #     way in kind-on-CI pipeline #598 where postgresql hung).
+  #   - DaemonSet   : `kubectl rollout status` (same — no Available
+  #     condition).
+  # `rollout status` is the canonical wait for StatefulSet/DaemonSet
+  # and the streaming-SIGPIPE concern from the original TODO was
+  # rooted in `| head`/`| grep -v` pipes elsewhere in this script
+  # (fixed in the same commit), not in `rollout status` itself.
   case "$kind" in
-    daemonset)
-      # DaemonSet has no Available condition — use --for=jsonpath on
-      # numberReady + the current desired count (Ready = desired = all nodes).
-      # Use rollout status (it's the canonical wait for DaemonSets and
-      # doesn't have the streaming-SIGPIPE shape the TODO targets).
-      if kubectl rollout status "daemonset/$name" -n "$ns" --timeout="$TIMEOUT" >/dev/null 2>&1; then
+    daemonset|statefulset)
+      if kubectl rollout status "$kind/$name" -n "$ns" --timeout="$TIMEOUT" >/dev/null 2>&1; then
         echo "✅"
       else
         echo "❌"
-        kubectl describe "daemonset/$name" -n "$ns" | tail -30
+        kubectl describe "$kind/$name" -n "$ns" | tail -30
         failed=$((failed + 1))
       fi
       ;;

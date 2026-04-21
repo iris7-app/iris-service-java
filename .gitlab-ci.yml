@@ -270,11 +270,28 @@ openapi-lint:
     # Run Spectral with our ruleset. --fail-severity error = block only on errors.
     # Pin the CLI version — floating `latest` silently renamed/removed rules
     # (e.g. `operation-4xx-response` gone in 6.15 broke pipeline #474).
-    - npx --yes @stoplight/spectral-cli@6.15.1 lint /tmp/openapi.json --ruleset .spectral.yaml --fail-severity error
+    #
+    # Two output formats in one invocation (Spectral supports `-f X -f Y`):
+    #   - `stylish` to stdout for the CI log readability
+    #   - `sarif` to a file so SonarCloud can ingest the warnings as
+    #     "External Issues" via `sonar.sarifReportPaths` (see pom.xml).
+    #     This makes Spectral findings visible alongside Java/PMD/SpotBugs
+    #     issues on https://sonarcloud.io/project/issues without needing
+    #     a separate Sonar plugin.
+    - npx --yes @stoplight/spectral-cli@6.15.1 lint /tmp/openapi.json
+        --ruleset .spectral.yaml
+        --fail-severity error
+        -f stylish
+        -f sarif --output.sarif /tmp/spectral-report.sarif
+    # Copy the SARIF into the workspace so the artifact/sonar-pickup
+    # works (default workspace = $CI_PROJECT_DIR; /tmp doesn't survive
+    # the artifact upload step).
+    - cp /tmp/spectral-report.sarif "$CI_PROJECT_DIR/spectral-report.sarif"
   artifacts:
     when: always
     paths:
       - /tmp/openapi.json
+      - spectral-report.sarif
     expire_in: 1 week
   # (Previously had a second `allow_failure: true` here; removed 2026-04-21
   # alongside the top-of-job shield — see comment block above for the
@@ -640,6 +657,14 @@ sonar-analysis:
     # schedule by running semgrep BEFORE the sonar step in that job —
     # tracked as a follow-up if we want continuous semgrep coverage.
     - job: trivy:scan
+      artifacts: true
+      optional: true
+    # spectral-report.sarif from openapi-lint (path-filtered: only fires
+    # when *.java / pom.xml / .spectral.yaml change). When openapi-lint
+    # didn't run, the SARIF file is missing and Sonar silently skips it
+    # via the `optional: true` semantics on the artifact dependency
+    # combined with `sonar.sarifReportPaths` accepting missing files.
+    - job: openapi-lint
       artifacts: true
       optional: true
   rules:
