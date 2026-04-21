@@ -25,6 +25,43 @@ navigational, no file layout change.
 - **Superseded**: 3 (ADR-0003 → ADR-0013; ADR-0008 → ADR-0044; ADR-0037 → Path B embedded)
 - **Deprecated**: 0
 
+### Supersession graph
+
+How historical decisions evolved into the current set. Each arrow
+reads "was superseded by" — the arrow-head carries the reason the
+reversal happened.
+
+```mermaid
+flowchart LR
+    A0003[ADR-0003<br/><b>Cloud SQL over in-cluster Postgres</b><br/><i>2026-04 · superseded</i>]
+    A0013[ADR-0013<br/><b>In-cluster Postgres on GKE</b><br/><i>2026-04 · accepted</i>]
+    A0008[ADR-0008<br/><b>Feature-sliced package layout</b><br/><i>2026-04 · superseded</i>]
+    A0044[ADR-0044<br/><b>Hexagonal considered, feature-slicing retained</b><br/><i>2026-04 · accepted</i>]
+    A0037[ADR-0037 v1<br/><b>Spectral oas3-valid-* rules disabled</b><br/><i>temporary shield</i>]
+    A0037b[ADR-0037 v2<br/><b>OpenApiSchemaSanitizer bean (Path B)</b><br/><i>same doc, Path B addendum</i>]
+
+    A0003 -->|"€2/mo cost-control<br/>ADR-0022 wins"| A0013
+    A0008 -->|"port/ sub-package<br/>for outbound events"| A0044
+    A0037 -->|"root cause fixed<br/>(schema sanitizer)<br/>rules re-enabled"| A0037b
+
+    classDef superseded fill:#f3f3f3,stroke:#999,stroke-dasharray:5,color:#666
+    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    class A0003,A0008,A0037 superseded
+    class A0013,A0044,A0037b current
+```
+
+**Reading the graph:** dashed boxes = historical decisions kept for
+audit trail (per Michael Nygard's rule "immutable once merged").
+Solid-green boxes = the current, authoritative decisions. The arrow
+label captures the SHORT reason the reversal happened — full context
+in the superseding ADR's **Context** section.
+
+**Pattern to preserve:** when superseding an ADR, keep the old file
+with `Status: Superseded by ADR-NNNN`, write the new decision as a
+fresh ADR that references the old one in its `Supersedes:` header.
+Never edit the old file to change its decision — only the Status
+line is mutable.
+
 ## Format
 
 Every ADR follows the same 5 sections:
