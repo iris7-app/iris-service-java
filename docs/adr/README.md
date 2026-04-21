@@ -21,7 +21,7 @@ navigational, no file layout change.
 
 ## Status snapshot
 
-- **Accepted**: 42
+- **Accepted**: 43
 - **Superseded**: 2 (ADR-0003 → ADR-0013; ADR-0008 → ADR-0044)
 - **Deprecated**: 0
 
@@ -86,6 +86,7 @@ monotonic across supersessions.
 | 0042 | Accepted | [Quality reports routing: SonarCloud vs Maven Site (ESLint, Pitest, Trivy, Semgrep, Spectral)](0042-quality-reports-routing-sonarcloud-vs-maven-site.md) |
 | 0043 | Accepted | [Pin GitHub Actions by full commit SHA (not tag)](0043-pin-github-actions-by-commit-sha.md) |
 | 0044 | Accepted | [Hexagonal considered, feature-slicing retained (supersedes ADR-0008)](0044-hexagonal-considered-feature-slicing-retained.md) |
+| 0047 | Accepted | [Auth0 consent screen stays for social logins (Google OAuth2)](0047-auth0-consent-for-social-logins.md) |
 
 ## Hierarchical index (by theme)
 
@@ -151,6 +152,7 @@ authoritative.
 - [ADR-0007](0007-workload-identity-federation.md) — Workload Identity Federation
 - [ADR-0016](0016-external-secrets-operator.md) — External Secrets Operator + GSM
 - [ADR-0018](0018-jwt-strategy-hmac-refresh-rotation.md) — JWT HMAC + refresh rotation
+- [ADR-0047](0047-auth0-consent-for-social-logins.md) — Auth0 consent screen stays for social logins
 
 ### 📡 Observability & telemetry
 
