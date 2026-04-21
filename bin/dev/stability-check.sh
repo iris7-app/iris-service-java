@@ -688,10 +688,24 @@ except: print('0|0|0|0')")
     else
       finding info "Lighthouse: perf=$perf a11y=$a11y bp=$bp seo=$seo (Δ $d_perf/$d_a11y/$d_bp/$d_seo)"
     fi
-    # BLOCKING: perf < 50 is real user-facing slowness (LCP/TBT territory),
-    # independent of delta — flag regardless of whether it regressed.
+    # BLOCKING absolute thresholds — independent of delta, flagged
+    # regardless of whether the score regressed since last run. The
+    # numbers below are calibrated to the project's current floor:
+    # anything below them is noticeably bad UX, not just measurement
+    # wiggle. Adjust the floors if a major UX overhaul changes the
+    # baseline (e.g. switching to a heavier framework would push perf
+    # down — bump the floor accordingly to avoid noise).
     if [[ "$perf" -lt 50 ]]; then
-      finding block "Lighthouse: performance score $perf < 50 (user-perceptible slowness)"
+      finding block "Lighthouse: performance score $perf < 50 (user-perceptible slowness — LCP/TBT territory)"
+    fi
+    if [[ "$a11y" -lt 80 ]]; then
+      finding block "Lighthouse: accessibility score $a11y < 80 (WCAG fails likely — colour contrast, missing labels, keyboard traps)"
+    fi
+    if [[ "$bp" -lt 80 ]]; then
+      finding warn "Lighthouse: best-practices score $bp < 80 (HTTPS / mixed content / deprecated APIs / console errors)"
+    fi
+    if [[ "$seo" -lt 80 ]]; then
+      finding warn "Lighthouse: SEO score $seo < 80 (missing meta tags / robots / structured data)"
     fi
   else
     finding info "Lighthouse: baseline recorded (perf=$perf a11y=$a11y bp=$bp seo=$seo)"
@@ -853,6 +867,57 @@ section_helm_lint() {
         finding fail "$name: helm lint $chart — $errs error(s)"
       fi
     done < <( (cd "$repo" && find deploy/helm -name Chart.yaml -exec dirname {} \; 2>/dev/null) || true)
+  done
+}
+
+# ── Section 5f-quater: Mermaid diagram syntax check ───────────────────────
+# Why: long-form architecture docs (`docs/architecture/*.md`, `docs/adr/*.md`)
+# accumulate Mermaid diagrams over time. The most common breakage is
+# copy-pasting a block whose first line lost the diagram-type keyword
+# (`flowchart`, `sequenceDiagram`, etc.) — GitHub renders nothing and
+# silently shows the raw text. A second class of breakage is mixing
+# tabs and spaces inside a block (Mermaid uses spaces only). Both
+# fail at render time on GitHub/GitLab without any error message.
+#
+# Heavy alternative: `npx @mermaid-js/mermaid-cli` (mmdc) which actually
+# runs the Mermaid parser in headless Chrome — accurate but pulls
+# Chromium (~150 MB) and adds 30 s+ per run. The grep-based check
+# below catches the two breakage classes above without any
+# dependency. If we ever add a CI gate on Mermaid rendering, switch
+# to mmdc; for the local stability-check, the lite check is enough.
+section_mermaid_lint() {
+  echo "▸ Mermaid diagram syntax check (lite)…"
+  # Awk extracts the FIRST non-empty line that follows each ```mermaid
+  # opener, until the matching ``` closer. One emitted line per block.
+  # Avoids the previous broken state-machine that mis-counted nested
+  # code fences.
+  local valid_types="^[[:space:]]*(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(-v2)?|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|quadrantChart|requirementDiagram|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta)([[:space:]]|$)"
+  for repo in "$SVC_DIR" "$UI_DIR"; do
+    local name=$(basename "$repo")
+    local bad_blocks=0 bad_files=()
+    while IFS= read -r f; do
+      [[ -z "$f" ]] && continue
+      local file_bad=0
+      while IFS= read -r first_line; do
+        [[ -z "$first_line" ]] && continue
+        if ! echo "$first_line" | grep -qE "$valid_types"; then
+          file_bad=$((file_bad + 1))
+        fi
+      done < <(awk '
+        /^```mermaid$/ { in_block=1; got_first=0; next }
+        /^```$/        { in_block=0; next }
+        in_block && !got_first && NF>0 { print; got_first=1 }
+      ' "$f" 2>/dev/null)
+      if [[ "$file_bad" -gt 0 ]]; then
+        bad_blocks=$((bad_blocks + file_bad))
+        bad_files+=("$(basename "$f"):$file_bad")
+      fi
+    done < <( (cd "$repo" && find docs README.md README.fr.md -type f -name "*.md" 2>/dev/null) || true)
+    if [[ "$bad_blocks" -gt 0 ]]; then
+      local list="${bad_files[*]:0:5}"
+      [[ "${#bad_files[@]}" -gt 5 ]] && list="$list …(+$((${#bad_files[@]} - 5)))"
+      finding warn "$name: $bad_blocks Mermaid block(s) without a recognised diagram-type keyword: $list"
+    fi
   done
 }
 
@@ -1234,6 +1299,7 @@ main() {
   section_adr_sequence
   section_adr_proposed
   section_helm_lint
+  section_mermaid_lint
   section_terraform
   section_pinned_versions
   section_env_drift
