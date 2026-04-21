@@ -68,6 +68,7 @@ Always run the default `./mvnw verify` after any change unless testing a specifi
 - Resolve merge conflicts by `git pull --rebase`, never by force-push.
 - **Tag stable-vX.Y.Z ONLY after the post-merge `main` pipeline goes green.** Don't tag right after the merge while main pipeline is still running with a "I'll move the tag if it goes red" recovery plan — that pattern silently produces tags on red commits when the recovery is forgotten or interrupted. The MR pipeline succeeding is NOT enough; the post-merge main pipeline runs the full main-branch ruleset (deploy steps, scheduled-only jobs) which can fail even when the MR pipeline passed. See `~/.claude/CLAUDE.md` → "Tag every green stability checkpoint, never tag on red" for the operational pattern (Monitor on the post-merge main pipeline).
 - **Surface pending decisions on your own initiative** — when a session accumulates real forks-in-the-road (choice changes WHAT gets built, not just WHEN), list them at the next natural checkpoint (batch landed, MR merged, idle moment). Don't wait for the user to ask "quoi à décider ?". Format: dense one-liner per decision with concrete trade-off; the user should answer "A1, B2, C: skip" in one line. See `~/.claude/CLAUDE.md` → "Surface pending decisions proactively — don't wait to be asked" for the full pattern.
+- **Vulgariser le jargon avec une parenthèse** — every technical term that appears in a status message or decision write-up (SIGPIPE, Server-Side Apply, annotated-tag SHA, ReDoS, CRD Establishment, StatefulSet, Autopilot admission, etc) gets a short plain-language gloss in parens on first mention per turn. Format: `<term> (<what it means in this context>)`. Keep the term (it's precise), just ADD the gloss. Skip for second+ mentions in the same turn, when the user explicitly asks for the technical deep-dive, or when echoing the user's own phrasing. See `~/.claude/CLAUDE.md` → "Write in plain language — jargon gets a parenthetical".
 
 ## CI workflow rules
 
@@ -150,6 +151,32 @@ Request
   → Spring Security chain
 ```
 
+## File length hygiene (segmenter les fichiers trop longs)
+
+When a hand-written source file crosses **~1 000 lines**, plan a split at
+the next touch; at **1 500+**, split NOW before shipping any other change.
+Current offenders to address over upcoming sessions:
+
+- `.gitlab-ci.yml` (2 619 lines) — modularise into `ci/includes/*.yml`
+  (lint, test, security, k8s, quality, package, native, deploy, release).
+- `src/main/java/com/mirador/observability/QualityReportEndpoint.java`
+  (1 934) — 7 parsers (Surefire, Jacoco, SpotBugs, OWASP, PMD, Checkstyle,
+  Pitest) each in their own class; the endpoint becomes a thin aggregator.
+- `bin/dev/stability-check.sh` (1 362) — split into
+  `bin/dev/stability/sections/*.sh` + a driver.
+
+Exceptions (length is inherent — don't split): `pom.xml` (Maven monorepo
+constraints), `README.md`, `docs/reference/*.md`, auto-generated manifests
+(`kube-prom-stack-rendered.yaml`, etc.).
+
+How to split — one commit per responsibility move, keep the public
+entrypoint small (~150 lines), grep-friendly names (`CustomerReadController`
+not `ReadController`), ADR if the dependency graph changes.
+
+Subdirectory side of the same rule: when a flat folder crosses **10
+entries**, group by purpose (bin/, features/, api/, port/, etc.); **15**
+is the hard ceiling. See `~/.claude/CLAUDE.md` → "Subdirectory hygiene".
+
 ## Test conventions
 
 - Unit tests mock collaborators via Mockito; use `MockHttpServletRequest/Response` for filter tests.
@@ -194,18 +221,64 @@ Loki, Tempo, Grafana are already inside the LGTM container — do NOT add them a
 - [ ] **Root hygiene**: no new file added to repo root that belongs under
       `config/`, `build/`, `deploy/compose/`, `docs/`, or `ci/`. See
       ~/.claude/CLAUDE.md → "Root file hygiene" for the authoritative list.
+- [ ] **File length hygiene**: no hand-written file > 1 000 lines without
+      a split plan (config/docs/auto-generated exempt). See
+      ~/.claude/CLAUDE.md → "File length hygiene" + this repo's
+      `File length hygiene` section above for current targets.
 - [ ] **Pipelines green**: `glab ci list` on `main` shows `success`
       for the last run. Any failed job (even `allow_failure: true`)
       counts as a task. Warnings (bundle budget, deprecations,
       `allow_failure` shields) are fix-now unless carried by a dated
       follow-up. See ~/.claude/CLAUDE.md → "Pipelines stay green".
 
-## Docker Cleanup
+## Docker Cleanup — TIGHTENED CADENCE (2026-04-21)
 
-At the start of each session (or after heavy build/test work), run:
+Run the prune trio at **each** of these moments, not just "start of session":
+
+1. **Session start** — baseline.
+2. **After any CI pipeline failure carrying a runner-pressure signal**
+   (connection refused to kind control-plane, OOMKilled, "resource quota
+   evaluation timed out", vitest worker exit 137, Maven SIGKILL in ≤ 60 s).
+   Rerun or repush WITHOUT cleanup → dies the same way.
+3. **Every 30 min of active local CI work** — catches leaks silently.
+4. **Before calling a session done** — clean slate for next session.
+
+### Leak classes specific to this repo
+
+- **Orphaned CI kind clusters** — `docker ps --format '{{.Names}}' |
+  grep -E '^ci-k8s(-prom)?-'` must return NOTHING outside an in-progress
+  job. Zombies outlive their CI job when jobs are cancelled mid-run —
+  kill with:
+  ```bash
+  docker ps --format '{{.Names}}' | grep -E '^ci-k8s(-prom)?-' \
+    | xargs -I {} kind delete cluster --name "$(echo {} | sed 's/-control-plane$//')"
+  ```
+  Session 2026-04-21 accumulated **4 stale clusters over 3 hours** before
+  detection; each was ~700 MB RSS × 4 = blown past the Docker Desktop VM
+  7.6 GB cap → cascading kind OOM on fresh pipelines.
+
+- **Local long-running JVMs** — `ps auxm | head -20` spots
+  `./mvnw spring-boot:run` or `java -jar target/*-SNAPSHOT.jar` left
+  from earlier dev work. ~250-800 MB RSS each; kill if not actively
+  needed.
+
+- **Dev demo containers** — `postgres-demo`, `kafka-demo`, `redis-demo`,
+  `ollama-demo` etc. started by `./run.sh all`. Stop if not needed:
+  `docker stop postgres-demo kafka-demo redis-demo ollama-demo`.
+
+### Prune trio + escalation
+
+```bash
+docker system df                                     # check first
+docker container prune -f                            # stopped containers
+docker builder prune -f                              # build cache
+docker image prune -f                                # dangling images
+# If > 80 GB total OR images > 100 count:
+docker image prune -a -f                             # ALL unused images (~20-30 GB typical)
 ```
-docker container prune -f
-docker volume prune -f
-docker builder prune -f
-```
-Check disk usage first with `docker system df`. Never prune running containers or named volumes without confirming with the user.
+
+**Never** prune named volumes (`docker volume prune`) without user
+confirmation — they hold postgres / sonar / flyway state.
+
+See `~/.claude/CLAUDE.md` → "Clean Docker regularly — don't wait for
+OOM" for the canonical rule.

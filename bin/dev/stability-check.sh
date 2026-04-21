@@ -30,6 +30,7 @@
 #   5h. ui-console             — console.* in src/ (telemetry sink excluded)
 #   6.  docs                   — broken README links + root file budget (≤15)
 #   6b. adr-sequence           — gaps in ADR numbering
+#   6c. adr-index              — flat-index drift vs generated (regen-adr-index.sh)
 #   7.  infra                  — mirror gap, open MRs, allow_failure inventory
 #   8.  manual-jobs            — optional `--trigger-manual` triggers safe set
 #   8b. manual-job-health      — last-run status of watched manual jobs
@@ -825,6 +826,33 @@ print(','.join(gaps))" 2>/dev/null || echo "")
   done
 }
 
+# ── Section 5f-ter: ADR flat-index auto-regen drift (DOC1 Phase 1.5) ──────
+# Why: 40+ ADRs in svc; keeping the flat-index table in docs/adr/README.md
+# in sync by hand is the kind of chore that rots silently. `bin/dev/regen-adr-index.sh`
+# generates the correct table from the ADR files themselves. If the current
+# README doesn't match the generated content, someone added/renamed an ADR
+# without running the regen script. We flag the drift with the actionable
+# fix command so the reviewer knows exactly what to do. Only applies to svc
+# (UI has no ADRs today — skips silently when docs/adr/ is absent).
+section_adr_index() {
+  echo "▸ ADR flat-index auto-regen drift…"
+  for repo in "$SVC_DIR" "$UI_DIR"; do
+    local name=$(basename "$repo")
+    local script="$repo/bin/dev/regen-adr-index.sh"
+    if [[ ! -x "$script" ]]; then continue; fi
+    if ( cd "$repo" && "$script" --check >/dev/null 2>&1 ); then
+      : # OK — table matches
+    else
+      local rc=$?
+      if [[ $rc -eq 2 ]]; then
+        finding warn "$name: ADR-INDEX markers missing from docs/adr/README.md — add <!-- ADR-INDEX:START --> / <!-- ADR-INDEX:END -->"
+      else
+        finding warn "$name: ADR flat index drifted from files — run 'bin/dev/regen-adr-index.sh --in-place' and commit"
+      fi
+    fi
+  done
+}
+
 # ── Section 5f-bis: ADR "Proposed" status — flag stuck decisions ──────────
 # Why: Michael Nygard's ADR template uses Status: {Proposed, Accepted,
 # Rejected, Deprecated, Superseded}. A Proposed ADR is a half-baked
@@ -1318,6 +1346,7 @@ main() {
   section_docs
   section_adr_sequence
   section_adr_proposed
+  section_adr_index
   section_helm_lint
   section_mermaid_lint
   section_terraform

@@ -1,0 +1,64 @@
+# =============================================================================
+# RBAC for the Mirador backend — grants just enough to:
+#   - create/get/list/delete Chaos Mesh CRs in the `app` namespace
+#     (triggered by ChaosController in com.mirador.chaos)
+#
+# Scope is deliberately narrow: Chaos Mesh CRDs live at chaos-mesh.org/v1alpha1;
+# the backend must NOT have broad cluster access. The Role below is
+# namespaced to `app` only — it cannot affect pods in `infra`, `chaos-mesh`,
+# `lgtm`, or any other namespace.
+#
+# Off-cluster (local laptop dev), these objects are not applied; the Fabric8
+# client falls back to ~/.kube/config whose permissions match the user. This
+# RBAC matters only for the in-cluster (GKE/EKS/AKS/kind) deployment.
+#
+# Related:
+#   - deploy/kubernetes/base/chaos/experiments.yaml (the CRs created by the backend)
+#   - src/main/java/com/mirador/chaos/ChaosService.java (the client side)
+#   - ADR-0044 (hexagonal lite — port/adapter pattern similar shape here)
+# =============================================================================
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mirador-backend
+  namespace: app
+  labels:
+    app.kubernetes.io/name: mirador
+    app.kubernetes.io/component: backend
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mirador-backend-chaos
+  namespace: app
+  labels:
+    app.kubernetes.io/name: mirador
+    app.kubernetes.io/component: backend
+rules:
+  - apiGroups: ["chaos-mesh.org"]
+    # Three CRDs matching the three ChaosExperiment enum constants.
+    # Adding a new experiment type? Extend this list AND the enum, in the
+    # same MR.
+    resources:
+      - podchaos
+      - networkchaos
+      - stresschaos
+    verbs: ["create", "get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mirador-backend-chaos
+  namespace: app
+  labels:
+    app.kubernetes.io/name: mirador
+    app.kubernetes.io/component: backend
+subjects:
+  - kind: ServiceAccount
+    name: mirador-backend
+    namespace: app
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: mirador-backend-chaos

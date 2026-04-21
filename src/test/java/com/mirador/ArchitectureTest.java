@@ -88,12 +88,41 @@ class ArchitectureTest {
     }
 
     @Test
-    void rest_controllers_should_reside_in_customer_or_auth_package() {
-        // @RestController classes may only live in customer/ (domain) or auth/ (security).
+    void rest_controllers_should_reside_in_web_layer_feature_packages() {
+        // @RestController classes must live in a feature package that owns a
+        // web surface. Concretely: customer/ (domain), auth/ (security),
+        // observability/ (audit + quality reports), resilience/ (scheduled
+        // jobs admin endpoints), diag/ (startup timings), chaos/ (admin-only
+        // experiment triggers). NOT allowed: messaging/, integration/, api/.
         ArchRule rule = classes()
                 .that().areAnnotatedWith("org.springframework.web.bind.annotation.RestController")
-                .should().resideInAnyPackage("..customer..", "..auth..")
-                .because("REST controllers must be grouped in domain or auth packages");
+                .should().resideInAnyPackage(
+                        "..customer..",
+                        "..auth..",
+                        "..observability..",
+                        "..resilience..",
+                        "..diag..",
+                        "..chaos..")
+                .because("REST controllers must be grouped in a feature package that owns a web surface");
+        rule.check(classes);
+    }
+
+    @Test
+    void domain_ports_must_not_depend_on_framework_packages() {
+        // Hexagonal-lite invariant (ADR-0044): classes in any `..port..`
+        // sub-package of a feature slice are domain interfaces — they must
+        // stay framework-free so the domain can be unit-tested without a
+        // Spring context and so swapping the adapter (e.g. Kafka → RabbitMQ,
+        // JPA → Mongo) is a true local change.
+        ArchRule rule = noClasses()
+                .that().resideInAPackage("..port..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "org.springframework..",
+                        "jakarta.persistence..",
+                        "com.fasterxml.jackson..",
+                        "org.apache.kafka..",
+                        "io.fabric8..")
+                .because("domain ports must be framework-free (ADR-0044)");
         rule.check(classes);
     }
 

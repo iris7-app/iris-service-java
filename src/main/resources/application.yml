@@ -403,7 +403,7 @@ resilience4j:
         exponential-backoff-multiplier: 2.0    # 200ms → 400ms → 800ms → ~1600ms
         randomized-wait-factor: 0.5            # ±50% jitter to spread concurrent retries
         retry-exceptions:
-          - java.lang.IllegalStateException    # thrown by CustomerEventPublisher on timeout/error
+          - java.lang.IllegalStateException    # thrown by KafkaCustomerEventPublisher on timeout/error
 
 # =============================================================================
 # JWT Authentication

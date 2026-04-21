@@ -249,6 +249,16 @@ des trous non-intentionnels.
   il y a 30-60 s d'indisponibilité pendant que Spring Boot warmup. Voir
   [ADR-0014](docs/adr/0014-single-replica-for-demo.md) pour le
   raisonnement complet.
+- **Pas de chaos engineering planifié avec SLO gates** — Chaos Mesh
+  est installé, la page "chaos" de l'UI déclenche de vrais CRs
+  PodChaos / NetworkChaos / StressChaos via le backend
+  `ChaosController` ([`com.mirador.chaos`](src/main/java/com/mirador/chaos))
+  avec Fabric8. Mais les runs restent interactifs (clic → expérience
+  one-shot → auto-delete après la durée). Un vrai setup prod
+  planifierait des expériences chaos hebdomadaires avec des gates
+  SLO *(seuils chiffrés type "99 % des appels < 200 ms")* Prometheus
+  qui feraient échouer la pipeline si le dashboard golden-signals
+  dévie trop.
 
 ---
 

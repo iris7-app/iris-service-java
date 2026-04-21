@@ -29,7 +29,7 @@ The short version:
 | **PMD findings** | `maven-pmd-plugin` | ❌ not fed to Sonar (Sonar has equivalent rules natively) | ✅ `target/site/pmd.html` | Historical artefact; if you want a second opinion on a specific rule |
 | **Checkstyle findings** | `maven-checkstyle-plugin` | ❌ (same reason) | ✅ `target/site/checkstyle.html` | Same |
 | **SpotBugs findings** | `spotbugs-maven-plugin` | ❌ (Sonar has FindBugs/SpotBugs-equivalent rules built-in) | ✅ `target/site/spotbugs.html` (+ SARIF file for GitLab Code Quality widget) | Same — also consumed by GitLab's "Code Quality" MR widget via the `code-quality` CI job |
-| **Mutation coverage (Pitest)** | `pitest-maven-plugin` | ❌ **NOT WIRED** — `sonar-pitest-plugin` abandoned in 2014 (v0.5 on Maven Central), no maintained Sonar bridge exists (see ADR-0040 context section + TASKS.md "Reduce shields" decisions) | ✅ `target/pit-reports/index.html` (rendered into Maven Site) | Mutation results LIVE only in Maven Site. The Pitest HTML is interactive (per-line kill/survive annotations) and doesn't fit Sonar's model |
+| **Mutation coverage (Pitest)** | `pitest-maven-plugin` | ❌ **NOT WIRED** — `sonar-pitest-plugin` abandoned in 2014 (v0.5 on Maven Central), no maintained Sonar bridge exists (see ADR-0042 Routing B + TASKS.md "Reduce shields" decisions) | ✅ `target/pit-reports/index.html` (rendered into Maven Site) | Mutation results LIVE only in Maven Site. The Pitest HTML is interactive (per-line kill/survive annotations) and doesn't fit Sonar's model |
 | **Dependency CVEs (OWASP)** | `dependency-check-maven` | ❌ not fed to Sonar; Sonar consumes Trivy/Grype SARIF instead | ✅ `target/dependency-check-report.html` | Historical — Trivy + Grype (SARIF → Sonar External Issues) cover the same ground with better DBs |
 | **Image CVEs — OS + runtime** | Trivy (SARIF) | ✅ via `sonar.sarifReportPaths` → `trivy-report.sarif` | ❌ | Image-level scan, no Maven plugin equivalent |
 | **Image CVEs — Java coordinates** | Grype (scans SBOM from Syft) | ❌ currently — grype output is JSON + CycloneDX, not SARIF | ❌ | Could be wired to Sonar later via SARIF conversion; for now the report is a CI artifact only |
@@ -40,7 +40,7 @@ The short version:
 | **SBOM** | Syft → CycloneDX + SPDX | ❌ SBOMs aren't findings, they're artefacts | ❌ | CI artifact, 90-day retention. GitLab's Dependency List widget ingests the CycloneDX |
 | **API docs / code docs** | Javadoc (Java) + Compodoc (Angular) | ❌ — docs, not quality findings | ✅ Javadoc under `target/site/apidocs/`; Compodoc on `http://localhost:8086` | Docs go to Maven Site + Compodoc container, not Sonar |
 | **Quality Gate status** | Sonar (aggregates the above) | ✅ — Sonar's core feature | ❌ | Maven Site doesn't do trends or gates |
-| **Pull Request / MR decoration** | Would be Sonar Developer Edition (PAID) | ❌ free tier has NO PR analysis — `sonar-analysis` scoped to main only (see ADR-0037 context / ci fix 2026-04-21) | ❌ | Per-MR feedback comes from GitLab `code-quality` widget (PMD/Checkstyle/SpotBugs annotations) |
+| **Pull Request / MR decoration** | Would be Sonar Developer Edition (PAID) | ❌ free tier has NO PR analysis — `sonar-analysis` scoped to main only (see ADR-0041 Rule 1 — scope-out pattern) | ❌ | Per-MR feedback comes from GitLab `code-quality` widget (PMD/Checkstyle/SpotBugs annotations) |
 
 ## Rule of thumb for "where should this live?"
 

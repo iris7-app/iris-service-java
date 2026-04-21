@@ -5,10 +5,13 @@
  *
  * <h2>Kafka</h2>
  * <dl>
- *   <dt>{@link CustomerEventPublisher}</dt>
- *   <dd>Emits {@link CustomerCreatedEvent} to the {@code customer.created} topic
- *       whenever a customer is created or updated. Uses Spring's
- *       {@code KafkaTemplate} with {@code JsonSerializer}.</dd>
+ *   <dt>{@link KafkaCustomerEventPublisher}</dt>
+ *   <dd>Adapter implementing {@link com.mirador.customer.port.CustomerEventPort}
+ *       — the hexagonal-lite port shipped under ADR-0044. Emits
+ *       {@link CustomerCreatedEvent} to the {@code customer.created} topic,
+ *       using Spring's {@code KafkaTemplate} with {@code JsonSerializer} and
+ *       a Resilience4j retry decorator. The domain ({@code CustomerService})
+ *       depends on the port interface, not on this class.</dd>
  *   <dt>{@link CustomerEventListener}</dt>
  *   <dd>Consumes the same topic (different consumer group) and forwards events
  *       to the WebSocket broadcaster below. Illustrates the pub/sub pattern —

@@ -1,9 +1,11 @@
-# ADR-0044 — Pin GitHub Actions by full commit SHA (not tag)
+# ADR-0043 — Pin GitHub Actions by full commit SHA (not tag)
 
 - Status: Accepted
 - Date: 2026-04-21
 - Deciders: @benoit.besson
 - Related: CLAUDE.md "Pin every upstream reference. No floating tags."
+- Note: file renamed from `0044-…` on 2026-04-21 when ADRs 0041-0045
+  were consolidated into 0041-0044; content unchanged.
 
 ## Context
 

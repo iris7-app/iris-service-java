@@ -4,10 +4,38 @@
 
 ## Table of contents
 
+- [Try it: Hurl smoke collection](#try-it-hurl-smoke-collection)
 - [Authentication](#authentication)
 - [Customer endpoints](#customer-endpoints)
 - [Operational endpoints](#operational-endpoints-no-auth)
 - [Security demos](#security-demos)
+
+---
+
+## Try it: Hurl smoke collection
+
+Prefer running a pass/fail smoke test over hand-copying curl commands?
+The repo ships a [Hurl](https://hurl.dev) collection that exercises the
+main API flow end-to-end (health → login → customer CRUD → versioned
+reads → aggregation → role-enforcement check → refresh rotation →
+logout + blacklist check):
+
+```bash
+# One-liner (fills in base URL + unique run_id for you):
+bin/dev/api-smoke.sh
+
+# Or drive it yourself for a non-default env:
+hurl --test \
+     --variable base=https://mirador-service-dev.example.com \
+     --variable run_id=$(date +%s%N) \
+     docs/api/smoke.hurl
+```
+
+The file is plain-text HTTP with in-line assertions — see
+[`docs/api/smoke.hurl`](smoke.hurl) for the actual requests. Install
+Hurl with `brew install hurl` (macOS) or
+[hurl.dev/docs/installation.html](https://hurl.dev/docs/installation.html)
+(Linux/Windows).
 
 ---
 

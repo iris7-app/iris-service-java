@@ -1,7 +1,14 @@
 # ADR-0008: Feature-sliced package layout in `com.mirador.*`
 
-- **Status**: Accepted
+- **Status**: Superseded by [ADR-0044](0044-hexagonal-considered-feature-slicing-retained.md) (2026-04-21)
 - **Date**: 2026-04-16
+
+> **Superseded note (2026-04-21):** The feature-sliced layout decided
+> here is retained, but the rule is tightened by ADR-0044 — feature
+> packages MAY introduce a `port/` sub-package for framework-free
+> interfaces, starting with `customer.port.CustomerEventPort`. Read
+> [ADR-0044](0044-hexagonal-considered-feature-slicing-retained.md)
+> for the rationale and the revised rule.
 
 ## Context
 

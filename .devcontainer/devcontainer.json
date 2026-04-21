@@ -1,0 +1,107 @@
+{
+  "//": [
+    "Mirador backend dev container — zero-install onboarding + Codespaces-ready.",
+    "",
+    "Provides every tool a fresh contributor needs to build + run tests + spin",
+    "the full compose stack locally, via a single `code --folder-uri` or the",
+    "'Open in Codespaces' button on the GitHub mirror. Rationale:",
+    "",
+    "- The host laptop keeps zero Java / Maven / Node / Docker-CLI install",
+    "  state — everything lives in the container, so version drift between",
+    "  team members disappears.",
+    "- On Codespaces, the first boot is one click; after that the container",
+    "  caches (~/.m2, node_modules via volume mount) persist across reboots.",
+    "- Locally via VS Code + Dev Containers extension: same image, same",
+    "  tooling. `git commit` / `glab mr create` all work inside.",
+    "",
+    "Image choice — microsoft/java:25 base gives us JDK 25 + Maven 3.9.x",
+    "matching the pom.xml <java.version>25</java.version>. Features layer",
+    "adds node/npm for when the UI is mounted side-by-side (see the UI's",
+    "own devcontainer.json for the UI-first flow).",
+    "",
+    "Not yet covered — SSH commit signing. Contributors sign locally today;",
+    "flipping required_signatures on the GitHub mirror (TASKS.md: 'S2",
+    "signed-commits follow-up') will require adding an allowed_signers file",
+    "generator to this container."
+  ],
+  "name": "Mirador backend (Java 25 + Maven + Docker)",
+  "image": "mcr.microsoft.com/devcontainers/java:1-25-bookworm",
+
+  "//features": "Add tools this image doesn't ship with. Each feature is installed in a dedicated layer for cache-friendly rebuilds.",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "version": "latest",
+      "helm": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers-extra/features/glab-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers-extra/features/kind:1": {
+      "version": "latest"
+    }
+  },
+
+  "//customizations": "VS Code-side tuning. The extensions below match the ones the team uses on the host; skipping to zero-config.",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "pivotal.vscode-boot-dev-pack",
+        "redhat.vscode-yaml",
+        "ms-azuretools.vscode-docker",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "gitlab.gitlab-workflow",
+        "github.vscode-github-actions",
+        "bierner.markdown-mermaid",
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        "java.configuration.runtimes": [
+          { "name": "JavaSE-25", "path": "/usr/lib/jvm/msopenjdk-current", "default": true }
+        ],
+        "editor.formatOnSave": true,
+        "files.eol": "\n"
+      }
+    }
+  },
+
+  "//postCreate": "Runs once per container creation. Warms Maven + npm caches so the first mvn verify doesn't pay the full dep download cost.",
+  "postCreateCommand": "./mvnw --version && ./mvnw dependency:go-offline -B -q || true",
+
+  "//forwardPorts": "Ports exposed by docker-compose that a contributor will want to hit from the host browser.",
+  "forwardPorts": [
+    8080,
+    4200,
+    3000,
+    9000,
+    8084,
+    8085
+  ],
+  "portsAttributes": {
+    "8080": { "label": "Spring Boot (mirador)" },
+    "4200": { "label": "Angular UI (mirador-ui, sibling repo)" },
+    "3000": { "label": "Grafana (LGTM compose)" },
+    "9000": { "label": "SonarQube local" },
+    "8084": { "label": "Maven site" },
+    "8085": { "label": "Compodoc (UI docs)" }
+  },
+
+  "//remoteUser": "Non-root per devcontainers best practice; matches the Dockerfile runtime user (UID 1000).",
+  "remoteUser": "vscode",
+
+  "//mounts": "Persist Maven + npm caches across container rebuilds — saves ~2 min on each re-open.",
+  "mounts": [
+    "source=mirador-maven-cache,target=/home/vscode/.m2,type=volume",
+    "source=mirador-node-cache,target=/home/vscode/.npm,type=volume"
+  ]
+}

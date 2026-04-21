@@ -181,7 +181,7 @@ GET /customers/{id}/enrich
 
 | Topic | Pattern | Producer | Consumer |
 |---|---|---|---|
-| `customer.created` | fire-and-forget | `CustomerEventPublisher` | `CustomerEventListener` |
+| `customer.created` | fire-and-forget | `KafkaCustomerEventPublisher` (impl of `CustomerEventPort` — ADR-0044) | `CustomerEventListener` |
 | `customer.request` / `customer.reply` | request-reply | `ReplyingKafkaTemplate` | `CustomerEnrichHandler` |
 
 All three topics are explicitly declared in

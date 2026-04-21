@@ -1,10 +1,8 @@
 package com.mirador.customer;
 
-import com.mirador.messaging.CustomerCreatedEvent;
-import com.mirador.messaging.CustomerEventPublisher;
+import com.mirador.customer.port.CustomerEventPort;
 import com.mirador.observability.AuditService;
 import io.micrometer.observation.annotation.Observed;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -50,26 +48,30 @@ public class CustomerService {
 
     private final CustomerRepository repository;
     private final RecentCustomerBuffer recentCustomerBuffer;
-    private final CustomerEventPublisher eventPublisher;
+    /**
+     * Outbound event port — domain interface, zero framework coupling.
+     * Resolved by Spring to {@code KafkaCustomerEventPublisher} in production
+     * and to an in-memory fake in unit tests. See ADR-0044 for the port/adapter
+     * rationale; {@link com.mirador.customer.port.CustomerEventPort} for the
+     * contract.
+     */
+    private final CustomerEventPort eventPort;
     private final SimpMessagingTemplate websocket;
     private final SseEmitterRegistry sseEmitterRegistry;
     private final AuditService auditService;
-    private final String customerCreatedTopic;
 
     public CustomerService(CustomerRepository repository,
                            RecentCustomerBuffer recentCustomerBuffer,
-                           CustomerEventPublisher eventPublisher,
+                           CustomerEventPort eventPort,
                            SimpMessagingTemplate websocket,
                            SseEmitterRegistry sseEmitterRegistry,
-                           AuditService auditService,
-                           @Value("${app.kafka.topics.customer-created}") String customerCreatedTopic) {
+                           AuditService auditService) {
         this.repository = repository;
         this.recentCustomerBuffer = recentCustomerBuffer;
-        this.eventPublisher = eventPublisher;
+        this.eventPort = eventPort;
         this.websocket = websocket;
         this.sseEmitterRegistry = sseEmitterRegistry;
         this.auditService = auditService;
-        this.customerCreatedTopic = customerCreatedTopic;
     }
 
     /** Returns a page of customers (v1 shape — no createdAt). */
@@ -124,10 +126,10 @@ public class CustomerService {
         CustomerDto dto = toDto(saved);
         recentCustomerBuffer.add(dto);
 
-        // Pattern 1 — publish event with resilient retry (exponential backoff + jitter)
-        eventPublisher.publish(customerCreatedTopic,
-                String.valueOf(saved.getId()),
-                new CustomerCreatedEvent(saved.getId(), saved.getName(), saved.getEmail()));
+        // Pattern 1 — publish via the CustomerEventPort. The adapter owns the
+        // topic name, partition key strategy, and retry/fallback behaviour.
+        // Domain stays messaging-agnostic (see ADR-0044).
+        eventPort.publishCreated(saved.getId(), saved.getName(), saved.getEmail());
 
         // WebSocket — push real-time notification to all connected clients
         websocket.convertAndSend("/topic/customers", dto);
