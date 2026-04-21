@@ -136,6 +136,10 @@ spec:
               mountPath: /var/lib/grafana/dashboards/mirador/canary.json
               subPath: canary.json
               readOnly: true
+            - name: grafana-dashboards
+              mountPath: /var/lib/grafana/dashboards/mirador/service-graph.json
+              subPath: service-graph.json
+              readOnly: true
             # OTel Collector config override — adds kubeletstats +
             # k8s_cluster receivers so lgtm's Mimir gets cluster-wide
             # metrics without needing kube-prometheus-stack. ADR-0038.
