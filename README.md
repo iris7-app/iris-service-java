@@ -305,10 +305,14 @@ and also clarifies which limitations are deliberate trade-offs
   there's a 30-60 s outage while Spring Boot warms up. See
   [ADR-0014](docs/adr/0014-single-replica-for-demo.md) for the
   scale-up playbook.
-- **No chaos engineering run in CI** — Chaos Mesh is installed and the
-  UI has a "chaos" page, but the experiments are run interactively,
-  not as part of a pipeline. A real production setup would schedule
-  weekly chaos experiments with SLO gates.
+- **No scheduled chaos engineering with SLO gates** — Chaos Mesh is
+  installed, the UI "chaos" page triggers real PodChaos / NetworkChaos
+  / StressChaos CRs via the backend `ChaosController`
+  ([`com.mirador.chaos`](src/main/java/com/mirador/chaos)) using
+  Fabric8. But runs are still interactive (click → one-shot
+  experiment → auto-delete after duration). A real production setup
+  would schedule weekly chaos experiments with Prometheus SLO gates
+  that fail the build if the golden-signals dashboard tilts too far.
 - **Pipeline times are not tiny** — the full `mvn verify` takes ~4 min;
   the docker-build stage adds 2-3 min (Kaniko, arm64 → amd64 buildx).
   Fast enough to be tolerable, slow enough that I try to keep PRs

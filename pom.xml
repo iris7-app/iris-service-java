@@ -72,6 +72,16 @@
           CVE-2026-34500 (6.5 MEDIUM). 11.0.21 is the latest GA on Maven Central.
         -->
         <tomcat.version>11.0.21</tomcat.version>
+        <!--
+          Fabric8 Kubernetes client — used by the `com.mirador.chaos` feature
+          slice (ADR-0044 port-style decoupling between "which failure to
+          inject" and "how to inject it"). The client creates Chaos Mesh
+          custom resources (PodChaos / NetworkChaos / StressChaos) in the
+          `app` namespace; RBAC is provisioned under
+          deploy/kubernetes/base/backend/rbac.yaml. Not covered by the
+          Spring Boot BOM, pin explicitly.
+        -->
+        <fabric8-kubernetes-client.version>7.3.1</fabric8-kubernetes-client.version>
 
         <!-- ──────────────────────────────────────────────────────────────────────
              Build-plugin & analyzer versions
@@ -372,6 +382,21 @@
             <groupId>net.ttddyy.observation</groupId>
             <artifactId>datasource-micrometer-spring-boot</artifactId>
             <version>${datasource-micrometer.version}</version>
+        </dependency>
+
+        <!--
+          Fabric8 Kubernetes client — the ChaosController (com.mirador.chaos)
+          uses it to create Chaos Mesh CRs (PodChaos / NetworkChaos /
+          StressChaos) on demand from the UI chaos page. Off-cluster the
+          bean still instantiates; the HTTP call fails at runtime with a
+          clear 503 if no kubeconfig is present (see ChaosController
+          exception handling). RBAC for the `mirador-backend` ServiceAccount
+          is under deploy/kubernetes/base/backend/rbac.yaml.
+        -->
+        <dependency>
+            <groupId>io.fabric8</groupId>
+            <artifactId>kubernetes-client</artifactId>
+            <version>${fabric8-kubernetes-client.version}</version>
         </dependency>
 
         <!-- Pyroscope — continuous profiling agent (CPU, alloc, wall clock).

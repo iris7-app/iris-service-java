@@ -49,6 +49,11 @@ spec:
         prometheus.io/port: "8080"
         prometheus.io/path: "/actuator/prometheus"
     spec:
+      # Dedicated ServiceAccount — RBAC in backend/rbac.yaml grants it
+      # create/delete on chaos-mesh.org/* so ChaosController can trigger
+      # experiments. Without this name, pods bind to `default` SA which
+      # has no chaos permissions (403 on every trigger call).
+      serviceAccountName: mirador-backend
       # 30s grace period allows in-flight requests and Kafka consumers to finish
       terminationGracePeriodSeconds: 30
       # ── Pod-level security context ─────────────────────────────────────

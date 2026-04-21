@@ -24,6 +24,11 @@ resources:
   - backend/service.yaml
   - backend/hpa.yaml
   - backend/poddisruptionbudget.yaml
+  # RBAC for the backend ServiceAccount — grants just chaos-mesh.org/*
+  # create/delete in the app namespace so ChaosController can trigger
+  # PodChaos / NetworkChaos / StressChaos CRs on demand.
+  # Narrow by design: no cross-namespace, no pods/exec, no secrets.
+  - backend/rbac.yaml
   - stateful/kafka.yaml
   - stateful/redis.yaml
   - stateful/keycloak.yaml

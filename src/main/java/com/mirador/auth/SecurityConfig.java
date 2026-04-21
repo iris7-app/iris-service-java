@@ -110,6 +110,10 @@ public class SecurityConfig {
                         //   ROLE_ADMIN  — full access (read, write, delete, admin endpoints)
                         //   ROLE_USER   — read + write; cannot delete (POST/PUT allowed)
                         //   ROLE_READER — read-only; falls through to anyRequest().authenticated()
+                        // Chaos endpoints are destructive (kill pods, inject
+                        // latency, saturate CPU) — ADMIN only, no exceptions.
+                        // Backed by /chaos/{experiment} in com.mirador.chaos.
+                        .requestMatchers("/chaos/**").hasRole(ROLE_ADMIN)
                         .requestMatchers(HttpMethod.DELETE, CUSTOMERS_API).hasRole(ROLE_ADMIN)           // delete — ROLE_ADMIN only
                         .requestMatchers(HttpMethod.POST, "/customers").hasAnyRole(ROLE_ADMIN, "USER")   // create — ROLE_ADMIN or ROLE_USER
                         .requestMatchers(HttpMethod.POST, "/customers/batch").hasAnyRole(ROLE_ADMIN, "USER") // batch
