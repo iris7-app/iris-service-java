@@ -304,11 +304,15 @@ openapi-lint:
     # We use Spring's standalone openapi endpoint: boot briefly, fetch, kill.
     - mvn -q -DskipTests package -Dmaven.javadoc.skip=true
     - |
-      # Boot the app in the background, wait up to 60 s for it to serve,
-      # then fetch /v3/api-docs and kill.
+      # Boot the app in the background, wait up to 180 s for it to serve,
+      # then fetch /v3/api-docs and kill. Pipeline #609 measured a 55 s
+      # WebApplicationContext init + ~5 s Tomcat bind on a loaded runner,
+      # and the previous 60 s budget expired exactly at bind time. 180 s
+      # triples the headroom without changing the happy-path timing (the
+      # loop exits on first curl success, not on the ceiling).
       nohup java -jar target/mirador-*.jar > /tmp/app.log 2>&1 &
       APP_PID=$!
-      for i in $(seq 1 60); do
+      for i in $(seq 1 180); do
         curl -sSf http://localhost:8080/v3/api-docs > /tmp/openapi.json 2>/dev/null && break
         sleep 1
       done
@@ -954,6 +958,19 @@ test:k8s-apply:
   tags:
     - macbook-local   # needs host Docker socket for kind-in-docker
   needs: []           # no upstream dependency — parallel to unit-test
+  # Serialise with test:k8s-apply-prom so two kind control-planes don't boot
+  # concurrently on the same macbook-local runner. Pipeline #609 failed both
+  # k8s jobs when they tried to init kubeadm at the same time — the Docker
+  # Desktop VM cap (7.6 GB default) starved one control plane's API server
+  # → "connection refused" at 18:54. Same Monitor-heartbeat pattern as the
+  # integration-test job which already carries the `integration-k8s` group.
+  resource_group: k8s-kind-cluster
+  # Single automatic retry for runner_system_failure only. Covers the case
+  # where a Docker daemon transient closes the socket mid-job — does NOT
+  # cover real script failures. See CLAUDE.md "Pipelines stay green".
+  retry:
+    max: 1
+    when: runner_system_failure
   # Shield removed 2026-04-21 — the SIGPIPE/exit-141 pattern at
   # "mid rollout-check" was caused by `kubectl version ... | head -3`,
   # `grep ... | head -3` (PodSecurity warning block) and
@@ -1044,6 +1061,11 @@ test:k8s-apply-prom:
   tags:
     - macbook-local
   needs: []
+  # Serialise with test:k8s-apply — see rationale on that job.
+  resource_group: k8s-kind-cluster
+  retry:
+    max: 1
+    when: runner_system_failure
   # Shield removed 2026-04-21 together with test:k8s-apply — same
   # SIGPIPE fix in scripts/ci-k8s-test.sh. If the Prometheus Operator
   # webhook validation misbehaves in kind's reduced API server (a
