@@ -48,6 +48,21 @@ CORE_PODS=(
   "infra/deployment/keycloak"
 )
 
+# EXTRA_PODS — overlay-specific pods to wait for, in addition to CORE_PODS.
+# Set via env var by the calling CI job. Format: same "ns/kind/name" tuples
+# as CORE_PODS. Empty by default (the `local` overlay adds nothing extra).
+#
+# Used by `test:k8s-apply-prom` to wait for the kube-prometheus-stack
+# components added by the `local-prom/` overlay:
+#   monitoring/statefulset/prometheus-prometheus-stack-kube-prom-prometheus
+#   monitoring/daemonset/prometheus-stack-prometheus-node-exporter
+#   monitoring/deployment/prometheus-stack-kube-state-metrics
+#   monitoring/deployment/prometheus-stack-kube-prom-operator
+# The Prometheus Operator manages its own StatefulSet for the
+# Prometheus pods, so the actual rollout target is the StatefulSet
+# (managed via kubectl rollout status statefulset/...).
+read -ra EXTRA_PODS <<< "${EXTRA_PODS:-}"
+
 echo "🛠  Creating kind cluster $KIND_CLUSTER…"
 kind create cluster --name "$KIND_CLUSTER" --config "$KIND_CONFIG" --wait 2m
 
@@ -155,9 +170,14 @@ fi
 
 echo "⏳  Waiting for core pods to become Ready (timeout=$TIMEOUT)…"
 failed=0
-for target in "${CORE_PODS[@]}"; do
+ALL_PODS=("${CORE_PODS[@]}")
+# Append overlay-specific pods if EXTRA_PODS was set (non-empty array).
+if [ "${#EXTRA_PODS[@]}" -gt 0 ]; then
+  ALL_PODS+=("${EXTRA_PODS[@]}")
+fi
+for target in "${ALL_PODS[@]}"; do
   IFS='/' read -r ns kind name <<< "$target"
-  printf "  %-40s " "$target"
+  printf "  %-60s " "$target"
   if kubectl rollout status "$kind/$name" -n "$ns" --timeout="$TIMEOUT" >/dev/null 2>&1; then
     echo "✅"
   else
@@ -168,13 +188,13 @@ for target in "${CORE_PODS[@]}"; do
 done
 
 if [ "$failed" -gt 0 ]; then
-  echo "❌  $failed core pod(s) did not reach Ready. Cluster state:"
+  echo "❌  $failed pod(s) did not reach Ready. Cluster state:"
   kubectl get pods -A | grep -v Running
   exit 1
 fi
 
 echo ""
-echo "✅  K8s manifests applied cleanly and ${#CORE_PODS[@]} core pods are Ready."
+echo "✅  K8s manifests applied cleanly and ${#ALL_PODS[@]} pods are Ready."
 echo "   (mirador backend pod deliberately skipped — image is amd64-only,"
 echo "    runner is arm64. GKE validation remains the source of truth for"
 echo "    the app pod itself.)"
