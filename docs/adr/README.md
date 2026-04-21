@@ -21,8 +21,8 @@ navigational, no file layout change.
 
 ## Status snapshot
 
-- **Accepted**: 35
-- **Superseded**: 1 (ADR-0003 → ADR-0013)
+- **Accepted**: 42
+- **Superseded**: 2 (ADR-0003 → ADR-0013; ADR-0008 → ADR-0044)
 - **Deprecated**: 0
 
 ## Format
@@ -49,7 +49,7 @@ monotonic across supersessions.
 | 0005 | Accepted | [In-cluster Kafka (not Managed) for cost reasons](0005-in-cluster-kafka.md) |
 | 0006 | Accepted | [Hoist every Maven version into `<properties>`](0006-maven-version-hoisting.md) |
 | 0007 | Accepted | [Workload Identity Federation for GCP auth in CI](0007-workload-identity-federation.md) |
-| 0008 | Accepted | [Feature-sliced package layout in `com.mirador.*`](0008-feature-sliced-packages.md) |
+| 0008 | Superseded | [Feature-sliced package layout in `com.mirador.*`](0008-feature-sliced-packages.md) → [ADR-0044](0044-hexagonal-considered-feature-slicing-retained.md) |
 | 0009 | Accepted | [Container runtime base image — `eclipse-temurin:25-jre`](0009-container-runtime-base-image.md) |
 | 0010 | Accepted | [OpenTelemetry OTLP push to a Collector (not Prometheus scrape)](0010-otlp-push-to-collector.md) |
 | 0011 | Accepted | [Minimal `@Transactional` surface](0011-transactional-read-strategy.md) |
@@ -81,6 +81,11 @@ monotonic across supersessions.
 | 0037 | Accepted | [Spectral oas3-valid-* rules disabled](0037-spectral-oas3-valid-example-rules-disabled.md) |
 | 0038 | Accepted | [Cluster metrics via OTel Collector receivers in lgtm](0038-kubeletstats-receiver-in-lgtm-not-kube-prometheus-stack.md) |
 | 0039 | Accepted | [Two observability deployment modes (OTel-native vs Prometheus-community)](0039-two-observability-deployment-modes.md) |
+| 0040 | Accepted | [Accept `insecureSkipVerify: true` on GKE kubelet ServiceMonitor](0040-accept-insecureskipverify-on-gke-kubelet-scrape.md) |
+| 0041 | Accepted | [CI hygiene: honest green discipline (scope-out + tag-on-green)](0041-ci-hygiene-honest-green-discipline.md) |
+| 0042 | Accepted | [Quality reports routing: SonarCloud vs Maven Site (ESLint, Pitest, Trivy, Semgrep, Spectral)](0042-quality-reports-routing-sonarcloud-vs-maven-site.md) |
+| 0043 | Accepted | [Pin GitHub Actions by full commit SHA (not tag)](0043-pin-github-actions-by-commit-sha.md) |
+| 0044 | Accepted | [Hexagonal considered, feature-slicing retained (supersedes ADR-0008)](0044-hexagonal-considered-feature-slicing-retained.md) |
 
 ## Hierarchical index (by theme)
 
@@ -97,11 +102,12 @@ authoritative.
 ### 🏗️ Architecture & code patterns
 
 - [ADR-0006](0006-maven-version-hoisting.md) — Hoist Maven versions into `<properties>`
-- [ADR-0008](0008-feature-sliced-packages.md) — Feature-sliced package layout
+- [ADR-0008](0008-feature-sliced-packages.md) — _(superseded)_ Feature-sliced package layout → [ADR-0044](0044-hexagonal-considered-feature-slicing-retained.md)
 - [ADR-0011](0011-transactional-read-strategy.md) — Minimal `@Transactional` surface
 - [ADR-0017](0017-jvm-25-spring-boot-4-strategy.md) — Java 25 + Spring Boot 4
 - [ADR-0020](0020-api-versioning-via-header.md) — API versioning via `X-API-Version`
 - [ADR-0026](0026-spring-boot-scope-limit-no-third-party-tool-awareness.md) — Spring Boot scope limit
+- [ADR-0044](0044-hexagonal-considered-feature-slicing-retained.md) — Hexagonal considered, feature-slicing retained (+ `customer/port/` sub-package convention)
 
 ### 📨 Messaging & data
 
@@ -118,6 +124,9 @@ authoritative.
 - [ADR-0033](0033-playwright-e2e-in-kind-in-ci.md) — Playwright E2E in kind-in-CI
 - [ADR-0034](0034-ci-memory-budget-testcontainers.md) — CI memory budget + Testcontainers-heavy ITs
 - [ADR-0035](0035-defer-pact-and-biome.md) — Defer Pact + Biome adoption (deferred trigger conditions)
+- [ADR-0041](0041-ci-hygiene-honest-green-discipline.md) — CI hygiene: honest green (scope-out over shield, tag on post-merge main green)
+- [ADR-0042](0042-quality-reports-routing-sonarcloud-vs-maven-site.md) — Quality reports routing (ESLint, Pitest, Trivy, Semgrep, Spectral)
+- [ADR-0043](0043-pin-github-actions-by-commit-sha.md) — Pin GitHub Actions by commit SHA
 
 ### ☸️ Kubernetes & deployment
 
@@ -125,6 +134,7 @@ authoritative.
 - [ADR-0009](0009-container-runtime-base-image.md) — Container runtime base image
 - [ADR-0014](0014-single-replica-for-demo.md) — Single-replica for demo
 - [ADR-0015](0015-argocd-for-gitops-deployment.md) — Argo CD for GitOps
+- [ADR-0040](0040-accept-insecureskipverify-on-gke-kubelet-scrape.md) — Accept `insecureSkipVerify: true` on GKE kubelet scrape
 
 ### 💰 Cost & cluster lifecycle
 
