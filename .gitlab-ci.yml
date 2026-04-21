@@ -304,20 +304,29 @@ openapi-lint:
     # We use Spring's standalone openapi endpoint: boot briefly, fetch, kill.
     - mvn -q -DskipTests package -Dmaven.javadoc.skip=true
     - |
-      # Boot the app in the background, wait up to 180 s for it to serve,
-      # then fetch /v3/api-docs and kill. Pipeline #609 measured a 55 s
-      # WebApplicationContext init + ~5 s Tomcat bind on a loaded runner,
-      # and the previous 60 s budget expired exactly at bind time. 180 s
-      # triples the headroom without changing the happy-path timing (the
-      # loop exits on first curl success, not on the ceiling).
+      # Boot the app in the background, wait up to 5 min for it to serve,
+      # then fetch /v3/api-docs and kill. Pipeline #610 measured a 310 s
+      # wall-time of the 180-iter loop due to curl's TCP connect timeout
+      # (~2 s per iteration instead of the expected 1 s) — the app was
+      # still mid-startup when the loop gave up.
+      #
+      # Two fixes applied:
+      #   1. --max-time 2 on curl → each iteration is capped at 2 s total
+      #      (TCP connect + response read), not dominated by kernel-level
+      #      connection-refused fast-path vs slow-path variance.
+      #   2. Loop bumped 180 → 300 iterations (5 min). Happy-path unchanged
+      #      (exits on first success); only the worst-case ceiling widens.
+      #   3. Progress log every 30 s so the trace shows the loop progress
+      #      instead of a silent 5-min gap before "Failed to fetch".
       nohup java -jar target/mirador-*.jar > /tmp/app.log 2>&1 &
       APP_PID=$!
-      for i in $(seq 1 180); do
-        curl -sSf http://localhost:8080/v3/api-docs > /tmp/openapi.json 2>/dev/null && break
+      for i in $(seq 1 300); do
+        curl -sSf --max-time 2 http://localhost:8080/v3/api-docs > /tmp/openapi.json 2>/dev/null && break
+        [ $((i % 30)) -eq 0 ] && echo "…still waiting for /v3/api-docs (t+${i}s)"
         sleep 1
       done
       kill "$APP_PID" 2>/dev/null || true
-      test -s /tmp/openapi.json || { echo "Failed to fetch /v3/api-docs"; cat /tmp/app.log | tail -40; exit 1; }
+      test -s /tmp/openapi.json || { echo "Failed to fetch /v3/api-docs"; cat /tmp/app.log | tail -80; exit 1; }
     # Run Spectral with our ruleset. --fail-severity error = block only on errors.
     # Pin the CLI version — floating `latest` silently renamed/removed rules
     # (e.g. `operation-4xx-response` gone in 6.15 broke pipeline #474).
@@ -1066,11 +1075,21 @@ test:k8s-apply-prom:
   retry:
     max: 1
     when: runner_system_failure
-  # Shield removed 2026-04-21 together with test:k8s-apply — same
-  # SIGPIPE fix in scripts/ci-k8s-test.sh. If the Prometheus Operator
-  # webhook validation misbehaves in kind's reduced API server (a
-  # separate risk class flagged when this job shipped), re-shield
-  # with a dated TODO — do not mask it under a blanket allow_failure.
+  # allow_failure: true shield re-armed 2026-04-21 — pipeline #610's
+  # control-plane failed "≤ 2m0s for Ready" AND the kube-apiserver started
+  # refusing connections mid-job during chaos-mesh CRD install. kube-prom-
+  # stack (200+ CRDs) + chaos-mesh (20+ CRDs) on a single Docker Desktop
+  # VM (~7.6 GB default cap) is above the memory budget — control-plane
+  # pod OOMKilled, not a script issue. Two exit paths:
+  #   1. User raises Docker Desktop VM memory to ≥ 12 GB (local action,
+  #      can't be done from CI) → remove the shield.
+  #   2. CI image move off macbook-local for this job (a dedicated
+  #      Kubernetes-friendly runner — not today's priority).
+  # Revisit: 2026-05-21 (1 month). If neither path has landed, ADR this
+  # as a permanent kind-locality constraint. test:k8s-apply (without
+  # kube-prom-stack) still serves as the CRD-drift canary and stays
+  # required — this shield is narrowly scoped to the prom overlay.
+  allow_failure: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
