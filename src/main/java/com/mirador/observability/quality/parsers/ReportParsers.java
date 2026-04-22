@@ -12,6 +12,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import org.springframework.core.io.ClassPathResource;
 import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 /**
  * Shared helpers for {@code com.mirador.observability.QualityReportEndpoint}
@@ -80,6 +81,23 @@ public final class ReportParsers {
         } catch (NumberFormatException _) {
             return 0;
         }
+    }
+
+    /**
+     * Returns the text content of the FIRST DIRECT child element named
+     * {@code tag} under {@code parent}, or empty when no such child exists.
+     *
+     * <p>"Direct child" matters for nested XML where the same tag name
+     * exists at multiple levels (e.g. Pitest mutation XML has {@code description}
+     * at both the mutation and the reason levels). The unqualified
+     * {@code getElementsByTagName} would match descendants too.
+     */
+    public static String getTagText(Element parent, String tag) {
+        NodeList nl = parent.getElementsByTagName(tag);
+        if (nl.getLength() > 0 && nl.item(0).getParentNode() == parent) {
+            return nl.item(0).getTextContent().trim();
+        }
+        return "";
     }
 
     /** Same contract as {@link #intAttr}, for {@code double} attributes. */

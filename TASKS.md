@@ -47,16 +47,25 @@ becomes a thin aggregator wired via Spring `List<QualitySection>`. Keeps
 the 9 non-parser sections (build-info, git, api, deps, metrics, sonar,
 pipeline, branches, runtime) inline for B-1b follow-up.
 
-**Partial progress (2026-04-22)**:
+**Completed 2026-04-22** — 7 parsers + shared helpers now live in
+`com.mirador.observability.quality.parsers`:
 
-- ✅ `ReportParsers` shared helpers class (parseIntOrNull / parseDoubleOrNull
-  / round1 / intAttr / doubleAttr / parseDurationSeconds /
-  secureDocumentBuilder / secureNamespaceAwareDocumentBuilder / loadResource).
-- ✅ `SurefireReportParser` (@Component) — `buildTestsSection` + the
-  ParsedSuite record + parseOneSuite + loadSurefireStreams all moved.
-- Endpoint shrunk 1934 → ~1693 LOC (−241). Remaining: 6 parsers
-  (Jacoco, SpotBugs, PMD, Checkstyle, OWASP, Pitest) — each ~80 LOC.
-  Target after full B-1: endpoint ≈ 1150 LOC.
+- ✅ `ReportParsers` (static utility: parseIntOrNull, parseDoubleOrNull,
+  round1, intAttr, doubleAttr, parseDurationSeconds, getTagText,
+  secureDocumentBuilder, secureNamespaceAwareDocumentBuilder, loadResource).
+- ✅ `SurefireReportParser` (buildTestsSection + ParsedSuite + parseOneSuite).
+- ✅ `JacocoReportParser` (buildCoverageSection + counterMap).
+- ✅ `SpotBugsReportParser` (buildBugsSection + priorityLabel).
+- ✅ `PmdReportParser` (buildPmdSection + priorityLabel).
+- ✅ `CheckstyleReportParser` (buildCheckstyleSection).
+- ✅ `OwaspReportParser` (buildOwaspSection + cleanCveId + cleanCveDescription).
+- ✅ `PitestReportParser` (buildPitestSection).
+
+Endpoint shrunk 1934 → 1218 LOC (−716, −37%). Below 1500 BLOCK
+threshold. 9 non-parser sections remain inline — see B-1b below.
+
+All XXE-hardened DocumentBuilder factories preserved; test suite
+(QualityReportHelpersTest 18/18) green.
 
 ### B-2 — `.gitlab-ci.yml` svc 2619 → 9 includes (~3 h)
 
