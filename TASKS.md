@@ -47,6 +47,17 @@ becomes a thin aggregator wired via Spring `List<QualitySection>`. Keeps
 the 9 non-parser sections (build-info, git, api, deps, metrics, sonar,
 pipeline, branches, runtime) inline for B-1b follow-up.
 
+**Partial progress (2026-04-22)**:
+
+- ✅ `ReportParsers` shared helpers class (parseIntOrNull / parseDoubleOrNull
+  / round1 / intAttr / doubleAttr / parseDurationSeconds /
+  secureDocumentBuilder / secureNamespaceAwareDocumentBuilder / loadResource).
+- ✅ `SurefireReportParser` (@Component) — `buildTestsSection` + the
+  ParsedSuite record + parseOneSuite + loadSurefireStreams all moved.
+- Endpoint shrunk 1934 → ~1693 LOC (−241). Remaining: 6 parsers
+  (Jacoco, SpotBugs, PMD, Checkstyle, OWASP, Pitest) — each ~80 LOC.
+  Target after full B-1: endpoint ≈ 1150 LOC.
+
 ### B-2 — `.gitlab-ci.yml` svc 2619 → 9 includes (~3 h)
 
 Split into `ci/includes/{lint,test,security,k8s,quality,package,native,
