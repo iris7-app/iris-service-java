@@ -104,8 +104,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
                 authenticateBuiltin(token);
             } else if (keycloakJwtDecoder != null) {
-                // Fall back to Keycloak JWT (JWKS-validated, issued by Keycloak)
-                authenticateKeycloak(token);
+                // Fall back to external JWT (JWKS-validated — Keycloak OR Auth0 OIDC)
+                authenticateExternalJwt(token);
             }
         }
 
@@ -156,22 +156,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Populates the SecurityContext from a Keycloak or Auth0 JWT.
+     * Populates the SecurityContext from an external JWT (Keycloak realm or Auth0 tenant).
      *
-     * <h3>Role extraction strategy (provider-dependent)</h3>
+     * <p>"External" = not issued by our built-in {@link JwtTokenProvider}. Both Keycloak and
+     * Auth0 tokens are validated by the same Spring-configured {@link JwtDecoder} bean
+     * (JWKS signature check); only the role-claim shape differs.
+     *
+     * <h3>Role extraction strategy (3 shapes, first-match wins)</h3>
      * <ul>
-     *   <li><b>Keycloak</b>: roles come from {@code realm_access.roles} (nested claim).
-     *       The {@code ROLE_} prefix is already included in the realm role names.</li>
-     *   <li><b>Auth0</b>: roles come from a custom namespace claim
-     *       {@code https://mirador-api/roles} (set via an Auth0 Action / Rule).
-     *       Alternatively, falls back to {@code ROLE_USER} for authenticated users
-     *       when no role claim is present (Auth0 RBAC not yet configured).</li>
+     *   <li><b>Strategy 1 — Keycloak</b>: roles come from {@code realm_access.roles}
+     *       (nested claim). The {@code ROLE_} prefix is already included in the realm
+     *       role names.</li>
+     *   <li><b>Strategy 2 — Auth0 with RBAC</b>: roles come from a custom namespace
+     *       claim {@code https://mirador-api/roles} (populated by an Auth0 Action /
+     *       Post-Login rule). Same {@code ROLE_} prefix convention as built-in tokens.</li>
+     *   <li><b>Strategy 3 — Auth0 without RBAC</b>: default to {@code ROLE_USER} so the
+     *       tenant can authenticate even before roles are provisioned. Temporary —
+     *       delete once Auth0 RBAC is in place on all envs.</li>
      * </ul>
+     *
+     * <p>Historical note: this method used to be named {@code authenticateKeycloak}
+     * back when only Keycloak was in scope. Renamed 2026-04-22 after the Clean Code
+     * audit flagged the name as misleading (strategies 2 + 3 cover Auth0, not Keycloak).
      *
      * [Spring Security / Spring Boot 4] — {@link JwtDecoder} bean, JWKS validation.
      */
     @SuppressWarnings("unchecked")
-    private void authenticateKeycloak(String token) {
+    private void authenticateExternalJwt(String token) {
         // Precondition: caller (doFilterInternal) already guards keycloakJwtDecoder != null.
         // This explicit check makes the contract visible to static analysis tools.
         if (keycloakJwtDecoder == null) {
