@@ -101,18 +101,57 @@ under ~250 lines (true thin aggregator).
 - ✅ `ApiSectionProvider` — walks RequestMappingHandlerMapping.
 - Endpoint 1218 → 1179 LOC (−39).
 
-**Remaining 7 providers** (priority order — smallest self-contained first):
+**Remaining 5 providers** (priority order — smallest self-contained first):
 
 - `GitSectionProvider` (+ `fetchGitRemoteUrl` helper, needs `GIT_BIN` static)
 - `RuntimeSectionProvider` (+ `buildJarLayersSection`, needs Environment + StartupTimeTracker)
-- `PipelineSectionProvider` (GitLab API call, needs HttpClient + @Value config)
 - `BranchesSectionProvider` (git for-each-ref, needs GIT_BIN)
 - `LicensesSectionProvider` (reads THIRD-PARTY.txt)
-- `SonarSectionProvider` (SonarCloud REST call, needs @Value config)
 - `MetricsSectionProvider` (walks Micrometer registry)
 - `DependenciesSectionProvider` (+ `parseDependencyAnalysis`, reads pom.xml + dependency-tree.txt)
 
+~~`PipelineSectionProvider` + `SonarSectionProvider`~~ — dropped 2026-04-22
+under ADR-0052 / Phase Q-1. Backend no longer proxies GitLab or
+SonarCloud REST; UI links out directly.
+
 Target: endpoint ≈ 250 LOC (true thin aggregator).
+
+---
+
+## 🚧 Phase Q — backend decoupling from build/quality tools (ADR-0052)
+
+### Q-1 — remove sonar + gitlab REST from backend [DONE 2026-04-22]
+
+Removed `buildSonarSection` + `buildPipelineSection` + 6 `@Value`
+injections. Backend no longer makes outbound HTTPS to sonarcloud.io
+or gitlab.com at `/actuator/quality` request time. UI dashboard
+links out instead. Endpoint 1179 → 1004 LOC.
+
+### Q-2 — move file-based parsers to build-time JSON (~3-4 h)
+
+Eliminates the remaining tool coupling: the backend still parses
+Surefire XML / JaCoCo CSV / SpotBugs XML / PMD XML / Checkstyle XML
+/ OWASP JSON / PIT XML at runtime through the extracted parsers. Q-2
+moves this to a Maven `prepare-package` execution.
+
+- Create `com.mirador.observability.quality.QualityReportGenerator`
+  with `public static void main(String[] args)` — instantiates the 7
+  parsers + 2 file-based providers (deps, licenses), writes
+  `target/classes/META-INF/quality-build-report.json`.
+- Remove `@Component` from the 7 parsers + the 2 file-based providers
+  (pure POJOs invoked by the generator).
+- Add `exec-maven-plugin` binding to `prepare-package`.
+- `QualityReportEndpoint`: file-based sections become a single
+  classpath-resource read (~10 KB opaque JSON) merged into the
+  response; no parsing logic at runtime.
+- Endpoint shrinks ~1000 → ~250 LOC (true thin aggregator).
+- Maven Central deps-update lookup in `buildDependenciesSection`
+  also moves to build-time (kill the last runtime HTTP call).
+
+### Q-3 — (optional, open) if dashboard ever needs Sonar/GitLab data inline
+
+Revisit via build-time cached JSON injected by CI, NOT a runtime
+REST call. New ADR rather than reopen ADR-0052.
 
 ---
 
