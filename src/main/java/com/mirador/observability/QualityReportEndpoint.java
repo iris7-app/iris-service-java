@@ -10,6 +10,8 @@ import com.mirador.observability.quality.parsers.PmdReportParser;
 import com.mirador.observability.quality.parsers.ReportParsers;
 import com.mirador.observability.quality.parsers.SpotBugsReportParser;
 import com.mirador.observability.quality.parsers.SurefireReportParser;
+import com.mirador.observability.quality.providers.ApiSectionProvider;
+import com.mirador.observability.quality.providers.BuildInfoSectionProvider;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -223,6 +225,9 @@ public class QualityReportEndpoint {
     private final CheckstyleReportParser checkstyleReportParser;
     private final OwaspReportParser owaspReportParser;
     private final PitestReportParser pitestReportParser;
+    // Phase B-1b: non-parser section providers.
+    private final BuildInfoSectionProvider buildInfoSectionProvider;
+    private final ApiSectionProvider apiSectionProvider;
 
     public QualityReportEndpoint(RequestMappingHandlerMapping requestMappingHandlerMapping,
                                  Environment environment,
@@ -233,7 +238,9 @@ public class QualityReportEndpoint {
                                  PmdReportParser pmdReportParser,
                                  CheckstyleReportParser checkstyleReportParser,
                                  OwaspReportParser owaspReportParser,
-                                 PitestReportParser pitestReportParser) {
+                                 PitestReportParser pitestReportParser,
+                                 BuildInfoSectionProvider buildInfoSectionProvider,
+                                 ApiSectionProvider apiSectionProvider) {
         this.requestMappingHandlerMapping = requestMappingHandlerMapping;
         this.environment = environment;
         this.startupTimeTracker = startupTimeTracker;
@@ -244,6 +251,8 @@ public class QualityReportEndpoint {
         this.checkstyleReportParser = checkstyleReportParser;
         this.owaspReportParser = owaspReportParser;
         this.pitestReportParser = pitestReportParser;
+        this.buildInfoSectionProvider = buildInfoSectionProvider;
+        this.apiSectionProvider = apiSectionProvider;
     }
 
     /**
@@ -301,32 +310,8 @@ public class QualityReportEndpoint {
 
     // priorityLabel moved inside PmdReportParser (Phase B-1 split complete for PMD).
 
-    // -------------------------------------------------------------------------
-    // Build section
-    // -------------------------------------------------------------------------
-
-    private Map<String, Object> buildBuildSection() {
-        ClassPathResource res = new ClassPathResource(CP_BUILD_INFO);
-        if (!res.exists()) {
-            return Map.of(K_AVAILABLE, false);
-        }
-
-        Properties props = new Properties();
-        try (InputStream is = res.getInputStream()) {
-            props.load(is);
-        } catch (IOException e) {
-            return Map.of(K_AVAILABLE, false, K_ERROR, e.getMessage());
-        }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put(K_AVAILABLE, true);
-        result.put("artifact", props.getProperty("build.artifact", K_UNKNOWN));
-        result.put(K_VERSION, props.getProperty("build.version", K_UNKNOWN));
-        result.put("time", props.getProperty("build.time", K_UNKNOWN));
-        result.put("javaVersion", System.getProperty("java.version", K_UNKNOWN));
-        result.put("springBootVersion", props.getProperty("build.version", K_UNKNOWN));
-        return result;
-    }
+    // Delegates — Phase B-1b.
+    private Map<String, Object> buildBuildSection() { return buildInfoSectionProvider.parse(); }
 
     // -------------------------------------------------------------------------
     // Git section
@@ -396,31 +381,7 @@ public class QualityReportEndpoint {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // API section
-    // -------------------------------------------------------------------------
-
-    private Map<String, Object> buildApiSection() {
-        List<Map<String,Object>> endpoints = new ArrayList<>();
-        requestMappingHandlerMapping.getHandlerMethods().forEach((info, method) -> {
-            Set<String> patterns = info.getPatternValues();
-            Set<org.springframework.web.bind.annotation.RequestMethod> methods = info.getMethodsCondition().getMethods();
-            for (String pattern : patterns) {
-                Map<String,Object> ep = new LinkedHashMap<>();
-                ep.put("path", pattern);
-                ep.put(K_METHODS, methods.isEmpty() ? List.of("GET") : methods.stream().map(Enum::name).sorted().toList());
-                ep.put("handler", method.getBeanType().getSimpleName() + "." + method.getMethod().getName());
-                endpoints.add(ep);
-            }
-        });
-        // Sort by path then method
-        endpoints.sort((a, b) -> ((String)a.get("path")).compareTo((String)b.get("path")));
-        Map<String,Object> r = new LinkedHashMap<>();
-        r.put(K_AVAILABLE, true);
-        r.put(K_TOTAL, endpoints.size());
-        r.put("endpoints", endpoints);
-        return r;
-    }
+    private Map<String, Object> buildApiSection() { return apiSectionProvider.parse(); }
 
     // -------------------------------------------------------------------------
     // Dependencies section
