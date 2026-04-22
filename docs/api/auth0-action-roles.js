@@ -25,7 +25,7 @@
  *     ...
  *   }
  *
- * The backend (JwtAuthenticationFilter.authenticateKeycloak) reads this claim
+ * The backend (JwtAuthenticationFilter.authenticateExternalJwt) reads this claim
  * and grants the corresponding Spring Security authorities.
  *
  * Role mapping:

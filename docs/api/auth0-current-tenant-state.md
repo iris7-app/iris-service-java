@@ -92,7 +92,7 @@ of truth.
 Effect: every access token issued by the tenant includes a
 `https://mirador-api/roles` claim holding the list of Auth0 roles the
 user was assigned. The Mirador backend
-(`JwtAuthenticationFilter.authenticateKeycloak`) reads this claim and
+(`JwtAuthenticationFilter.authenticateExternalJwt`) reads this claim and
 grants the matching Spring Security authorities.
 
 Example access token payload (decoded):

@@ -47,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code application.yml} + ops docs — Auth0 replaces self-hosted Keycloak on GKE),
  * yet no {@code Auth0*} test existed under {@code src/test/}. Any regression in the
  * audience check or the Auth0 role-claim extraction
- * ({@link JwtAuthenticationFilter#authenticateKeycloak(String)} strategy 2 + 3) would
+ * ({@link JwtAuthenticationFilter#authenticateExternalJwt(String)} strategy 2 + 3) would
  * ship silently. Covering it costs one small ITest — worth it.
  *
  * <h3>Stubbing strategy</h3>

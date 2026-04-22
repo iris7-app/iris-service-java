@@ -210,6 +210,33 @@ Two compose files — never merge them:
 
 Loki, Tempo, Grafana are already inside the LGTM container — do NOT add them as separate services.
 
+## Clean Code + Clean Architecture — binding constraints
+
+Hard constraints, not aspirations — same 7 non-negotiables as
+`~/.claude/CLAUDE.md` → "Clean Code + Clean Architecture":
+
+1. Function size ≤ 20-30 LOC body, ≤ 5 params, complexity ≤ 10
+   (ESLint + PMD enforce; Phase C flips to error).
+2. Single Responsibility per class / service / endpoint.
+3. Naming tells intent — rename the moment a mismatch is noticed
+   (see 2026-04-22 `authenticateKeycloak` → `authenticateExternalJwt`).
+4. Comments explain WHY, not WHAT (existing Comments rule).
+5. Dependency rule — domain has zero framework imports.
+   Feature-slicing (ADR-0008) + Hexagonal Lite (ADR-0044) are
+   this repo's pattern. `port/` only when cross-feature coupling
+   emerges.
+6. Test-as-spec — coverage drop on a touched file = ship a test
+   in the same commit.
+7. No dead code — unused imports, silent catches, TODO > 30 d all
+   count as warnings to clear before tagging a green checkpoint.
+
+**Current-state baseline**:
+[`docs/audit/clean-code-architecture-2026-04-22.md`](docs/audit/clean-code-architecture-2026-04-22.md)
+(80 % Clean Code / 70 % Clean Arch). Every new commit must not
+regress the ✅ / 🟢 items; open 🟡 items (QualityReportEndpoint
+split, AuditEventPort extraction, ADR-0051) should chip away when
+possible. Re-audit every 3-6 months.
+
 ## Code review checklist (run proactively after significant changes)
 
 - [ ] Unused Java imports
@@ -218,6 +245,10 @@ Loki, Tempo, Grafana are already inside the LGTM container — do NOT add them a
 - [ ] New timer/counter/gauge — pre-registered in constructor, not lazily?
 - [ ] Exception handlers — nothing silently swallowed (empty `catch` blocks)?
 - [ ] Javadoc on public methods with non-obvious parameters or return values
+- [ ] **Clean Code 7 non-negotiables**: function size, SRP, naming,
+      why-not-what comments, dependency rule, test-as-spec, no dead
+      code. See the section above; the audit at
+      `docs/audit/clean-code-architecture-*.md` is the current baseline.
 - [ ] **Root hygiene**: no new file added to repo root that belongs under
       `config/`, `build/`, `deploy/compose/`, `docs/`, or `ci/`. See
       ~/.claude/CLAUDE.md → "Root file hygiene" for the authoritative list.

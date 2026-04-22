@@ -138,10 +138,10 @@ a Phase B ticket but worth adding — probably B-7 or fold into B-2).
   Checkstyle naming checks enforce this (post-Phase A).
 - TypeScript: `CustomerComponent`, `customerService`, `ROLE_ADMIN` —
   consistent.
-- No cryptic abbreviations in recent code; legacy `authenticateKeycloak`
-  naming (actually dispatches to all 3 auth modes) is misleading
-  historical debt — rename to `authenticateByMode` would be a
-  low-hanging fix in a Phase 4 session.
+- No cryptic abbreviations in recent code. The one legacy offender —
+  `JwtAuthenticationFilter.authenticateKeycloak` covering Keycloak AND
+  Auth0 (strategies 2 + 3) — was renamed to `authenticateExternalJwt`
+  on 2026-04-22 as the first follow-up from this audit.
 
 ### 🟢 Comments — "why not what" discipline
 
@@ -288,9 +288,12 @@ Nothing new at this priority.
    Mirrors the `CustomerEventPort` pattern from ADR-0044. Unit tests
    stop needing Spring context.
 
-4. **Rename `authenticateKeycloak`** (~15 min) — misleading method
+4. ~~**Rename `authenticateKeycloak`** (~15 min) — misleading method
    name; actually dispatches to all 3 auth modes (built-in, Keycloak,
-   Auth0). Rename to `authenticateByMode` or `dispatchAuthentication`.
+   Auth0). Rename to `authenticateByMode` or `dispatchAuthentication`.~~
+   **Done 2026-04-22** — renamed to `authenticateExternalJwt` (commit
+   in the same session as this audit). `authenticateBuiltin` sibling
+   handles the HMAC case, `doFilterInternal` is the actual dispatcher.
 
 ### 🟢 Non-issues (deliberate)
 
