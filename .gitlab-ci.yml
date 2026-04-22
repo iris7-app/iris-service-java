@@ -60,11 +60,13 @@ workflow:
         - ".dockerignore"
         - "docker-compose*.yml"
         - ".gitlab-ci.yml"
-        - ".github/**/*"   # Scorecard / GitHub Actions changes — Sonar may flag perms
-        - ".spectral.yaml" # OpenAPI lint ruleset
+        - ".gitlab-ci/**/*" # Local include files under .gitlab-ci/ (Phase B-2)
+        - ".gitlab/**/*"    # GitLab Agent config, MR templates, etc.
+        - ".github/**/*"    # Scorecard / GitHub Actions changes — Sonar may flag perms
+        - ".spectral.yaml"  # OpenAPI lint ruleset
         - "deploy/**/*"
         - "scripts/**/*"
-        - "bin/**/*"       # Stability check + cluster lifecycle scripts
+        - "bin/**/*"        # Stability check + cluster lifecycle scripts
         - "docs/**/*"
         - "README.md"
         - "README.fr.md"
@@ -87,6 +89,8 @@ workflow:
         - "TASKS.md"
         - "docker-compose*.yml"
         - ".gitlab-ci.yml"
+        - ".gitlab-ci/**/*"
+        - ".gitlab/**/*"
         - ".github/**/*"
         - ".spectral.yaml"
         - "deploy/**/*"
