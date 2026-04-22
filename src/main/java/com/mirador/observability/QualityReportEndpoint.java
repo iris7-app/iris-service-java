@@ -45,7 +45,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.lang.management.ManagementFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
 import org.springframework.core.env.Environment;
@@ -185,29 +184,11 @@ public class QualityReportEndpoint {
         return "git";
     }
 
-    // SonarQube integration — defaults work for local Docker setup.
-    // Override via env vars: SONAR_HOST_URL, SONAR_PROJECT_KEY, SONAR_TOKEN.
-    @Value("${sonar.host.url:http://localhost:9000}")
-    private String sonarHostUrl;
-
-    @Value("${sonar.projectKey:mirador}")
-    private String sonarProjectKey;
-
-    // Token for SonarQube API calls — empty = anonymous access (works when forceAuth=false).
-    @Value("${sonar.token:}")
-    private String sonarToken;
-
-    // GitLab pipeline history — calls GET /projects/:id/pipelines to fetch the last 10 runs.
-    // In production the GitLab project ID is injected from the CI variable GITLAB_PROJECT_ID.
-    // GITLAB_API_TOKEN requires read_api scope (never write). Both default to blank = section disabled.
-    @Value("${gitlab.host.url:https://gitlab.com}")
-    private String gitlabHostUrl;
-
-    @Value("${gitlab.project.id:}")
-    private String gitlabProjectId;
-
-    @Value("${gitlab.api.token:}")
-    private String gitlabApiToken;
+    // Sonar + GitLab pipeline REST integrations removed 2026-04-22 per ADR-0052.
+    // The backend no longer makes outbound HTTPS calls to sonarcloud.io /
+    // gitlab.com at /actuator/quality request time. UI dashboard links out
+    // to those services directly. SONAR_TOKEN + GITLAB_API_TOKEN env vars
+    // are no longer needed on the prod JVM.
 
     private final RequestMappingHandlerMapping requestMappingHandlerMapping;
     private final Environment environment;
@@ -270,23 +251,23 @@ public class QualityReportEndpoint {
     public Map<String, Object> report() {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("generatedAt", LocalDateTime.now().format(TS_FMT));
-        result.put(K_TESTS, buildTestsSection());
-        result.put(K_COVERAGE, buildCoverageSection());
-        result.put("bugs", buildBugsSection());
-        result.put("pmd",       buildPmdSection());
-        result.put("checkstyle",buildCheckstyleSection());
-        result.put("owasp",     buildOwaspSection());
-        result.put("pitest",    buildPitestSection());
-        result.put("sonar",     buildSonarSection());
-        result.put("build", buildBuildSection());
-        result.put("git", buildGitSection());
-        result.put("api", buildApiSection());
+        result.put(K_TESTS,        buildTestsSection());
+        result.put(K_COVERAGE,     buildCoverageSection());
+        result.put("bugs",         buildBugsSection());
+        result.put("pmd",          buildPmdSection());
+        result.put("checkstyle",   buildCheckstyleSection());
+        result.put("owasp",        buildOwaspSection());
+        result.put("pitest",       buildPitestSection());
+        // `sonar` + `pipeline` removed 2026-04-22 per ADR-0052 — the UI
+        // dashboard links out to sonarcloud.io + gitlab.com directly.
+        result.put("build",        buildBuildSection());
+        result.put("git",          buildGitSection());
+        result.put("api",          buildApiSection());
         result.put(K_DEPENDENCIES, buildDependenciesSection());
-        result.put("licenses", buildLicensesSection());
-        result.put("metrics", buildMetricsSection());
-        result.put("runtime", buildRuntimeSection());
-        result.put("pipeline", buildPipelineSection());
-        result.put(K_BRANCHES, buildBranchesSection());
+        result.put("licenses",     buildLicensesSection());
+        result.put("metrics",      buildMetricsSection());
+        result.put("runtime",      buildRuntimeSection());
+        result.put(K_BRANCHES,     buildBranchesSection());
         return result;
     }
 
@@ -858,101 +839,11 @@ public class QualityReportEndpoint {
 
     private Map<String, Object> buildPitestSection()     { return pitestReportParser.parse(); }
 
-    // -------------------------------------------------------------------------
-    // SonarQube section
-    // -------------------------------------------------------------------------
-
-    /**
-     * Fetches key quality metrics from the local SonarQube instance via its REST API.
-     *
-     * <p>Uses java.net.http.HttpClient (built-in since Java 11) with a 3-second timeout
-     * to avoid blocking the actuator endpoint when SonarQube is not running.
-     * If the token is empty and forceAuthentication is false, anonymous access works.
-     *
-     * @apiNote Metrics fetched: bugs, vulnerabilities, code_smells, coverage,
-     *          duplicated_lines_density, reliability_rating, security_rating,
-     *          sqale_rating (maintainability), ncloc (lines of code).
-     * @implNote Rating values are 1–5 (A–E); converted to letter grades here.
-     */
-    private Map<String, Object> buildSonarSection() {
-        String metricsKey = "bugs,vulnerabilities,code_smells,coverage,"
-                + "duplicated_lines_density,reliability_rating,security_rating,sqale_rating,ncloc";
-        String apiUrl = sonarHostUrl + "/api/measures/component"
-                + "?component=" + sonarProjectKey
-                + "&metricKeys=" + metricsKey;
-
-        try {
-            HttpClient client = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(3))
-                    .build();
-
-            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
-                    .uri(URI.create(apiUrl))
-                    .timeout(Duration.ofSeconds(5))
-                    .GET();
-
-            // Use Bearer token if configured, else anonymous (works when forceAuth=false)
-            if (sonarToken != null && !sonarToken.isBlank()) {
-                reqBuilder.header("Authorization", "Bearer " + sonarToken);
-            }
-
-            HttpResponse<String> resp = client.send(reqBuilder.build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            if (resp.statusCode() == 404) {
-                // Project key not found — analysis has not been run yet
-                return Map.of(K_AVAILABLE, false,
-                        "note", "Project '" + sonarProjectKey + "' not found — run ./run.sh sonar first");
-            }
-            if (resp.statusCode() != 200) {
-                return Map.of(K_AVAILABLE, false, "note", "HTTP " + resp.statusCode());
-            }
-
-            JsonNode root = MAPPER.readTree(resp.body());
-            JsonNode measures = root.path("component").path("measures");
-
-            Map<String, String> raw = new java.util.HashMap<>();
-            for (JsonNode m : measures) {
-                raw.put(m.path("metric").asText(), m.path("value").asText(""));
-            }
-
-            Map<String, Object> r = new LinkedHashMap<>();
-            r.put(K_AVAILABLE,             true);
-            r.put("projectKey",            sonarProjectKey);
-            r.put("url",                   sonarHostUrl + "/dashboard?id=" + sonarProjectKey);
-            r.put("bugs",                  ReportParsers.parseIntOrNull(raw.get("bugs")));
-            r.put(K_VULNERABILITIES,       ReportParsers.parseIntOrNull(raw.get(K_VULNERABILITIES)));
-            r.put("codeSmells",            ReportParsers.parseIntOrNull(raw.get("code_smells")));
-            r.put(K_COVERAGE,              ReportParsers.parseDoubleOrNull(raw.get(K_COVERAGE)));
-            r.put("duplications",          ReportParsers.parseDoubleOrNull(raw.get("duplicated_lines_density")));
-            r.put("linesOfCode",           ReportParsers.parseIntOrNull(raw.get("ncloc")));
-            r.put("reliabilityRating",     ratingLabel(raw.get("reliability_rating")));
-            r.put("securityRating",        ratingLabel(raw.get("security_rating")));
-            r.put("maintainabilityRating", ratingLabel(raw.get("sqale_rating")));
-            return r;
-
-        } catch (InterruptedException _) {
-            Thread.currentThread().interrupt();
-            return Map.of(K_AVAILABLE, false,
-                    "note", "SonarQube call interrupted");
-        } catch (Exception _) {
-            return Map.of(K_AVAILABLE, false,
-                    "note", "SonarQube unreachable — start with: docker compose up -d sonarqube");
-        }
-    }
-
-    /** Converts a SonarQube numeric rating (1–5) to a letter grade (A–E). */
-    private static String ratingLabel(String value) {
-        if (value == null || value.isBlank()) return null;
-        return switch (value.trim()) {
-            case "1.0", "1" -> "A";
-            case "2.0", "2" -> "B";
-            case "3.0", "3" -> "C";
-            case "4.0", "4" -> "D";
-            case "5.0", "5" -> "E";
-            default -> value;
-        };
-    }
+    // `buildSonarSection` + `ratingLabel` removed 2026-04-22 per ADR-0052 —
+    // the SonarCloud REST call moved out of the runtime path. UI dashboard
+    // links to https://sonarcloud.io/project/overview?id=Mirador_mirador-service
+    // directly. CI-time fetches (via sonar-maven-plugin + sonarcloud.yml
+    // workflow) remain the source of truth for Sonar state.
 
     // ─── Helpers extracted to com.mirador.observability.quality.parsers.ReportParsers ─
     //     (Phase B-1 split, 2026-04-22 — parseIntOrNull, parseDoubleOrNull, round1,
@@ -1047,78 +938,11 @@ public class QualityReportEndpoint {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Pipeline history section — GitLab API
-    // -------------------------------------------------------------------------
-
-    /**
-     * Fetches the last 10 CI/CD pipeline runs from the GitLab API.
-     *
-     * <p>Requires {@code GITLAB_PROJECT_ID} and {@code GITLAB_API_TOKEN} (read_api scope)
-     * to be set. Returns {@code available=false} gracefully when either is blank,
-     * so local dev mode works without configuring GitLab credentials.
-     *
-     * <p>The GitLab REST API path is:
-     * {@code GET /api/v4/projects/:id/pipelines?per_page=10&order_by=id&sort=desc}
-     */
-    private Map<String, Object> buildPipelineSection() {
-        if (gitlabProjectId.isBlank()) {
-            return Map.of(K_AVAILABLE, false, K_REASON, "GITLAB_PROJECT_ID not configured");
-        }
-
-        String url = gitlabHostUrl + "/api/v4/projects/" + gitlabProjectId
-                + "/pipelines?per_page=10&order_by=id&sort=desc";
-        HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
-        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(10))
-                .GET();
-        if (!gitlabApiToken.isBlank()) {
-            reqBuilder.header("PRIVATE-TOKEN", gitlabApiToken);
-        }
-
-        try {
-            HttpResponse<String> resp = client.send(reqBuilder.build(),
-                    HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() != 200) {
-                return Map.of(K_AVAILABLE, false, K_ERROR,
-                        "GitLab API returned HTTP " + resp.statusCode());
-            }
-            JsonNode root = MAPPER.readTree(resp.body());
-            List<Map<String, Object>> pipelines = new ArrayList<>();
-            for (JsonNode p : root) {
-                Map<String, Object> entry = new LinkedHashMap<>();
-                entry.put("id",        p.path("iid").asInt());
-                entry.put("ref",       p.path("ref").asText("-"));
-                entry.put(K_STATUS,    p.path(K_STATUS).asText("-"));
-                entry.put("createdAt", p.path("created_at").asText("-"));
-                // Duration — only available after pipeline completes
-                JsonNode startedAt  = p.path("started_at");
-                JsonNode finishedAt = p.path("finished_at");
-                if (!startedAt.isNull() && !finishedAt.isNull()
-                        && !startedAt.isMissingNode() && !finishedAt.isMissingNode()) {
-                    // Helper call avoids a nested try/catch in the outer HTTP try (Sonar S1141).
-                    ReportParsers.parseDurationSeconds(startedAt.asText(), finishedAt.asText())
-                            .ifPresent(secs -> entry.put("durationSeconds", secs));
-                }
-                entry.put("webUrl", p.path("web_url").asText(""));
-                pipelines.add(entry);
-            }
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put(K_AVAILABLE, true);
-            result.put("projectId", gitlabProjectId);
-            result.put("host", gitlabHostUrl);
-            result.put("pipelines", pipelines);
-            return result;
-        } catch (InterruptedException _) {
-            Thread.currentThread().interrupt();
-            return Map.of(K_AVAILABLE, false, K_ERROR, "interrupted");
-        } catch (Exception e) {
-            return Map.of(K_AVAILABLE, false, K_ERROR, e.getMessage());
-        }
-    }
+    // `buildPipelineSection` removed 2026-04-22 per ADR-0052 — the GitLab
+    // REST call moved out of the runtime path. UI dashboard links to
+    // https://gitlab.com/mirador1/mirador-service/-/pipelines directly.
+    // GITLAB_PROJECT_ID + GITLAB_API_TOKEN are no longer needed on the
+    // prod JVM.
 
     /**
      * Lists remote branches with their last-commit date and author.

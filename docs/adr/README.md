@@ -21,7 +21,7 @@ navigational, no file layout change.
 
 ## Status snapshot
 
-- **Accepted**: 43
+- **Accepted**: 44
 - **Superseded**: 3 (ADR-0003 → ADR-0013; ADR-0008 → ADR-0044; ADR-0037 → Path B embedded)
 - **Deprecated**: 0
 
@@ -134,6 +134,7 @@ monotonic across supersessions.
 | 0049 | Accepted | [CI shields (`allow_failure: true`) require a dated exit ticket](0049-ci-shields-with-dated-exit-tickets.md) |
 | 0050 | Proposed | [CI YAML modularisation — `ci/includes/*.yml` per concern](0050-ci-yaml-modularisation-plan.md) |
 | 0051 | Accepted | [JPA entity = domain model (accept the coupling)](0051-jpa-entity-as-domain-model.md) |
+| 0052 | Accepted | [Backend stays ignorant of build/quality tools (tightens ADR-0026)](0052-backend-not-coupled-to-build-tools.md) |
 <!-- ADR-INDEX:END -->
 
 ## Hierarchical index (by theme)
