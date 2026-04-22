@@ -291,9 +291,18 @@ Nothing new at this priority.
 
 ### 🟡 Could do (medium priority)
 
-3. **`AuditEventPort`** (~1 h) — extract port for cross-feature auditing.
+3. ~~**`AuditEventPort`** (~1 h) — extract port for cross-feature auditing.
    Mirrors the `CustomerEventPort` pattern from ADR-0044. Unit tests
-   stop needing Spring context.
+   stop needing Spring context.~~ **Done 2026-04-22** — shipped under
+   `com.mirador.observability.port.AuditEventPort`. `AuditService
+   implements AuditEventPort`; `CustomerService` + `AuthController` now
+   depend on the port (write side), read-side callers
+   (`CustomerController.findByCustomerId`, `AuditController.findAll`)
+   still depend on `AuditService` directly — a read-side port is a
+   separate justified-when decision (only 1 cross-feature consumer).
+   ArchUnit `domain_ports_must_not_depend_on_framework_packages` still
+   green. Method renamed `log` → `recordEvent` to stop clashing with
+   SLF4J `Logger log` in every caller.
 
 4. ~~**Rename `authenticateKeycloak`** (~15 min) — misleading method
    name; actually dispatches to all 3 auth modes (built-in, Keycloak,
