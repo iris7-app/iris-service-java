@@ -68,7 +68,7 @@ could be confused with CI variables.
 | `DB_PASSWORD` | GSM `mirador-db-password` → ESO → K8s Secret `mirador-secrets` | Postgres user password |
 | `JWT_SECRET` | GSM `mirador-jwt-secret` → ESO → K8s Secret `mirador-secrets` | HS256 signing key (256 bits) |
 | `API_KEY` | GSM `mirador-api-key` → ESO | External integration token |
-| `GITLAB_API_TOKEN` | GSM `mirador-gitlab-api-token` → ESO | For the pipeline-monitor feature in the UI |
+| ~~`GITLAB_API_TOKEN`~~ | ~~GSM `mirador-gitlab-api-token` → ESO~~ | **Retired 2026-04-22 per [ADR-0052](../adr/0052-backend-not-coupled-to-build-tools.md).** The pipeline-monitor feature moved out of the backend — the UI links to the GitLab pipelines page directly. Secret no longer needed on the prod JVM. |
 | `KEYCLOAK_ADMIN_PASSWORD` | GSM → `keycloak-secrets` | Keycloak bootstrap |
 | `KC_DB_PASSWORD` | GSM → `keycloak-secrets` | Keycloak's own Postgres user |
 
