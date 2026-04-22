@@ -187,3 +187,13 @@ fi
 if [ "${WITH_GITLAB_AGENT:-true}" = "true" ] && [ -f /tmp/gitlab-agent-mirador.token ]; then
   "$REPO_ROOT/bin/cluster/demo/install-gitlab-agent.sh"
 fi
+
+# 9. GMP query frontend — bridges Google Managed Prometheus (auto-enabled
+#    on Autopilot) to a local Prometheus-compatible endpoint. Lets OpenLens
+#    / k9s / Grafana query cAdvisor + kubelet metrics that the standard
+#    kube-prometheus-stack can't scrape on Autopilot (kube-system locked).
+#    See docs/ops/runbooks/gmp-frontend-openlens.md. Skip with
+#    WITH_GMP_FRONTEND=false.
+if [ "${WITH_GMP_FRONTEND:-true}" = "true" ]; then
+  "$REPO_ROOT/bin/cluster/demo/install-gmp-frontend.sh"
+fi
