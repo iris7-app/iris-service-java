@@ -95,5 +95,10 @@ output "nodes_subnet_id" {
 # =============================================================================
 output "running_cost_estimate_eur_max" {
   description = "Worst-case monthly cost in EUR (max nodes × flavor price)"
-  value       = "${var.node_count_max * 25.20}/month at max scale (${var.node_flavor} × ${var.node_count_max})"
+  value       = "${var.node_count_max * 25.20}/month at max scale (${var.node_flavor} × ${var.node_count_max}). Add ~€20 if LoadBalancer is enabled via K8s overlay."
 }
+
+# Note : LoadBalancer outputs (IPv4, ID) are NOT exposed here because
+# OVH's Public Cloud LB is provisioned by Kubernetes (cloud-controller),
+# not by Terraform. To get the LB's external IP after K8s applies the
+# overlay : `kubectl get svc -n observability lgtm -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
