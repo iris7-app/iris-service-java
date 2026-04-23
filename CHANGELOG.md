@@ -2,13 +2,11 @@
 
 All notable changes to Mirador — Spring Boot backend + Angular UI.
 
-Format: a lightly-formatted summary per `stable-vX.Y.Z` tag, because
-[release-please](https://github.com/googleapis/release-please) is
-configured on this repo (`config/release-please-config.json`) but not
-yet activated (pending `$RELEASE_PLEASE_TOKEN` CI variable
-provisioning). Once activated, release-please takes over maintenance
-of this file via automated release-PRs on each `main` merge; until
-then, this file is the hand-rolled equivalent.
+Format: a lightly-formatted summary per `stable-vX.Y.Z` tag, maintained
+by `bin/ship/changelog.sh` (reads [Conventional Commits](https://www.conventionalcommits.org)
+since the last `stable-v*` tag, categorises into sections, prepends a
+new entry). See [`docs/how-to/changelog-workflow.md`](docs/how-to/changelog-workflow.md)
+for the release workflow.
 
 For commit-level granularity between tags:
 

@@ -69,7 +69,6 @@ the top of `.gitlab-ci.yml`.
 | `owasp-dependency-check` | OWASP DC scan against the NVD feed; CVSS gate. Cached NVD DB reduces runtime by ~60 %. | MR + main |
 | `secret-scan` | gitleaks scan of the diff. Blocks on any high-confidence finding. | MR + main |
 | `renovate-lint` | Validates `renovate.json` syntax via `renovate-config-validator`. | MR (when `renovate.json` changes) |
-| `release-please` | release-please drafts a release MR on every push to main. | main |
 
 ### `integration` — Testcontainers ITs
 

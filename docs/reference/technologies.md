@@ -770,18 +770,18 @@ to get the full picture._
 
 ### 📝 [Conventional Commits](https://www.conventionalcommits.org/)
 - **What it is**: Commit-message spec: `type(scope)?: subject` (feat, fix, docs, etc.).
-- **Usage here**: Enforced in the `commit-msg` hook; powers release-please.
-- **Why it's pertinent**: Semantic versioning becomes automatic — `feat` bumps minor, `fix` bumps patch, `!` bumps major.
+- **Usage here**: Enforced in the `commit-msg` hook; powers `bin/ship/changelog.sh` categorisation.
+- **Why it's pertinent**: Machine-parseable history → `feat` → ✨ Features, `fix` → 🐛 Bug fixes, `!` → 💥 Breaking in every new CHANGELOG entry.
 
 ### 📝 [commitlint](https://commitlint.js.org/)
 - **What it is**: Node-based Conventional Commits linter.
 - **Usage here**: `config/commitlint.config.mjs` documents the rules; actual enforcement is the pure-bash regex in `.config/lefthook.yml` (avoids a `node_modules/` dependency for a Java project).
 - **Why it's pertinent**: Config file documents intent even without the runtime — tooling can be swapped to the Node impl at any time.
 
-### 🚀 [release-please](https://github.com/googleapis/release-please)
-- **What it is**: Google's release-automation tool — reads Conventional Commits, opens a release MR, tags on merge.
-- **Usage here**: `release-please` CI job on `main`. Uses `config/release-please-config.json` + `.release-please-manifest.json`.
-- **Why it's pertinent**: Eliminates manual CHANGELOG.md maintenance and manual tagging.
+### 🚀 [`bin/ship/changelog.sh`](../../bin/ship/changelog.sh) + [`gitlab-release.sh`](../../bin/ship/gitlab-release.sh)
+- **What it is**: Two shell scripts (~200 LOC total) that generate CHANGELOG entries from Conventional Commits and promote a `stable-v*` tag to a GitLab Release.
+- **Usage here**: Run locally after a tag push — `bin/ship/changelog.sh` prepends the new entry, commit + tag, `bin/ship/gitlab-release.sh <tag>` creates the Release object via `glab`. See [`docs/how-to/changelog-workflow.md`](../how-to/changelog-workflow.md).
+- **Why it's pertinent**: Replaced `googleapis/release-please` 2026-04-23 (that tool is GitHub-API-only → 401 Bad Credentials against GitLab PAT). The shell version adds zero `node_modules/` to a Java project and burns zero CI runner time.
 
 ### 🦊 [`glab`](https://gitlab.com/gitlab-org/cli)
 - **What it is**: Official GitLab CLI.
@@ -804,7 +804,7 @@ to get the full picture._
 
 ### 🦊 [GitLab Runner (macbook-local)](https://docs.gitlab.com/runner/)
 - **What it is**: Self-hosted GitLab runner on an Apple Silicon mac.
-- **Usage here**: Tagged `macbook-local`; primary runner for docker-build, trivy, sbom:syft, grype:scan, dockle, cosign, secret-scan, renovate-lint, release-please, deploy:gke.
+- **Usage here**: Tagged `macbook-local`; primary runner for docker-build, trivy, sbom:syft, grype:scan, dockle, cosign, secret-scan, renovate-lint, deploy:gke.
 - **Why it's pertinent**: Zero marginal cost (no GitLab SaaS minutes burned). arm64 host for native compiles; `buildx --platform linux/amd64` handles GKE's amd64 target.
 
 ### 🦊 [GitLab SaaS shared runners](https://docs.gitlab.com/ee/ci/runners/) (rejected)

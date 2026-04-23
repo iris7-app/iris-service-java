@@ -19,11 +19,18 @@ Configure variables at:
 | `SONAR_TOKEN` | main + MR | Secret text | ✅ | ✅ | SonarCloud auth. Obtained at https://sonarcloud.io/account/security. Without it, the `sonar-analysis` job self-disables (rule `if: $SONAR_TOKEN == null`) — pipeline stays green but code quality is not pushed. |
 | `GITHUB_MIRROR_SSH_KEY` | main | Secret text | ✅ | ✅ | **Currently unused.** Kept in the CI variables so a future re-enable of the `github-mirror` CI job (once the org upgrades to a plan with deploy keys) can reuse the same keypair. Today the mirror push runs locally via `bin/ship/ship.sh --wait`. See [`docs/ops/github-mirror.md`](github-mirror.md) for the why. |
 
-## Optional — release automation
+## Release automation
 
-| Variable | Scope | Type | Masked | Protected | What it's for |
-|---|---|---|---|---|---|
-| `RELEASE_PLEASE_TOKEN` | main | Secret text | ✅ | ✅ | Fine-grained GitLab PAT scoped to the same project with `api` + `write_repository`. release-please needs it to open MRs + create tags. Without it, the `release-please` job has `allow_failure: true` and no release MR gets opened. |
+No CI variable needed. `googleapis/release-please` was removed
+2026-04-23 (GitHub-API-only → 401 on GitLab PAT) and replaced by
+two local shell scripts under `bin/ship/` that run manually after
+a `stable-v*` tag push. See
+[`docs/how-to/changelog-workflow.md`](../how-to/changelog-workflow.md)
+for the full workflow.
+
+If you still see a `RELEASE_PLEASE_TOKEN` masked variable in the
+GitLab CI/CD settings, it's a leftover — safe to delete (nothing
+references it anymore).
 
 ## Optional — multi-cloud deploy targets
 

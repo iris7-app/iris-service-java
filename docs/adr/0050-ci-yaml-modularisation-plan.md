@@ -44,7 +44,7 @@ ci/includes/
   ├── package.yml                          # build-jar, docker-build, cosign:sign, cosign:verify, sbom, trivy:scan, dockle
   ├── native.yml                           # build-native (scheduled only)
   ├── deploy.yml                           # deploy:eks, deploy:aks, smoke-test, load-test:nightly
-  └── release.yml                          # release-please, GitLab Pages
+  └── release.yml                          # GitLab Pages (release-please removed 2026-04-23)
 ```
 
 Estimated post-split sizes per file: 200-400 lines max, with most around

@@ -65,7 +65,6 @@
 ![GitLab CI](https://img.shields.io/badge/GitLab_CI-canonical-FC6D26?logo=gitlab&logoColor=white)
 ![Jenkinsfile](https://img.shields.io/badge/Jenkinsfile-parity-D24939?logo=jenkins&logoColor=white)
 ![Renovate](https://img.shields.io/badge/Renovate-bump_bot-1A1F6C?logo=renovatebot&logoColor=white)
-![release-please](https://img.shields.io/badge/release--please-CHANGELOG_+_semver-4285F4)
 ![lefthook](https://img.shields.io/badge/lefthook-pre--push_gates-000000)
 ![commitlint](https://img.shields.io/badge/Conventional_Commits-enforced-FE5196)
 ![gitleaks](https://img.shields.io/badge/gitleaks-secret_scan-FD7014)
@@ -100,7 +99,7 @@ What the project actually exercises:
   K8s manifests, OpenTelemetry (traces + logs + metrics) to Grafana Cloud, Sonar,
   Semgrep, Trivy / Grype / Syft / cosign / Dockle, OWASP Dependency-Check, PIT mutation
   testing, resilience4j circuit-breakers + bucket4j rate limiting, Flyway, Testcontainers,
-  Workload Identity Federation, release-please. The "why" for each lives in the ADRs
+  Workload Identity Federation. The "why" for each lives in the ADRs
   + glossaries linked in the [Architecture Decision Records](#architecture-decision-records-adrs--the-canonical-why)
   section above.
 - **Live observability of a running system**: every layer (JVM, HTTP, DB pool, Kafka,
