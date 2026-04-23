@@ -24,8 +24,9 @@ has to reinstate them before doing anything else.
   image, Grafana dashboard) points back to it.
 - The **branch protection** is on GitLab `main`: no direct push, MR
   required, `main` is protected, `dev` is the working branch.
-- The **release process** (`release-please` + `v1.x` tags) runs on
-  GitLab. Tags are pushed FROM GitLab and propagate OUT.
+- The **release process** (`bin/ship/changelog.sh` + `stable-v*` tags,
+  see [`docs/how-to/changelog-workflow.md`](../how-to/changelog-workflow.md))
+  runs on GitLab. Tags are pushed FROM GitLab and propagate OUT.
 - If a change exists on GitHub but not on GitLab, **GitLab wins** and
   the GitHub change is discarded. There is no reverse sync path.
 
@@ -40,8 +41,8 @@ has to reinstate them before doing anything else.
     protection, signed commits, Dependabot, etc.)
 - Dependabot is **disabled** — Renovate on GitLab is the source of
   truth for dependency bumps.
-- GitHub Releases are **not auto-populated**. `release-please` on
-  GitLab owns the CHANGELOG.
+- GitHub Releases are **not auto-populated**. `bin/ship/` on GitLab
+  owns the CHANGELOG.
 
 ### Rule 3 — Jenkinsfile is inert, not maintained weekly.
 
@@ -67,8 +68,8 @@ GitHub never find the project.
 ### Option rejected: GitHub only
 
 Cost: loses local runner pattern (ADR-0004, zero SaaS quota), loses
-`release-please` native integration, loses GitLab's Container Registry,
-loses the merge-request workflow the team is already wired into.
+GitLab's Container Registry, loses the merge-request workflow the team
+is already wired into.
 
 ### Option rejected: Full CI on both
 
@@ -102,7 +103,7 @@ Every piece is there for a reason. Nothing is there "just in case".
 | MR opened | full pipeline runs | nothing | untouched |
 | MR merged to `main` | full pipeline runs | `github-mirror` job pushes main to GitHub → CodeQL + Scorecard trigger | untouched |
 | Weekly schedule | Renovate opens bump MRs on GitLab | CodeQL + Scorecard scan (detects new CVEs in rule set) | untouched |
-| Tag `v1.x` on GitLab | release-please generates CHANGELOG | mirror job pushes tag to GitHub | untouched |
+| Tag `stable-vX.Y.Z` on GitLab | `bin/ship/changelog.sh` + `bin/ship/gitlab-release.sh` run locally | mirror job pushes tag to GitHub | untouched |
 | Adoption in Jenkins shop | untouched | untouched | team runs it in their Jenkins; see `jenkins.md` |
 
 ## When to break these rules

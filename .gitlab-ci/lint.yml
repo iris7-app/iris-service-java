@@ -210,19 +210,6 @@ renovate-lint:
     # --strict: fail on warnings too.
     - npx --yes --package renovate renovate-config-validator --strict renovate.json
 
-# ── release-please — automatic CHANGELOG + semver tags on main ────────────────
-#
-# release-please (Google's tool) reads Conventional Commits since the last tag,
-# computes the next version (semver: feat → minor, fix/perf → patch, ! → major),
-# writes CHANGELOG.md, and opens a release MR. When that MR merges, it creates
-# a Git tag (vX.Y.Z) and a GitLab Release.
-#
-# Runs only on `main` — feature commits on `dev` are picked up when `dev` is
-# merged into `main` (via our auto-merge flow on green pipelines).
-#
-# Requires RELEASE_PLEASE_TOKEN (masked CI var) — a personal access token with
-# `api` + `write_repository` scopes so release-please can push the release MR
-# and tag. Job is a no-op until that token is provisioned.
 hadolint:
   stage: lint
   image:

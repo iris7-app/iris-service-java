@@ -254,7 +254,7 @@ commit-msg:
   commands:
     conventional-commits:
       # Enforce Conventional Commits on every commit message.
-      # Enables release-please CHANGELOG + automatic semver bumping on main.
+      # Powers `bin/ship/changelog.sh` categorisation (feat/fix/perf → sections).
       #
       # Implemented in pure bash (no Node.js / commitlint install) — this is a
       # Java project; adding a node_modules/ for a commit-msg check is absurd.

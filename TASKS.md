@@ -516,32 +516,39 @@ Flyway migrations. Multi-session work.
 
 ## 🧭 Ideas pour plus tard (scope à confirmer)
 
-### 🔥 Release automation — tool swap (discovered 2026-04-22, urgent-ish)
+### ✅ DONE 2026-04-23 — Release automation — tool swap
 
-`googleapis/release-please` configured + wired in `.gitlab-ci.yml` on
-both repos — but the tool is **GitHub-API-only**. With a GitLab PAT +
-`--repo-url https://gitlab.com/...`, release-please still hits
-`api.github.com/graphql` for its "existing releases" query → 401 Bad
-Credentials. Evidence: svc pipeline #660 release-please job.
+Replaced `googleapis/release-please` (GitHub-API-only, 401 on GitLab
+PAT) with a pair of local shell scripts :
 
-**Current state** (2026-04-22 15:00):
-- release-please job DISABLED (`when: never`) on both repos — stops
-  red-firing every main merge.
-- `RELEASE_PLEASE_TOKEN` CI vars still provisioned (harmless; rotate
-  or delete when the replacement ships).
-- `config/release-please-config.json` + `.release-please-manifest.json`
-  still present; format is portable to other tools.
-- [`docs/how-to/activate-release-please.md`](how-to/activate-release-please.md)
-  has a 🔴 DISABLED banner.
-- `CHANGELOG.md` stays hand-rolled (always was the fallback).
+- [`bin/ship/changelog.sh`](../bin/ship/changelog.sh) — reads
+  Conventional Commits since last `stable-v*` tag, categorises (feat /
+  fix / perf / refactor / docs / test → emoji sections), prepends new
+  entry to `CHANGELOG.md`. Handles both `<type>: msg` and
+  `<type>(scope): msg` forms. `--dry-run`, `--since <ref>`,
+  `--include-chore` flags.
+- [`bin/ship/gitlab-release.sh`](../bin/ship/gitlab-release.sh) —
+  promotes a `stable-v*` tag to a GitLab Release via `glab release
+  create`. ~1 s, zero CI burn.
 
-**Swap candidates**: `semantic-release` + `@semantic-release/gitlab`
-(industry standard, GitLab-native, ~3 h); `standard-version`
-(minimal, ~2 h); hand-rolled CHANGELOG status quo (0 h, no auto
-vX.Y.Z tags).
+**Deleted** (svc — 2026-04-23) :
+- `.gitlab-ci/release.yml` release-please job
+- `config/release-please-config.json`
+- `.release-please-manifest.json`
+- `docs/how-to/activate-release-please.md` → renamed + rewritten as
+  [`changelog-workflow.md`](how-to/changelog-workflow.md)
+- release-please mentions in `ci-variables.md`, `ci-stages.md`,
+  `ci-philosophy.md`, `github-mirror.md`, `jenkins.md`, `technologies.md`,
+  `README.fr.md`, `CHANGELOG.md` header, `.config/lefthook.yml`,
+  `config/README.md`, ADR-0050
 
-**Recommendation**: `standard-version` — simplest working path.
-Defer `semantic-release` unless the team grows past 2 contributors.
+UI cleanup done in parallel MR.
+
+**User action still needed** : delete the `RELEASE_PLEASE_TOKEN` CI
+variable from both projects (nothing references it anymore — harmless
+leftover but worth cleaning). Settings path :
+`https://gitlab.com/mirador1/mirador-{service,ui}/-/settings/ci_cd`
+→ Variables → delete.
 
 
 

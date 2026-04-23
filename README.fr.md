@@ -42,7 +42,7 @@ Ce que le projet met réellement en œuvre :
   metrics) vers la LGTM, Sonar, Semgrep, Trivy / Grype / Syft / cosign /
   Dockle, OWASP Dependency-Check, tests de mutation PIT, circuit-breakers
   Resilience4j + rate-limiting Bucket4j, Flyway, Testcontainers, Workload
-  Identity Federation, release-please. Chaque choix est justifié par un
+  Identity Federation. Chaque choix est justifié par un
   ADR dans [`docs/adr/`](docs/adr/) ou dans le glossaire
   [`docs/reference/technologies.md`](docs/reference/technologies.md).
 - **Observabilité live d'un système qui tourne** : chaque couche (JVM,

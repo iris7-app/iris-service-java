@@ -104,8 +104,8 @@ file; the underlying tools (Maven, Docker, cosign) are untouched.
   have generous free tiers. Jenkins adds a self-hosting burden.
 - **Small team, no compliance constraint** — GitLab SaaS is simpler
   end-to-end.
-- **Greenfield startup** — GitLab CI + Renovate + release-please is
-  faster to set up than any Jenkins + Jenkins-Library combo.
+- **Greenfield startup** — GitLab CI + Renovate + `bin/ship/changelog.sh`
+  is faster to set up than any Jenkins + Jenkins-Library combo.
 
 The `Jenkinsfile` exists for the 30% of enterprises where Jenkins is
 the locked-in choice. If you're not in that 30%, stay on GitLab CI.

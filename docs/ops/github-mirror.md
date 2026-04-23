@@ -4,7 +4,7 @@
 
 The canonical repo is on **GitLab** (`gitlab.com/mirador1/mirador-service`
 and `.../mirador-ui`). That's where the CI pipeline, the merge-request
-workflow, the Container Registry, Renovate bot and release-please live.
+workflow, the Container Registry, and Renovate bot live.
 
 Most recruiters browse **GitHub**, not GitLab. A project invisible on
 GitHub is missing an audience at effectively zero cost to reach.
@@ -46,9 +46,11 @@ check belongs on the canonical repo's CI, it stays on GitLab.
 - **Publish Docker images.** Artifact Registry on GCP is the canonical
   registry (see ADR-0016 references in mirador-service). `ghcr.io`
   could be a future alternative but isn't on the roadmap.
-- **Release notes.** `release-please` on GitLab produces the
-  CHANGELOG and tags. GitHub Releases can be populated post-hoc if we
-  ever need a GitHub-native download page, but it's not automatic.
+- **Release notes.** `bin/ship/changelog.sh` on GitLab produces the
+  CHANGELOG entries ; `bin/ship/gitlab-release.sh` promotes each
+  `stable-v*` tag to a GitLab Release. GitHub Releases can be populated
+  post-hoc if we ever need a GitHub-native download page, but it's not
+  automatic.
 - **Dependency updates.** Renovate on GitLab handles this. Dependabot
   on GitHub is **disabled** (see `.github/dependabot.yml` with
   `enabled: false`) to avoid two bots opening conflicting bumps.
