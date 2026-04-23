@@ -158,12 +158,57 @@ Node provisioning takes 3-5 minutes after the control plane is ready. Re-run `ku
 
 ---
 
-## What's NOT in this module (stage-2 backlog)
+## Stage 2 — what's now wired (vs originally deferred)
 
-- **Public Cloud Load Balancer** (~€20/month) — needed to expose the cluster's Ingress to the Internet. Add when wiring the LGTM observability stack.
-- **NAT Gateway** — needed for HDS audit ("no public IP on workload nodes"). Stage-2.
-- **Multi-region peering** — for a mirador-staging cluster in SBG5 alongside mirador-prod in GRA9. Add when staging cluster is needed.
-- **OVH Object Storage backend** — currently `local` state. Migrate when iteration cadence slows down (see [`backend.tf`](backend.tf) for the migration recipe).
+**Updated 2026-04-23.** The original stage-1 deferred 4 items ; this section now reflects the actual stage-2 status.
+
+### ✅ OVH Object Storage backend — READY-TO-MIGRATE
+
+The `backend.tf` carries both the default `local` block (still active) AND a fully-templated `s3` block (commented out). To migrate :
+
+```bash
+# 1. Bootstrap the Object Container + S3 credentials (idempotent ; ~30s)
+bin/cluster/ovh/init-backend.sh
+# Outputs: container created (versioned) + AWS_* creds written to .env.local
+
+# 2. Edit deploy/terraform/ovh/backend.tf :
+#    - Comment the `backend "local"` block
+#    - Uncomment the `backend "s3"` block (template is fully populated)
+
+# 3. Source credentials + migrate state
+set -a ; source .env.local ; set +a
+cd deploy/terraform/ovh
+terraform init -migrate-state
+# Terraform copies local terraform.tfstate → s3://mirador-tfstate/ovh/...
+```
+
+**Cost** : Object Storage container is free up to 100 GB. Even with 1000 versions of the state, you're under the free tier (state file ~100 KB).
+
+### ✅ Adding ingress (Public Cloud LoadBalancer) — VIA K8S OVERLAY
+
+OVH's Public Cloud LoadBalancer is **provisioned by Kubernetes**, NOT by Terraform. The `ovh_cloud_project_loadbalancer` in OVH's TF provider is a *data source only* (read-only). The right path :
+
+1. Edit `deploy/kubernetes/overlays/ovh-prom/kustomization.yaml`
+2. Uncomment the `lgtm-loadbalancer-ovh-patch.yaml` patch entry
+3. `kubectl apply --server-side -k deploy/kubernetes/overlays/ovh-prom`
+
+The K8s overlay's `service.beta.kubernetes.io/ovh-loadbalancer-type: classic` annotation triggers OVH's cloud-controller to provision a Classic-tier LB (~€20/month). Without the annotation, OVH defaults to Premium (~€100/month — silent budget killer).
+
+**To get the LB's public IP after apply** :
+```bash
+kubectl get svc -n observability lgtm \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+```
+
+### ⏸ NAT Gateway (HDS-compliant nodes) — NOT POSSIBLE on Standard tier
+
+OVH's "no public IP on workload nodes" requires the **Premium tier** Managed Kubernetes (different SKU, ~3× the cost). Standard-tier nodes always get a public IP. For an HDS-eligible production deploy, switching to Premium is documented as a follow-up but out of scope for this stage.
+
+The vRack private network IS in place for node-to-node + node-to-control-plane traffic — so internal traffic doesn't traverse the public Internet (cost AND security benefit). Only outbound traffic from nodes to external services uses the public IP. For HDS audit, this nuance needs spelling out.
+
+### ⏸ Multi-region peering — DEFERRED
+
+For a `mirador-staging` cluster in SBG5 alongside `mirador-prod` in GRA9. Worth doing once we have a real staging workflow ; not justified by the demo's single-cluster setup today.
 
 ---
 
@@ -173,6 +218,8 @@ Node provisioning takes 3-5 minutes after the control plane is ready. Re-run `ku
 - [ADR-0036](../../../docs/adr/0036-multi-cloud-terraform-posture.md) — multi-cloud Terraform posture (amended by 0053)
 - [`deploy/terraform/gcp/`](../gcp/) — GCP canonical module (default deploy)
 - [`deploy/terraform/scaleway/`](../scaleway/) — Scaleway reference (EU-sovereign without HDS)
-- [`bin/cluster/ovh-up.sh`](../../../bin/cluster/ovh-up.sh) — lifecycle wrapper (TODO)
-- [`bin/budget/ovh-cost-audit.sh`](../../../bin/budget/ovh-cost-audit.sh) — monthly spend monitor (TODO)
+- [`bin/cluster/ovh/up.sh`](../../../bin/cluster/ovh/up.sh) — lifecycle wrapper
+- [`bin/cluster/ovh/down.sh`](../../../bin/cluster/ovh/down.sh) — lifecycle wrapper
+- [`bin/cluster/ovh/init-backend.sh`](../../../bin/cluster/ovh/init-backend.sh) — Object Storage backend bootstrap (stage-2)
+- [`bin/budget/ovh-cost-audit.sh`](../../../bin/budget/ovh-cost-audit.sh) — monthly spend monitor
 - OVH HDS reference : https://www.ovhcloud.com/fr/enterprise/certification-conformity/hds/

@@ -225,3 +225,10 @@ variable "node_count_max" {
   type        = number
   default     = 2
 }
+
+# Note (2026-04-23) : the Public Cloud LoadBalancer is NOT a TF resource
+# in the OVH provider — it's a data source only. To provision one, use
+# the K8s overlay's `ovh-loadbalancer-type:classic` annotation in
+# `deploy/kubernetes/overlays/ovh-prom/lgtm-loadbalancer-ovh-patch.yaml`.
+# OVH's cloud-controller-manager creates the LB on Service-type=LoadBalancer
+# at deploy time. See README.md § "Adding ingress" for the K8s-side recipe.
