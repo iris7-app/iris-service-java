@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mutations partial="false">
+  <mutation status="KILLED" mutator="org.pitest.mutationtest.engine.gregor.mutators.NegateConditionalsMutator">
+    <mutatedClass>com.example.foo.AliceController</mutatedClass>
+    <mutatedMethod>getCustomers</mutatedMethod>
+    <description>negated conditional</description>
+  </mutation>
+  <mutation status="KILLED" mutator="org.pitest.mutationtest.engine.gregor.mutators.NegateConditionalsMutator">
+    <mutatedClass>com.example.foo.AliceController</mutatedClass>
+    <mutatedMethod>postCustomer</mutatedMethod>
+    <description>negated conditional</description>
+  </mutation>
+  <mutation status="SURVIVED" mutator="org.pitest.mutationtest.engine.gregor.mutators.MathMutator">
+    <mutatedClass>com.example.bar.BobService</mutatedClass>
+    <mutatedMethod>compute</mutatedMethod>
+    <description>Replaced integer addition with subtraction</description>
+  </mutation>
+  <mutation status="NO_COVERAGE" mutator="org.pitest.mutationtest.engine.gregor.mutators.MathMutator">
+    <mutatedClass>NoPackageClass</mutatedClass>
+    <mutatedMethod>untested</mutatedMethod>
+    <description>Replaced integer multiplication</description>
+  </mutation>
+  <mutation status="TIMED_OUT" mutator="org.pitest.mutationtest.engine.gregor.mutators.NegateConditionalsMutator">
+    <mutatedClass>com.example.bar.BobService</mutatedClass>
+    <mutatedMethod>slowMethod</mutatedMethod>
+    <description>negated conditional</description>
+  </mutation>
+</mutations>
