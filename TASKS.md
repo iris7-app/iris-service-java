@@ -3,9 +3,11 @@
 Source of truth across Claude sessions. Read this first. Update when
 adding/starting/finishing a task. Delete when empty (per CLAUDE.md).
 
-**Last refresh** : 2026-04-23 23:38 — after 8-tag day (svc 1.0.39→1.0.42 +
-UI 1.0.40→1.0.42). Historical DONE entries collapsed to one-line refs ;
-detail lives in `git log` + ADRs + tag annotations.
+**Last refresh** : 2026-04-24 00:42 — after batch waves : security tabs
+(SqliTab + XssTab + IdorTab + JwtTab + AuditTab in one MR `!112`) + svc
+`bin/cluster/test-all.sh` (one-shot cluster validation, MR `!180`).
+Historical DONE entries collapsed to one-line refs ; detail lives in
+`git log` + ADRs + tag annotations.
 
 ---
 
@@ -15,6 +17,7 @@ Last 10 stable checkpoints (most recent first) :
 
 | Tag | Theme |
 |---|---|
+| svc [stable-v1.0.43](https://gitlab.com/mirador1/mirador-service/-/releases/stable-v1.0.43) | ADR-0056 (widget extraction pattern) |
 | svc [stable-v1.0.42](https://gitlab.com/mirador1/mirador-service/-/releases/stable-v1.0.42) | ADR index refresh + audit artefact |
 | svc [stable-v1.0.41](https://gitlab.com/mirador1/mirador-service/-/releases/stable-v1.0.41) | Coverage : ApiError 0→100% + Ollama DOWN branch |
 | svc [stable-v1.0.40](https://gitlab.com/mirador1/mirador-service/-/releases/stable-v1.0.40) | OVH per-resource timing docs |
@@ -22,6 +25,10 @@ Last 10 stable checkpoints (most recent first) :
 | UI [stable-v1.0.42](https://gitlab.com/mirador1/mirador-ui/-/releases/stable-v1.0.42) | Security MechanismsTab widget extraction (B-7-4) |
 | UI [stable-v1.0.41](https://gitlab.com/mirador1/mirador-ui/-/releases/stable-v1.0.41) | CustomerDetailPanel + CreateForm + ConfirmModal widgets (B-7-2b) |
 | UI [stable-v1.0.40](https://gitlab.com/mirador1/mirador-ui/-/releases/stable-v1.0.40) | Dashboard B-6b widget split (3 widgets) |
+
+**In-flight MRs (will become next tags once main goes green)** :
+- UI [!112](https://gitlab.com/mirador1/mirador-ui/-/merge_requests/112) → 1.0.43 — security tabs SqliTab/XssTab/IdorTab/JwtTab/AuditTab batched (5 widgets in one commit, parent .html 542→135 LOC, .ts 547→430 LOC)
+- svc [!180](https://gitlab.com/mirador1/mirador-service/-/merge_requests/180) → 1.0.44 — `bin/cluster/test-all.sh` one-shot cluster validation suite (4 layers : cluster / app / liveness / observability ; --quick + --json modes)
 
 **Major waves shipped 2026-04-22** : Phase B-2/B-4 CI modularisation
 (svc 2619→173 LOC + UI 1086→144 LOC) ; Phase Q (backend ↔ build-tool
@@ -63,8 +70,8 @@ Diminishing returns ; no SonarCloud blocker. Defer until Phase C lands.
 | `dashboard.component.html` | 179 | ✅ B-6b done (-65 % from 505) |
 | `customers.component.ts` | 836 | ✅ B-7-2b done (DetailPanel + CreateForm extracted) |
 | `customers.component.html` | 252 | ✅ B-7-2b done (-49 %) |
-| `security.component.ts` | 426 | ⚠️ B-7-4 partial (Mechanisms tab extracted ; 7 tabs remain : SQL/XSS/CORS/IDOR/JWT/Headers/Audit) |
-| `security.component.html` | 586 | ⚠️ Partial (need 7 more tab extractions, each ~50-100 LOC) |
+| `security.component.ts` | 430 | ✅ B-7-4 done (8 widgets : Mechanisms + CORS + Headers + SqliTab + XssTab + IdorTab + JwtTab + AuditTab — all extracted) |
+| `security.component.html` | 135 | ✅ B-7-4 done (-77 % from 586) |
 | `diagnostic.component.ts` | 628 | 🔧 PENDING — 7 scenario methods (~50-100 LOC each), tightly coupled to parent signals + log lines. Multi-hour refactor. |
 | `about.component.ts` | 652 | 🔧 PENDING — 8 tabs, similar pattern to security. |
 | `chaos.component.ts` | 625 | 🔧 PENDING — TS-heavy (185 LOC html only) ; refactor harder than template extractions. |
@@ -98,9 +105,13 @@ Diminishing returns ; no SonarCloud blocker. Defer until Phase C lands.
   few `./run.sh obs` runs.
 - **OVH staging cluster** (when staging is needed) — multi-region
   peering, NAT Gateway for HDS audit. Out of scope for portfolio demo.
-- **ADR for "Widget extraction pattern"** — codify the B-6b/B-7 widget-
-  per-file approach (signal inputs + event outputs, inline template for
-  small widgets, separate .html for >150 LOC).
+<!-- ADR-0056 (Widget extraction pattern) shipped 2026-04-23, svc 1.0.43 -->
+- **About 14-tab extraction** (~50 min batch, low risk) — about.component
+  has 14 mostly-presentational tabs (652 ts + 613 html). Same shape as
+  security but pure-static widgets ; almost no shared signals. Plus
+  `technologies` array (~500 LOC) deserves its own `about-tech-data.ts`
+  file. Decision pending on whether to batch all 14 in one MR or split
+  data file alone first then tabs in a second.
 
 ---
 
