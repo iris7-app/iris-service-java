@@ -16,6 +16,7 @@
 #   bin/budget/budget.sh set <amount>      # raise / lower cap, e.g. bin/budget/budget.sh set 20
 #   bin/budget/budget.sh recreate          # nuke + re-create (if ever deleted)
 #   bin/budget/budget.sh spend             # month-to-date actual spend (requires BigQuery export — see note)
+#   bin/budget/budget.sh ovh [--delete]    # OVH-side cost audit (per ADR-0053 — OVH is 2nd canonical target)
 #   bin/budget/budget.sh help
 # =============================================================================
 
@@ -127,14 +128,22 @@ spend)
   echo "  bin/budget/gcp-cost-audit.sh"
   ;;
 
+ovh)
+  # Per ADR-0053: OVH is the canonical 2nd K8s target alongside GCP.
+  # Budget there is governed separately (no equivalent of `gcloud billing
+  # budgets` — OVH has no native budget API). Cost is enforced via the
+  # Terraform module's max_nodes ceiling AND this audit script.
+  exec "$(dirname "$0")/ovh-cost-audit.sh" "${@:2}"
+  ;;
+
 help|-h|--help)
-  sed -n '2,19p' "$0"
+  sed -n '2,21p' "$0"
   ;;
 
 *)
   echo "unknown command: $cmd"
   echo
-  sed -n '10,19p' "$0"
+  sed -n '10,21p' "$0"
   exit 1
   ;;
 esac
