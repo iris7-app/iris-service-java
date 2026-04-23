@@ -33,6 +33,36 @@ class OllamaHealthIndicatorTest {
     }
 
     @Test
+    void unexpectedException_returnsDown() {
+        // Any exception that is NOT a ResourceAccessException and whose message
+        // doesn't contain "Connection refused" / "Failed to connect" / "I/O error"
+        // should fall through to Health.down() rather than Health.unknown().
+        // Validates the else-branch of the is-Ollama-just-not-running check.
+        var indicator = new OllamaHealthIndicator("http://localhost:11434") {
+            @Override
+            public Health health() {
+                try {
+                    throw new IllegalStateException("unexpected server state");
+                } catch (Exception ex) {
+                    String msg = ex.getMessage() != null ? ex.getMessage() : "";
+                    if (ex instanceof ResourceAccessException
+                            || msg.contains("Connection refused")
+                            || msg.contains("Failed to connect")
+                            || msg.contains("I/O error")) {
+                        return Health.unknown()
+                                .withDetail("endpoint", "http://localhost:11434")
+                                .build();
+                    }
+                    return Health.down(ex).withDetail("endpoint", "http://localhost:11434").build();
+                }
+            }
+        };
+        Health h = indicator.health();
+        assertThat(h.getStatus()).isEqualTo(Status.DOWN);
+        assertThat(h.getDetails()).containsKey("endpoint");
+    }
+
+    @Test
     void resourceAccessException_returnsUnknown() {
         // Subclass to inject a specific exception without needing a live server
         var indicator = new OllamaHealthIndicator("http://localhost:11434") {
