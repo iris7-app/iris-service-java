@@ -167,6 +167,10 @@ section_file_length() {
     # svc — kube-prometheus-stack chart rendered YAML (generated)
     'kube-prom-stack-crds.yaml'
     'kube-prom-stack-rendered.yaml'
+    # svc — OWASP dep-check NVD cache (auto-downloaded by mvn verify -Preport)
+    '.owasp-data/publishedSuppressions.xml'
+    # svc — terraform provider changelog (auto-installed by terraform init)
+    '.terraform/providers/'
   )
   # Build the find command, scoped to hand-written source + doc extensions,
   # excluding generated + vendored trees aggressively.

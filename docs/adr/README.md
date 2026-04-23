@@ -24,6 +24,11 @@ navigational, no file layout change.
 - **Accepted**: 44
 - **Superseded**: 3 (ADR-0003 → ADR-0013; ADR-0008 → ADR-0044; ADR-0037 → Path B embedded)
 - **Deprecated**: 0
+- **Reserved (never drafted)**: 0045, 0046 — consolidated into 0041/0042
+  before acceptance (see commit
+  [`33e31e5`](https://gitlab.com/mirador1/mirador-service/-/commit/33e31e5)).
+  The numbers are intentionally skipped in the flat index ; don't
+  re-use them for new ADRs.
 
 ### Supersession graph
 
@@ -130,11 +135,14 @@ monotonic across supersessions.
 | 0043 | Accepted | [Pin GitHub Actions by full commit SHA (not tag)](0043-pin-github-actions-by-commit-sha.md) |
 | 0044 | Accepted | [Hexagonal considered, feature-slicing retained (with ports-and-adapters lite on outbound events)](0044-hexagonal-considered-feature-slicing-retained.md) |
 | 0047 | Accepted | [Auth0 consent screen stays for social logins (Google OAuth2)](0047-auth0-consent-for-social-logins.md) |
-| 0048 | Accepted | [Mirador alert rules evaluate in Prometheus but don't route via Alertmanager](0048-prometheus-alert-rules-evaluate-but-dont-route.md) |
+| 0048 | Amended | [Mirador alert rules evaluate in Prometheus but don't route via Alertmanager](0048-prometheus-alert-rules-evaluate-but-dont-route.md) |
 | 0049 | Accepted | [CI shields (`allow_failure: true`) require a dated exit ticket](0049-ci-shields-with-dated-exit-tickets.md) |
-| 0050 | Proposed | [CI YAML modularisation — `ci/includes/*.yml` per concern](0050-ci-yaml-modularisation-plan.md) |
+| 0050 | Accepted | [CI YAML modularisation — `ci/includes/*.yml` per concern](0050-ci-yaml-modularisation-plan.md) |
 | 0051 | Accepted | [JPA entity = domain model (accept the coupling)](0051-jpa-entity-as-domain-model.md) |
 | 0052 | Accepted | [Backend stays ignorant of build/quality tools (tightens ADR-0026)](0052-backend-not-coupled-to-build-tools.md) |
+| 0053 | Accepted | [OVH Cloud as 2nd canonical Kubernetes target](0053-ovh-canonical-target.md) |
+| 0054 | Scaffolded | [Dual-export OTLP telemetry to GitLab Observability](0054-gitlab-observability-dual-export.md) |
+| 0055 | Accepted | [Shell-based release automation (no semantic-release)](0055-shell-based-release-automation.md) |
 <!-- ADR-INDEX:END -->
 
 ## Hierarchical index (by theme)
