@@ -517,6 +517,35 @@ reportant ce qui est proposé (tokens, endpoints, plan-lock).
 
 ## 🟢 Nice-to-have
 
+### Régénérer la GIF demo du README (header)
+
+`docs/media/demo.gif` (10 MB, 2026-04-21) est la première image que voit
+un visiteur du repo (README.md ligne 55). Le contenu visuel a dérivé
+depuis l'enregistrement (B-7 wave a refondu quality/security/dashboard
++ Phase 4.1 a re-câblé les SSE leaks + le tour-overlay a évolué). Le
+script de régénération existe et est documenté inline en bas du README :
+
+```bash
+bin/record-demo.sh   # needs ffmpeg + the local stack up (./run.sh all)
+```
+
+**Pre-flight** (cf. memory `feedback_demo_recording_workflow.md`) :
+1. `bin/healthcheck-all.sh` doit retourner all-green avant de lancer
+   l'enregistrement (sinon le scénario va échouer au milieu).
+2. Stack locale up : `./run.sh all` (db + kafka + obs + app +
+   docker desktop tools).
+3. Vérifier dwell timing dans le script — si trop court, le viewer
+   ne distingue pas les sections; trop long → GIF gonfle.
+
+**Estimé** : ~30 min (5 enregistrement + 10 GIF compression + 15
+review qualité visuelle + commit).
+
+**Quand le faire** : après la prochaine release stable significative
+(ex: v1.1.0 quand on franchira un palier feature). Pas urgent —
+l'ancienne GIF reste plausiblement représentative pour un visiteur
+qui découvre le projet, juste un peu en retard sur les derniers
+splits.
+
 ### Re-enable Alertmanager when project moves beyond demo
 
 ADR-0048 documents the deliberate "evaluate but don't route" decision for
