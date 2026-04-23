@@ -5,9 +5,9 @@ adding/starting/finishing a task. Delete when empty (per CLAUDE.md).
 
 ---
 
-## 🌍 Phase OVH — DELIVERED ✅ (svc stable-v1.0.33 + stage-2 in svc stable-v1.0.36 imminent)
+## 🌍 Phase OVH — DELIVERED ✅ (svc stable-v1.0.33 + stable-v1.0.36)
 
-Stage 1 (11/11 sub-tasks) shipped 2026-04-23 via [!162](https://gitlab.com/mirador1/mirador-service/-/merge_requests/162). Stage 2 follow-through (this commit) :
+Stage 1 (11/11 sub-tasks) shipped 2026-04-23 via [!162](https://gitlab.com/mirador1/mirador-service/-/merge_requests/162). Stage 2 shipped via [!165](https://gitlab.com/mirador1/mirador-service/-/merge_requests/165) → [stable-v1.0.36](https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.36) :
 
 - ✅ OVH Object Storage backend — fully wired (commented-out template + `bin/cluster/ovh/init-backend.sh` bootstrap script)
 - ✅ Public Cloud LoadBalancer — documented K8s-overlay path (NOT a TF resource ; OVH provider only exposes data source)
@@ -17,6 +17,50 @@ Stage 1 (11/11 sub-tasks) shipped 2026-04-23 via [!162](https://gitlab.com/mirad
 ### Handoff to user (as before)
 - Apply requires user-supplied OVH credentials (Mirador session has none)
 - First `terraform apply` is the user's, then `bin/cluster/ovh/init-backend.sh` migrates state to S3
+
+---
+
+## 📊 Sonar coverage — TARGET EXCEEDED ✅ (2026-04-23)
+
+Local SonarQube scan after post-compaction test waves + JaCoCo exclusions cleanup :
+
+| Metric | Apr 18 (pre) | Apr 23 mid | Apr 23 final | Total delta |
+|---|---|---|---|---|
+| **Overall coverage** | ~47% | 57.1% | **89.7%** | **+42.7 pp** |
+| Line coverage | — | 53.8% | **92.7%** | — |
+| Branch coverage | — | 84.2% | 78.8% | — |
+| Test count | ~500 | 628 | 628 | +128 |
+| Uncovered lines | — | 936 | **147** | -789 |
+
+**Target 80% exceeded**. Two drivers :
+1. **+128 svc tests** across 15 files (CustomerController 21, QualityReportEndpoint 11, KafkaConfig 6, WebSocketConfig 4, OpenApiConfig 11, SecurityConfig 9, KeycloakConfig 6, ObservabilityConfig 5, ApiSectionProvider 5, StartupTimeTracker 4, TestReportInfoContributor 4, AuditPage 4, OtelLogbackInstaller 2, ShedLockConfig 2, HttpClientConfig 2, ChaosConfig 2, QualityReportGenerator 3)
+2. **Bogus JaCoCo exclusions removed** — 10 @Configuration classes + all observability.quality.parsers/ + providers/ + QualityReportEndpoint + TestReportInfoContributor + OtelLogbackInstaller + QualityReportGenerator were excluded from coverage reporting, so the 128 new tests weren't being counted. Un-excluding them yielded +32.6 pp (57.1 → 89.7) without writing a single test. Only PyroscopeConfig stays excluded (static API, hard to mock).
+
+---
+
+## 🚦 Phase C svc — blocked by Checkstyle volume (inventory 2026-04-23)
+
+Inventory ran via existing `target/checkstyle-result.xml` (Apr 18, stale but representative) : **3,400 total violations**, distribution :
+
+| Rule | Count | % | Assessment |
+|---|---|---|---|
+| **IndentationCheck** | 2660 | 78% | Config drift — Google base expects 2-space, codebase likely mixed. Low-value to flip. |
+| **LineLengthCheck** | 301 | 9% | Real style (> 120 chars). Fixable incrementally. |
+| **CustomImportOrderCheck** | 161 | 5% | Tooling mismatch — IDE format-on-save would clear these. |
+| JavadocParagraphCheck | 58 | 2% | Low severity. |
+| NeedBracesCheck | 51 | 1.5% | `if (x) stmt;` without braces. Worth fixing. |
+| Others (< 50 each) | ~170 | 5% | Long tail. |
+
+**Phase C flip NOT viable as-is** — TASKS.md criterion was "if > 20 violations → suppressions baseline + per-rule decision". 3,400 is 170× that threshold.
+
+Pragmatic path (future session, ~3-4h):
+1. **Silence IndentationCheck globally** (style-only, no correctness value) — drops to ~740 violations
+2. Clear LineLengthCheck (301) via `mvn formatter:format` OR manual review
+3. Clear CustomImportOrderCheck (161) via IDE organize-imports
+4. Flip `failOnViolation=true` once < 50 remaining
+5. Update pom.xml config per ADR-00XX (Phase C acceptance criteria)
+
+Not quick enough for this session. Deferred to a dedicated Phase C session.
 
 ---
 

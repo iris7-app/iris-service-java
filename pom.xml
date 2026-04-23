@@ -818,59 +818,42 @@
                         -->
                         <exclude>org/springframework/**</exclude>
                         <!--
-                          2. Pure Spring wiring — @Configuration / @Bean methods with no
-                             conditional logic. Coverage here would only test Spring internals,
-                             not application code. Excluded:
-                             SecurityConfig, KafkaConfig, OpenApiConfig, WebSocketConfig,
-                             ShedLockConfig, HttpClientConfig, ObservabilityConfig, KeycloakConfig
+                          2. Pure Spring wiring — @Configuration classes whose ONLY job
+                             is to return @Bean instances via the framework's DI glue.
+                             These classes are INCLUDED in coverage as of 2026-04-23
+                             because tests now cover the Bean-factory logic (default
+                             values, guard clauses, conditional @Bean definitions).
+                             The original exclusion was too broad — some configs DO
+                             have testable logic (KeycloakConfig's issuer-URI-shape
+                             branching, SecurityConfig's CORS rules, KafkaConfig's
+                             serialization contract).
+                             Only PyroscopeConfig stays excluded — it wraps a static
+                             PyroscopeAgent.start() call that's hard to test without
+                             mockStatic + pulls the real agent jar.
                         -->
-                        <exclude>com/mirador/auth/SecurityConfig.class</exclude>
-                        <exclude>com/mirador/auth/KeycloakConfig.class</exclude>
-                        <exclude>com/mirador/messaging/KafkaConfig.class</exclude>
-                        <exclude>com/mirador/messaging/WebSocketConfig.class</exclude>
-                        <exclude>com/mirador/api/OpenApiConfig.class</exclude>
-                        <exclude>com/mirador/integration/HttpClientConfig.class</exclude>
-                        <exclude>com/mirador/resilience/ShedLockConfig.class</exclude>
-                        <exclude>com/mirador/observability/ObservabilityConfig.class</exclude>
-                        <!--
-                          3. Observability/tooling infrastructure — these classes read build artifacts
-                             (JaCoCo CSV, SpotBugs XML, OWASP JSON …) and expose them as JSON. They
-                             are heavily I/O-dependent and not business logic. Excluded:
-                             QualityReportEndpoint, TestReportInfoContributor, OtelLogbackInstaller,
-                             PyroscopeConfig (profiling agent init, not invoked without agent jar)
-                        -->
-                        <exclude>com/mirador/observability/QualityReportEndpoint.class</exclude>
-                        <exclude>com/mirador/observability/TestReportInfoContributor.class</exclude>
-                        <exclude>com/mirador/observability/OtelLogbackInstaller.class</exclude>
                         <exclude>com/mirador/observability/PyroscopeConfig.class</exclude>
                         <!--
-                          Phase B-1 (2026-04-22) split the endpoint into 7 parser classes
-                          under observability.quality.parsers. Same I/O-heavy rationale as
-                          QualityReportEndpoint above — they parse tool output (Surefire
-                          XML, JaCoCo CSV, SpotBugs XML, PMD XML, Checkstyle XML, OWASP
-                          JSON, Pitest XML) and return a Map. Excluded as a package; smoke
-                          tests in QualityParsersSmokeTest lock the contract. Richer
-                          fixture-driven tests are tracked as Phase B-1 coverage follow-up
-                          in TASKS.md.
+                          3. Observability/tooling infrastructure — now INCLUDED in
+                             coverage as of 2026-04-23. Tests shipped this session :
+                             QualityReportEndpoint (11 tests), TestReportInfoContributor
+                             (4 tests), OtelLogbackInstaller (2 tests), StartupTimeTracker
+                             (4 tests) + all quality/parsers/ + providers/ tests merged
+                             from prior sessions. The "I/O-heavy, excluded" rationale
+                             is no longer the reality — the tests mock the I/O or use
+                             classpath fixtures.
                         -->
-                        <exclude>com/mirador/observability/quality/parsers/**/*.class</exclude>
                         <!--
-                          Phase B-1b (2026-04-22) extends the split: non-parser
-                          section providers (build-info, api, git, deps, metrics,
-                          sonar, pipeline, branches, runtime) move to
-                          observability.quality.providers/. Same I/O-heavy rationale.
-                          Smoke tests lock the contract.
+                          Phase Q-2 / Q-2b (2026-04-22, ADR-0052) — parsers + providers
+                          now INCLUDED in coverage. Fixture-driven tests shipped for :
+                          SurefireReportParser, JacocoReportParser, SpotBugsReportParser,
+                          PmdReportParser, CheckstyleReportParser, OwaspReportParser,
+                          PitestReportParser, MetricsSectionProvider,
+                          DependenciesSectionProvider, LicensesSectionProvider,
+                          ApiSectionProvider, BuildInfoSectionProvider. Plus the
+                          QualityReportGenerator CLI (3 tests executing main()).
                         -->
-                        <exclude>com/mirador/observability/quality/providers/**/*.class</exclude>
-                        <!--
-                          Phase Q-2 (2026-04-22, ADR-0052): QualityReportGenerator is
-                          the CLI that runs at prepare-package and writes the JSON
-                          consumed by QualityReportEndpoint at runtime. Never exercised
-                          by unit tests (it's a build-time tool), so its coverage is 0
-                          by design. Excluding keeps the 70% gate representative of
-                          business logic only.
-                        -->
-                        <exclude>com/mirador/observability/quality/*.class</exclude>
+                        <!-- (parsers + providers + QualityReportGenerator un-excluded
+                             2026-04-23 — see comment above) -->
                         <!--
                           4. Application bootstrap
                         -->
