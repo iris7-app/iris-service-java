@@ -85,14 +85,46 @@ Copy `terraform.tfvars.example` → `terraform.tfvars` (gitignored), fill in the
 cd deploy/terraform/ovh
 terraform init                  # ~30s (downloads ovh provider)
 terraform plan -out=plan.out    # ~10s, shows what will be created
-terraform apply plan.out        # ~5-7 min (cluster provision)
+terraform apply plan.out        # ~12 min total — see breakdown below
 
 # Get the kubeconfig
 terraform output -raw kubeconfig > ~/.kube/ovh-mirador.yaml
 chmod 600 ~/.kube/ovh-mirador.yaml
 export KUBECONFIG=~/.kube/ovh-mirador.yaml
-kubectl get nodes               # should show the 1 B2-7 node Ready
+kubectl get nodes               # should show the 1 b2-7 node Ready
 ```
+
+### Per-resource wall-clock timings
+
+Measured 2026-04-23 on first real apply against the `mirador1` group
+project (`65ea8d…`), GRA9 region, during Q2 activation :
+
+| Resource | Wall-clock | Notes |
+|---|---|---|
+| `ovh_cloud_project_network_private.mirador` | **48 s** | VLAN 100 attached to the vRack |
+| `ovh_cloud_project_network_private_subnet.mirador` | **4 s** | 192.168.100.0/24, DHCP 10-250 |
+| `ovh_cloud_project_kube.mirador` | **4 m 55 s** | Managed K8s control plane (v1.31.13 at the time) + first apiserver/etcd bring-up |
+| `ovh_cloud_project_kube_nodepool.default` | **6 m 45 s** | 1× b2-7 (autoscale 1-2). ~4 min node provisioning + ~3 min cluster-join |
+| **Total** | **~12 min** | Cluster pingable via kubectl immediately after, all kube-system pods Running within 10 s more |
+
+Compare to GCP (ADR-0022 / `bin/cluster/demo/up.sh`) : **~20 min** —
+GKE Autopilot's VPC peering + managed-by-Google overhead. OVH is
+~40 % faster on cold apply for this scope.
+
+### Gotchas we hit on first apply (fixed in-tree)
+
+Both bugs are fixed as of commit `ada4896` ; listed here so reviewers
+understand the current HCL shape :
+
+- **`private_network_id` needs the OpenStack UUID**, not the
+  vRack-style `pn-<id>_<vlan>` exposed as `.id`. Use
+  `regions_attributes[*].openstackid` filtered on our region.
+  OVH API returns HTTP 400 "Private network pn-X is not a correct
+  uuid" without this. See
+  [github.com/ovh/terraform-provider-ovh/issues/355](https://github.com/ovh/terraform-provider-ovh/issues/355).
+- **Flavor names are lowercase** (`b2-7`, not `B2-7`). OVH API
+  returns HTTP 404 "Flavor B2-7 not found" with the uppercase form,
+  despite the docs inconsistently showing both.
 
 ## Apply (OpenTofu opt-in, per [ADR-0053 § Tooling](../../../docs/adr/0053-ovh-canonical-target.md#tooling--terraform-by-default-opentofu-opt-in))
 
@@ -109,14 +141,33 @@ The CI runs both in parallel on every MR (per ADR-0053 § Tooling) so dual-compa
 
 ```bash
 cd deploy/terraform/ovh
-terraform destroy               # ~5 min (cluster + nodes + network)
+terraform destroy               # ~2 min total — see breakdown below
 ```
 
 OR via the helper :
 
 ```bash
-bin/cluster/ovh-down.sh         # wraps the above, confirms cost stopped
+bin/cluster/ovh/down.sh         # wraps the above, confirms cost stopped
 ```
+
+### Per-resource wall-clock timings (destroy)
+
+Measured 2026-04-23 on the same project, same session as apply above :
+
+| Resource | Wall-clock | Notes |
+|---|---|---|
+| `ovh_cloud_project_kube_nodepool.default` | **56 s** | Node drains + OVH-side VM shutdown |
+| `ovh_cloud_project_kube.mirador` | **55 s** | Control plane teardown + OVH managed cleanup |
+| `ovh_cloud_project_network_private_subnet.mirador` | **3 s** | Fast — nothing holding references anymore |
+| `ovh_cloud_project_network_private.mirador` | **14 s** | Last to go ; freed once subnet is gone |
+| **Total** | **~2 min 8 s** | Billing flips to €0/month the moment the kube cluster is destroyed |
+
+**Project + vRack persist** (both free) — subsequent `up.sh` reuses
+them without re-doing the Step 1/2 manual prerequisites.
+
+Compare to GCP : destroy takes ~8-10 min because deleting a private
+GKE cluster triggers VPC-peering teardown + firewall cleanup. OVH
+teardown is notably faster.
 
 ---
 
