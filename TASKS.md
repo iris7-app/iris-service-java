@@ -443,12 +443,13 @@ Provisioning a new GCS bucket costs money (Cloud Storage ~€0.02/GB/month
   as "safe" with justification) on https://sonarcloud.io
 - **UI `new_coverage = 0%`** — same shape, real test work.
 
-### grype:scan shield — find an arm64 path
+### ~~grype:scan shield — find an arm64 path~~ ✅ DONE 2026-04-21
 
-`anchore/grype:v0.87.0-debug` is amd64-only → Go runtime panic on
-macbook-local arm64. Options: bump to a newer multi-arch debug variant if
-released, scope to schedule-only on SaaS amd64 runner, or drop the job
-until grype ships arm64. Not safe to flip without one of these.
+Bumped `anchore/grype:v0.87.0-debug` → `v0.111.0-debug` (multi-arch :
+amd64 + arm64 + ppc64le + s390x, verified via `docker manifest
+inspect`). Shield removed in same commit. macbook-local arm64 runner
+now runs the native arm64 binary ; `Go runtime fatal error:
+lfstack.push` is gone. Confirmed green in last main pipeline.
 
 ### ADR follow-ups from kube-prometheus-stack overlay (ADR-0039)
 
