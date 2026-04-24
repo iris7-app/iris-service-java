@@ -94,10 +94,14 @@ Diminishing returns ; no SonarCloud blocker. Defer until Phase C lands.
 | `chaos.component.html` | 185 | ⏭ B-7-8 skipped — file already DRY via `@for actions`, under 1000 LOC cap, extraction would be marginal |
 | `customers.component.ts` | 457 | ✅ B-7-2c DONE (4 services : ImportExport + Selection + Crud + ListState ; 838→457 LOC -46%) |
 | `database.component.ts` | 128 | ✅ B-7-7b DONE (data extracted to HEALTH_CHECKS + SQL_PRESET_CATEGORIES files ; 522→128 LOC -75%) |
-| `diagnostic.component.ts` | 628 | 🔧 PENDING — 7 scenario methods (~50-100 LOC each), tightly coupled to parent signals + log lines. Below 1000 LOC threshold (no urgency per hygiene rule), multi-hour refactor when touched. |
 | `about.component.ts` | 77 | ✅ B-7-5 DONE (parent kept thin ; data in about-data.ts 605 LOC ; 3 widgets extracted) |
-| `chaos.component.ts` | 625 | 🔧 PENDING — TS-heavy (185 LOC html only) ; below 1000 LOC threshold (no urgency), refactor harder than template extractions. |
-| `dashboard.component.ts` | 670 | 🔧 PENDING — below 1000 LOC threshold (no urgency), 3 widgets already extracted (B-6b). Remaining ~5 visualisation panels could go but each refactor is ~30-60 min. |
+
+**Phase B-7 considered DONE 2026-04-24 evening** per user directive
+"abandonne les splits pour les fichiers de moins de 100 lignes" —
+remaining files (`diagnostic.component.ts` 628, `chaos.component.ts` 625,
+`dashboard.component.ts` 670) are all below the 1000 LOC hygiene
+threshold and the marginal value of further extraction doesn't justify
+multi-hour effort. Re-open ONLY if any of these crosses 1000 LOC.
 
 ---
 
@@ -171,10 +175,13 @@ of fixes shipped :
   stack up). Visual content has drifted since 2026-04-21 enregistrement
   (B-7 wave + Phase 4.1 SSE + tour-overlay tweaks). Run via
   `bin/record-demo.sh` after `bin/healthcheck-all.sh` returns all-green.
-- **Sonar coverage 89.7 % → 95 %+** — diminishing returns ; need ~50-100
-  tests across AggregationService catch branches, BioService circuit-
-  breaker paths, KafkaHealthIndicator UP path (needs Testcontainers).
-  Multi-session work.
+<!-- Sonar coverage push 89.7 % → 95 %+ ABANDONED 2026-04-24 evening
+     per user directive "pas besoin de travailler plus sur coverage à
+     80 %". Current coverage is healthy ; pushing to 95 % requires
+     50-100 tests with diminishing returns and creates test-maintenance
+     burden disproportionate to actual quality gain. Re-open only if a
+     SonarCloud quality gate explicitly demands a higher threshold. -->
+
 - **GitLab Observability** activée 2026-04-23 (ADR-0054) — usage data
   surfaces in https://gitlab.com/groups/mirador1/-/observability after a
   few `./run.sh obs` runs.
