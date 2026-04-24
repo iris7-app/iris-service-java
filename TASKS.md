@@ -129,28 +129,39 @@ After 1.0.51 + 1.0.52 surgical waves, 3 SB3 structural issues remain :
 
 Estimated dedicated wave : 1-2 hours per item.
 
-## 🔴 UI CI debt — 4 jobs allow_failure=True (pre-existing)
+## 🟡 UI CI debt — partial progress 2026-04-24 evening
 
-The UI main pipeline has 4 jobs shielded with `allow_failure: true` :
+Started day with 4 `allow_failure=true` jobs failing on UI main. Wave
+of fixes shipped :
 
-- **dockle** : `no image found in image index for architecture "arm64", variant "v8"` —
-  Kaniko build produces amd64 only, dockle tries to scan multi-arch
-  index and finds no arm64 variant. Fix : either build multi-arch
-  via `docker buildx --platform linux/amd64,linux/arm64` OR pin
-  dockle to scan amd64 only.
-- **grype:scan** : `/busybox/sh: eval: line 186: grype: not found` —
-  binary path issue in `anchore/grype:v0.111.0-debug` image. Either
-  switch to non-debug variant or use `which grype` to locate.
-- **sonarcloud** : flaky `WebSocket connection closed abnormally`
-  on the JS plugin's `WebSensor`. Sonar's JS analyzer opens a
-  child Node process WebSocket — sometimes flaky on shared CI.
-  Fix : retry policy OR upgrade sonar-scanner-cli.
-- **e2e:kind** : Playwright failure (cleanup successful but artifacts
-  missing). Need full job log to diagnose root spec failure.
+- **grype:scan** : ✅ FIXED via [!120](https://gitlab.com/mirador1/mirador-ui/-/merge_requests/120) (svc 1.0.50 wave) — `/grype` absolute path, shield removed. Confirmed green on UI main pipeline #2478287707.
+- **e2e:kind** : ✅ FIXED via [!121](https://gitlab.com/mirador1/mirador-ui/-/merge_requests/121) (svc 1.0.51-aligned wave) — `docker compose up --wait --wait-timeout 120` waits for postgres healthy before Spring Boot Flyway init. Pending validation on next UI main pipeline.
+- **dockle** : ✅ FIXED via [!121](https://gitlab.com/mirador1/mirador-ui/-/merge_requests/121) — adopted svc tarball pattern (`docker:28` image + `docker pull --platform linux/amd64` + `docker save` + `dockle --input`). Battle-tested on svc 7/7. Pending validation on next UI main pipeline.
 
-Per CLAUDE.md "Pipelines stay green — no `allow_failure: true` as
-a permanent shield" → these need fixing. Each is ~30-60 min of
-investigation. Bundle into a "ui-ci-cleanup" wave.
+**🔴 Still pending — sonarcloud WebSocket flake** :
+
+  Token rotated 2026-04-24 evening (user updated GitLab CI/CD vars
+  on both repos). Auth now works ✅. But the FAILURE MODE is
+  different from "Project not found" — it's `WebSocket connection
+  closed abnormally` during JS analysis (Sonar's JS plugin opens a
+  child Node process WebSocket — sometimes crashes mid-analysis).
+
+  Verified : pipeline #2478287707 sonarcloud failed at 20:20 with
+  `IllegalStateException: WebSocket connection closed abnormally`.
+  Already at `sonar.javascript.node.maxspace=4096` and
+  `node.timeout=600`.
+
+  Possible fixes (deferred — needs runtime experimentation):
+    - Bump `node.maxspace` to 8192 (if runner has RAM)
+    - Add `retry: { max: 1, when: runner_system_failure }` (catches
+      some flakes, but CLAUDE.md restricts retry to runner failures
+      only — WebSocket close is `script_failure`, won't retry)
+    - Upgrade `sonarsource/sonar-scanner-cli:11` to a newer image
+      if Sonar fixed the WebSocket implementation upstream
+    - Reduce JS analysis parallelism via `sonar.javascript.workerCount`
+
+  Effort : ~1-2h trial-and-error per attempt. Defer to dedicated
+  evening session.
 
 ---
 
