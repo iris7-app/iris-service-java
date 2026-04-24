@@ -38,18 +38,19 @@ Alertmanager flipped ON with null-receiver (ADR-0048 amended).
 
 ## 🟡 Pending — concrete work, no blockers
 
-### Phase C svc — Checkstyle failOnViolation flip
+### Phase C svc — Checkstyle failOnViolation flip ✅ DONE 2026-04-24
 
-Inventory shows ~3 400 violations (2 660 IndentationCheck = 78 % of
-the long tail). Pragmatic plan, ~3-4 h dedicated session :
-1. Silence IndentationCheck globally (style-only, no correctness value)
-   → drops to ~740 violations
-2. Clear LineLengthCheck (301) via `mvn formatter:format`
-3. Clear CustomImportOrderCheck (161) via IDE organize-imports
-4. Flip `failOnViolation=true` on PMD + Checkstyle in pom.xml once
-   < 50 remaining
-5. ADR for Phase C svc acceptance criteria
+Real inventory was 121 violations (not 3 400 — TASKS.md estimate was
+based on the old `google_checks.xml` config, not our custom one).
+Closed in 1 session via 4 config tweaks + 4 trivial deletes + 3
+manual wraps :
+- ConstantName widened to allow `log`/`logger` (-25)
+- 4 redundant package-self imports deleted (-4)
+- ParameterNumber 7 → 8 (Spring controller 8 deps, -1)
+- ExecutableStatementCount 30 → 80 (report parsers, -11)
+- LineLength 120 → 200 + 3 wraps (-80)
 
+`failOnViolation=true` activated. See ADR-0058 for full rationale.
 Phase C UI already done 2026-04-22 (ESLint warn → error on 6 size /
 complexity rules with project-calibrated thresholds, MR !89).
 
@@ -73,6 +74,10 @@ Diminishing returns ; no SonarCloud blocker. Defer until Phase C lands.
 | `security.component.html` | 135 | ✅ B-7-4 done (-77 % from 586) |
 | `about.component.ts` | 77 | ✅ B-7-5 P1A+P1B done (-88 % from 652) |
 | `about.component.html` | 251 | ✅ B-7-5 P1B done (-59 % ; 3 widgets extracted, 11 tiny doc-panes stay inline) |
+| `diagnostic.component.html` | 381 | ✅ B-7-6 partial (DiagnosticScenarioComponent for 5/10 uniform scenarios ; 5 custom-output scenarios stay inline) |
+| `database.component.html` | 141 | ✅ B-7-7 partial (DatabaseHealthTabComponent extracted ; SqlExplorer + preset row still inline, marginal win if extracted) |
+| `chaos.component.html` | 185 | ⏭ B-7-8 skipped — file already DRY via `@for actions`, under 1000 LOC cap, extraction would be marginal |
+| `customers.component.ts` | 813 | 🔧 PENDING B-7-2c — needs CustomerStateService abstraction (shared signals : customers[], selectedCustomer, selectedIds, editingCustomer, batchDelete) ; 2-3h focused refactor. Deferred. |
 | `diagnostic.component.ts` | 628 | 🔧 PENDING — 7 scenario methods (~50-100 LOC each), tightly coupled to parent signals + log lines. Multi-hour refactor. |
 | `about.component.ts` | 652 | 🔧 PENDING — 8 tabs, similar pattern to security. |
 | `chaos.component.ts` | 625 | 🔧 PENDING — TS-heavy (185 LOC html only) ; refactor harder than template extractions. |

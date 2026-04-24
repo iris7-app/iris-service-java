@@ -97,4 +97,72 @@ class RateLimitingFilterTest {
         assertThat(resB.getStatus()).isNotEqualTo(429);
     }
 
+    @Test
+    void spoofedXForwardedFor_garbageNonIp_fallsBackToRemoteAddr() throws Exception {
+        // When XFF contains a non-IP value (e.g. header spoofing / injection
+        // attempt), the filter MUST fall through to remoteAddr so the bucket
+        // key cannot be arbitrary-attacker-controlled. Covers the regex-reject
+        // branch in resolveClientIp + the XFF-present-but-invalid path.
+        FilterChain chain = mock(FilterChain.class);
+        String realIp = "10.0.0.20";
+        for (int i = 0; i < 3; i++) {
+            var req = new MockHttpServletRequest("GET", "/customers");
+            req.addHeader("X-Forwarded-For", "hackerAAA; DROP TABLE; --");
+            req.setRemoteAddr(realIp);
+            filter.doFilter(req, new MockHttpServletResponse(), chain);
+        }
+
+        // Same REAL ip but different spoofed XFF — bucket should be shared
+        // (because both fell back to remoteAddr), so the 4th request is 429.
+        var req = new MockHttpServletRequest("GET", "/customers");
+        req.addHeader("X-Forwarded-For", "completelyDifferentGarbage");
+        req.setRemoteAddr(realIp);
+        var res = new MockHttpServletResponse();
+        filter.doFilter(req, res, chain);
+
+        assertThat(res.getStatus()).isEqualTo(429);
+    }
+
+    @Test
+    void longXForwardedFor_over45Chars_fallsBackToRemoteAddr() throws Exception {
+        // IP address >45 chars is not a valid IPv4 or IPv6 — reject to prevent
+        // attackers from creating arbitrarily long bucket keys. Covers the
+        // length-check branch in resolveClientIp.
+        FilterChain chain = mock(FilterChain.class);
+        String realIp = "10.0.0.30";
+        // 50-char garbage string
+        String longGarbage = "1234567890123456789012345678901234567890:12345678";
+        for (int i = 0; i < 3; i++) {
+            var req = new MockHttpServletRequest("GET", "/customers");
+            req.addHeader("X-Forwarded-For", longGarbage);
+            req.setRemoteAddr(realIp);
+            filter.doFilter(req, new MockHttpServletResponse(), chain);
+        }
+
+        // Bucket is keyed on realIp (not the long XFF) — 4th request rate-limited.
+        var req = new MockHttpServletRequest("GET", "/customers");
+        req.addHeader("X-Forwarded-For", longGarbage);
+        req.setRemoteAddr(realIp);
+        var res = new MockHttpServletResponse();
+        filter.doFilter(req, res, chain);
+
+        assertThat(res.getStatus()).isEqualTo(429);
+    }
+
+    @Test
+    void blankXForwardedFor_fallsBackToRemoteAddr() throws Exception {
+        // Empty / whitespace-only XFF header must be treated as absent —
+        // covers the `!xff.isBlank()` branch in resolveClientIp.
+        FilterChain chain = mock(FilterChain.class);
+        var req = new MockHttpServletRequest("GET", "/customers");
+        req.addHeader("X-Forwarded-For", "   ");  // whitespace only
+        req.setRemoteAddr("10.0.0.40");
+        var res = new MockHttpServletResponse();
+        filter.doFilter(req, res, chain);
+
+        // Filter should have used remoteAddr as bucket key — request succeeds
+        // (fresh bucket for 10.0.0.40).
+        verify(chain, times(1)).doFilter(req, res);
+        assertThat(res.getHeader("X-Rate-Limit-Remaining")).isNotNull();
+    }
 }
