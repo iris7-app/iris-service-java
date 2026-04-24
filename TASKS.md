@@ -74,6 +74,10 @@ Diminishing returns ; no SonarCloud blocker. Defer until Phase C lands.
 | `security.component.html` | 135 | ✅ B-7-4 done (-77 % from 586) |
 | `about.component.ts` | 77 | ✅ B-7-5 P1A+P1B done (-88 % from 652) |
 | `about.component.html` | 251 | ✅ B-7-5 P1B done (-59 % ; 3 widgets extracted, 11 tiny doc-panes stay inline) |
+| `diagnostic.component.html` | 381 | ✅ B-7-6 partial (DiagnosticScenarioComponent for 5/10 uniform scenarios ; 5 custom-output scenarios stay inline) |
+| `database.component.html` | 141 | ✅ B-7-7 partial (DatabaseHealthTabComponent extracted ; SqlExplorer + preset row still inline, marginal win if extracted) |
+| `chaos.component.html` | 185 | ⏭ B-7-8 skipped — file already DRY via `@for actions`, under 1000 LOC cap, extraction would be marginal |
+| `customers.component.ts` | 813 | 🔧 PENDING B-7-2c — needs CustomerStateService abstraction (shared signals : customers[], selectedCustomer, selectedIds, editingCustomer, batchDelete) ; 2-3h focused refactor. Deferred. |
 | `diagnostic.component.ts` | 628 | 🔧 PENDING — 7 scenario methods (~50-100 LOC each), tightly coupled to parent signals + log lines. Multi-hour refactor. |
 | `about.component.ts` | 652 | 🔧 PENDING — 8 tabs, similar pattern to security. |
 | `chaos.component.ts` | 625 | 🔧 PENDING — TS-heavy (185 LOC html only) ; refactor harder than template extractions. |
