@@ -1,18 +1,19 @@
-# Compatibility Matrix — 2026-04-24 (3-wave evolution)
+# Compatibility Matrix — 2026-04-24 (4-wave evolution)
 
 ## Summary table
 
-| Cell | Wave 0 (#800, main 4b0d960) | After wave 1 surgical (svc 1.0.49) | After wave 2 J17+IT (svc 1.0.51) | After wave 3 4-fix (svc 1.0.52) |
-|---|---|---|---|---|
-| SB3 + Java 17 | 🔴 release 21 not supported | 🔴 J21 API symbols (VirtualThreads + getLast) | 🔴 PATH_CUSTOMERS missing in SB3 overlay + SecurityConfig throws | 🔧 to-confirm post-1.0.52 (SB3 structural debt remains : AutoConfigureMockMvc shim + RestTestClient exclusion) |
-| SB3 + Java 21 | 🔴 unnamed `_` catch (preview J21) | 🔴 unnamed `_` in switch case pattern | 🔴 PATH_CUSTOMERS missing in SB3 overlay + SecurityConfig throws | 🔧 to-confirm post-1.0.52 (same SB3 debt) |
-| SB4 + Java 17 | 🔴 release 21 not supported | 🔴 J21 API symbols (VirtualThreads + getLast) | 🔴 IT `.getFirst()` + property test J21 try-with-resources | 🔧 to-confirm post-1.0.52 |
-| SB4 + Java 21 | 🔴 2 ArchTest violations | 🔴 61 IT test errors (IdempotencyITest, AuthITest, Auth0JwtValidationITest) | 🟢 PASS (IT tag-gated via @Tag("integration") + failsafe excludes) | 🟢 PASS |
-| SB4 + Java 25 (default) | 🟢 PASS | 🟢 PASS | 🟢 PASS | 🟢 PASS (canonical target) |
+| Cell | Wave 0 (#800, main 4b0d960) | Wave 1 (svc 1.0.49) | Wave 2 (svc 1.0.51) | Wave 3 (svc 1.0.52) | Wave 4 (svc 1.0.53) |
+|---|---|---|---|---|---|
+| SB3 + Java 17 | 🔴 release 21 not supported | 🔴 J21 API symbols | 🔴 PATH_CUSTOMERS + SecurityConfig | 🔴 confirmed (BOM + overlay missing) | 🔧 PENDING re-trigger result (post-1.0.53) |
+| SB3 + Java 21 | 🔴 unnamed `_` catch | 🔴 unnamed `_` switch case | 🔴 PATH_CUSTOMERS + SecurityConfig | 🔴 confirmed (BOM + overlay missing) | 🔧 PENDING re-trigger result |
+| SB4 + Java 17 | 🔴 release 21 not supported | 🔴 J21 API symbols | 🔴 IT `.getFirst()` + property test J21 | 🔴 confirmed | 🔧 PENDING re-trigger result |
+| SB4 + Java 21 | 🔴 2 ArchTest violations | 🔴 61 IT test errors | 🟢 PASS (IT tag-gate) | 🟢 PASS | 🟢 PASS |
+| SB4 + Java 25 (default) | 🟢 PASS | 🟢 PASS | 🟢 PASS | 🟢 PASS | 🟢 PASS (canonical target) |
 
-**Net progress over the day** : 1/5 cells flipped 🔴→🟢 (SB4+J21).
-3/5 cells remaining 🔴 due to SB3 structural debt (separate dedicated wave) +
-J17 verification deferred to post-1.0.52 compat re-run.
+**Day progress** : 1/5 cells flipped 🔴→🟢 (SB4+J21 wave 2). 3 cells
+in flight on wave 4 re-trigger — expected to make further progress
+because wave 4 specifically addressed BOM precedence + RestTestClient
+exclude path + pre-java25 overlay (3 of the 4 SB3 structural debt items).
 
 ## Wave 1 — Surgical fixes (svc 1.0.49 + 1.0.50, [!189](https://gitlab.com/mirador1/mirador-service/-/merge_requests/189) + [!190](https://gitlab.com/mirador1/mirador-service/-/merge_requests/190))
 
@@ -35,13 +36,33 @@ J17 verification deferred to post-1.0.52 compat re-run.
 3. ✅ `CustomerNewEndpointsITest.java` : 6× `.findAll().getFirst().getId()` → `.findAll().get(0).getId()` (J21+ → universal).
 4. ✅ J17 test overlay : `src/test/java-overlays/java17/com/mirador/customer/AggregationServicePropertyTest.java` (platform threads + try/finally) + Maven antrun copy step symmetric to main java17 overlay.
 
-## Remaining structural issues (deferred — dedicated wave needed)
+## Wave 4 — 3 SB3 structural fixes (svc 1.0.53, [!194](https://gitlab.com/mirador1/mirador-service/-/merge_requests/194))
 
-After waves 1-3, **3 SB3 issues** remain :
+1. ✅ SB3 RestTestClient exclude : maven-antrun fileset exclude pattern was stale (`com/example/customerservice/...` from a pre-rename of the project). Updated to `com/mirador/customer/CustomerRestClientITest.java`. Without this, the SB4-only RestTestClient test was being copied into merged-sources/test and failed to compile in SB3.
+2. ✅ SB3 BOM precedence : added explicit `<dependencyManagement>` version pins for `spring-boot-test`, `spring-boot-test-autoconfigure`, `spring-boot-starter-test` to force SB3 versions (3.4.5). Maven's BOM-import precedence makes the parent pom's `spring-boot-starter-parent:4.0.5` BOM win for transitive deps even when the SB3 profile imports a competing BOM. Result : `spring-boot-test-autoconfigure:4.0.5` was on the classpath in SB3 mode → AutoConfigureMockMvc shim referenced SB3 package (`org.springframework.boot.test.autoconfigure.web.servlet`) which doesn't exist in SB4.
+3. ✅ pre-java25 overlay copy missing in SB3 antrun : the SB3 profile's antrun config copied `src/test/java-overlays/sb3` (AutoConfigureMockMvc bridge) but did NOT copy `src/test/java-overlays/pre-java25` (ScopedValue → InheritableThreadLocal swap for J21 target). Added the copy step matching the compat profile pattern. Without this, `TraceServiceTest.java:25` failed with "ScopedValue is a preview API and is disabled by default".
 
-1. **`AutoConfigureMockMvc.java` shim** — `src/test/java-overlays/sb3/...` references SB3 package `org.springframework.boot.test.autoconfigure.web.servlet` which isn't on the test classpath in the SB3 profile. Either spring-boot-test-autoconfigure (SB3 version) needs explicit dep wiring in the SB3 profile, OR the shim needs a different bridge mechanism. ~1-2 h investigation.
-2. **`CustomerRestClientITest.java`** — uses `RestTestClient` (SB4-only API). Needs `<excludes>` rule in the SB3 profile maven-failsafe / surefire plugin. ~30 min surgical fix.
-3. **SB4+J17 cell** — depending on remaining J21+ APIs in main src that haven't been overlayed. Wave 2+3 covered AggregationService + AggregationServicePropertyTest. Re-trigger compat-sb4-java17 after !192 merge to surface anything else.
+Local validation pre-merge : `./mvnw -Dsb3 test-compile` reduces from
+4 distinct compile errors to 1 (CustomerControllerTest constructor
+mismatch — multi-hour wave 5 deferred). `./mvnw -Dcompat` and
+`./mvnw -Dcompat -Djava17` still green.
+
+## Remaining structural issues after wave 4
+
+After 4 surgical waves, **1 SB3 issue** known to remain :
+
+1. **`CustomerControllerTest.java:70` constructor mismatch** — the SB3
+   overlay's `CustomerController` has a 10-param constructor (legacy :
+   service + buffer + aggregation + observation + replyingKafkaTemplate
+   + todoService + bioService + customerRequestTopic + enrichTimeoutSeconds
+   + meterRegistry) while main has been refactored to a 6-param signature
+   (service + buffer + aggregation + auditService + observation + meterRegistry).
+   `CustomerControllerTest` uses main's signature, so SB3 build fails
+   compile. Multi-hour fix (either update SB3 overlay to mirror main's
+   simplified signature OR add SB3 test overlay for this test class).
+   Deferred to wave 5.
+
+Wave 4 re-trigger results pending — may surface additional debt.
 
 ## Tracking
 

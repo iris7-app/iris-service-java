@@ -2048,6 +2048,17 @@
                                         <copy todir="${project.build.directory}/merged-sources/test" overwrite="true">
                                             <fileset dir="src/test/java-overlays/pre-java25"/>
                                         </copy>
+                                        <!-- Java 17 test overlay : same as compat profile — replaces
+                                             AggregationServicePropertyTest's J21+ try-with-resources
+                                             on ExecutorService + Executors.newVirtualThreadPerTaskExecutor()
+                                             with platform threads + try/finally. Only applies when
+                                             -Djava17 set. Without this, compat-sb3-java17 fails
+                                             test-compile at AggregationServicePropertyTest.java:84.
+                                             Fixed 2026-04-24 svc 1.0.53+ wave (SB3 antrun was
+                                             missing this overlay copy that the compat profile had). -->
+                                        <copy todir="${project.build.directory}/merged-sources/test" overwrite="true" if:set="java17">
+                                            <fileset dir="src/test/java-overlays/java17"/>
+                                        </copy>
                                         <!-- SB3 test overlay (AutoConfigureMockMvc bridge) -->
                                         <copy todir="${project.build.directory}/merged-sources/test" overwrite="true">
                                             <fileset dir="src/test/java-overlays/sb3"/>
@@ -2232,6 +2243,18 @@
             </activation>
             <properties>
                 <java.version>17</java.version>
+                <!-- Checkstyle 13.x is compiled with Java 21 bytecode (class file
+                     version 65.0) so it crashes the J17 runtime with
+                     UnsupportedClassVersionError. Pin to 10.21.0 — last 10.x
+                     line which still supports J11+ (so J17 is fine).
+                     Compat-sb4-java17 + compat-sb3-java17 cells affected.
+                     Trade-off : 10.21.0 lacks a few 11.x/12.x/13.x rule
+                     additions but our custom config/checkstyle.xml is calibrated
+                     to the rules that existed in 10.x already. Phase C
+                     (failOnViolation=true) tested locally with 10.21.0. Added
+                     2026-04-24 svc 1.0.53+ wave (compat-sb4-java17 evidence :
+                     pipeline #2478396905 job 14084177782 UnsupportedClassVersionError). -->
+                <checkstyle.version>10.21.0</checkstyle.version>
             </properties>
         </profile>
     </profiles>
