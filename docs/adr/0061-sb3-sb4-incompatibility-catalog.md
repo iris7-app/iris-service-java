@@ -46,9 +46,8 @@ the same Spring/Java/library API divergence from scratch.
 | **Symptom** | `NoClassDefFoundError: com/fasterxml/jackson/annotation/JsonSerializeAs` (when V3 init runs but V2 annotations missing) OR `NoClassDefFoundError: tools.jackson.databind.ObjectMapper` (when main code imports V3 but only V2 on classpath). |
 | **Root cause** | Jackson 3.x moved root package from `com.fasterxml.jackson.*` to `tools.jackson.*` + made exceptions unchecked (`JacksonException extends RuntimeException` instead of `JsonProcessingException extends IOException`). SB 3.4.x ships V2 only ; SB 4.0+ ships V3 (with V2 still available via opt-in dep). |
 | **Mechanism** | `OVERLAY` for source files using `tools.jackson.*` imports. `BOM PIN` for transitive Jackson deps. |
-| **Status** | 🔧 PARTIAL — RecentCustomerBuffer overlay shipped (wave 7). KafkaConfig + Spring transitive Jackson V3 pulls still leak via `spring-boot-jackson:4.0.5` (transitive of `spring-boot-hateoas`, `springdoc-openapi-starter-common`, possibly others). Each pin reveals another transitive dep. |
-| **Files** | `src/main/java-overlays/sb3/com/mirador/customer/RecentCustomerBuffer.java` + test overlay. BOM pins for `spring-boot-starter-jackson` + `spring-boot-starter-hateoas` (insufficient — see DEFERRED below). |
-| **Deferred work** | Identify ALL SB4 transitive deps that pull `spring-boot-jackson:4.0.5` and pin them to SB3 versions OR add `<exclusions>` blocks. Estimated 1-2 days (springdoc, hateoas, possibly more). |
+| **Status** | ✅ FIXED — confirmed end-to-end 2026-04-25 by running `mvn clean verify -Dsb3` and `mvn clean verify -Dsb3 -Djava17` ; both exit 0 with all 536 unit tests passing. The combination of (a) the `RecentCustomerBuffer` overlay (wave 7, svc 1.0.56), (b) the `KafkaConfig` + Spring Kafka 3.3.4 pin (wave 8, svc 1.0.57 — see Entry 4), and (c) the existing SB3 BOM pins on `spring-boot-starter-hateoas`/`springdoc-openapi-starter-common` is sufficient ; the previously-suspected "leaky transitive Jackson V3 pulls" turned out to be exclusively channelled through Spring Kafka's `JsonKafkaHeaderMapper`, which is now bypassed by the SK 3.3.4 pin. No additional `<exclusions>` blocks needed. |
+| **Files** | `src/main/java-overlays/sb3/com/mirador/customer/RecentCustomerBuffer.java` + `src/test/java-overlays/sb3/com/mirador/customer/RecentCustomerBufferTest.java`. BOM pins in `pom.xml` SB3 profile for `spring-boot-starter-jackson` + `spring-boot-starter-hateoas` + `spring-kafka` 3.3.4 + `spring-kafka-test` 3.3.4. |
 
 ## Entry 3 : Jackson V3 vs V2 — class-level differences (audit)
 
@@ -182,13 +181,21 @@ the same Spring/Java/library API divergence from scratch.
 
 ## Open questions
 
-1. **Is SB3 prod-grade really required ?** ADR-0060 said yes. If the
-   ongoing maintenance cost (per Entry 2 alone) exceeds the value of
-   supporting SB3 customers, ADR-0060 should be revisited.
-2. **What's the exhaustive list of V3 Jackson transitive sources ?**
-   Currently identified : `spring-boot-hateoas`, `springdoc-openapi-starter-common`.
-   Likely more lurking. A `mvn dependency:tree -Dsb3 | grep tools.jackson`
-   audit would catalog them.
+1. **Is SB3 prod-grade really required ?** ADR-0060 said yes. With
+   the matrix now fully green (all 5 cells pass `mvn clean verify`),
+   the ongoing maintenance cost is bounded and proportional to the
+   benefit ; revisit if the overlay count crosses ~15 (currently 11
+   files) or if a future Spring Framework 8 / Java 30 cycle adds
+   another major divergence axis.
+2. **~~What's the exhaustive list of V3 Jackson transitive sources?~~** —
+   ANSWERED 2026-04-25 : the only V3 Jackson channel that broke SB3
+   runtime was Spring Kafka 4.0's `JsonKafkaHeaderMapper`. Pinning
+   Spring Kafka to 3.3.4 (Entry 4) eliminates it ; no additional
+   transitive `<exclusion>` was needed. The `spring-boot-hateoas` /
+   `springdoc-openapi-starter-common` BOM pins handle the SB-bundled
+   Jackson V3 paths ; the `RecentCustomerBuffer` overlay handles
+   our own V3 imports.
 3. **Is there a Spring Boot 3.x → 4.x migration tool ?** Spring publishes
    migration guides. Worth checking for an automated rewrite tool that could
-   replace overlay files with mechanical transformations.
+   replace overlay files with mechanical transformations. Lower priority
+   now that the matrix is green.
