@@ -69,13 +69,14 @@ manual wraps :
 Phase C UI already done 2026-04-22 (ESLint warn → error on 6 size /
 complexity rules with project-calibrated thresholds, MR !89).
 
-### Phase B-1b svc — finish QualityReportEndpoint extraction
+### Phase B-1b svc — finish QualityReportEndpoint extraction ✅ CANCELLED 2026-04-25
 
-`QualityReportEndpoint.java` now 469 LOC after Q-2b ; the original 1934
-LOC has been incrementally split into 7 parsers + 6 providers. Remaining
-inline non-parser sections (build-info, git, api, deps, runtime, branches,
-licenses) could become 5 more providers ; target endpoint ≈ 250 LOC.
-Diminishing returns ; no SonarCloud blocker. Defer until Phase C lands.
+`QualityReportEndpoint.java` is at 469 LOC, well below the new 1000 LOC
+file-length hygiene floor (raised 500 → 1000 per user directive
+2026-04-25). Per the rule "< 1 000 lines → DO NOT split", the further
+extraction of build-info / git / api / deps / runtime / branches /
+licenses providers is no longer warranted. The file stays as-is —
+cohesive 469 LOC parser endpoint, single SRP, no SonarCloud blocker.
 
 ### Phase B-7 UI — large component splits (multi-session)
 
