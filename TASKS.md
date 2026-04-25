@@ -114,75 +114,61 @@ multi-hour effort. Re-open ONLY if any of these crosses 1000 LOC.
   https://sonarcloud.io for both projects ; mark hotspots as "safe"
   with justification.
 
-## 🔴 Compat matrix structural debt — UPDATED 2026-04-25 06:10
+## ✅ Compat matrix structural debt — DONE 2026-04-25 13:30
 
-After 6 waves of compat fixes, status is :
-- ✅ SB4+J21 (wave 2 IT tag-gate)
-- ✅ SB4+J17 (wave 5 checkstyle 10.21.0 pin)
-- ✅ SB4+J25 (canonical)
-- 🔴 **SB3+J17 + SB3+J21** — wave 6 SB3 overlay alignment passed
-  test-compile but runtime tests fail with **Jackson v2/v3 conflict** :
+All 5 matrix cells green locally after 8 waves of compat fixes.
+Verified by running `mvn clean verify` against each combination on
+2026-04-25 ~13:15-13:25 — every cell exits 0.
 
-  ```
-  java.lang.NoClassDefFoundError: com/fasterxml/jackson/annotation/JsonSerializeAs
-  at tools.jackson.databind.introspect.JacksonAnnotationIntrospector
-  ```
+| Cell | Command | Status |
+|---|---|---|
+| SB4 + J25 | `mvn verify` | ✅ BUILD SUCCESS |
+| SB4 + J21 | `mvn verify -Dcompat` | ✅ BUILD SUCCESS |
+| SB4 + J17 | `mvn verify -Dcompat -Djava17` | ✅ BUILD SUCCESS |
+| SB3 + J21 | `mvn verify -Dsb3` | ✅ BUILD SUCCESS |
+| SB3 + J17 | `mvn verify -Dsb3 -Djava17` | ✅ BUILD SUCCESS |
 
-  Test code uses `tools.jackson.*` imports (Jackson V3 — new package
-  introduced in Jackson 3.x and used in SB4). At runtime in SB3 mode,
-  the V3 databind can't find V2 annotations in their old `com.fasterxml.
-  jackson.annotation` package. Failures :
-  - `RecentCustomerBufferTest` : 6/6 errors
-  - `KafkaConfigTest` : 4/6 errors
+**The Jackson V2/V3 conflict (the one that blocked SB3 cells in
+TASKS.md until this session) was already resolved by waves 7-8** —
+the previous TASKS.md status was stale, written before the wave 7-8
+mechanisms had been verified end-to-end. The two surgical mechanisms :
 
-  **Root choice (multi-day, owner decision)** :
-  - (A) Pin Jackson V2 in SB3 profile + REWRITE test files to use
-    V2 `com.fasterxml.jackson.*` imports (would also need overlay
-    for any prod code that uses V3-specific features)
-  - (B) Pin Jackson V3 in SB3 profile (requires SB3 to support
-    Jackson V3 — may not be possible on SB 3.4.x, needs research)
-  - (C) Make production code Jackson-version-agnostic via interface
-    boundaries (architectural refactor)
-  - (D) Drop SB3 prod-grade requirement (revert ADR-0060) — accept
-    SB3 as informational only
+- `RecentCustomerBuffer` overlay (wave 7 — svc 1.0.56) : main + test
+  overlay swap `tools.jackson.*` (V3) → `com.fasterxml.jackson.*`
+  (V2) since SB 3.4.x ships Jackson V2 only. See ADR-0061 Entry 2.
+- `KafkaConfig` overlay + Spring Kafka 3.3.4 BOM pin (wave 8 — svc
+  1.0.57) : pin Spring Kafka to last 3.x release on SB 3.4.x line
+  + overlay `JacksonJsonSerializer` (V3-aware) → `JsonSerializer`
+  (V2). SK 3.3.4's `JsonKafkaHeaderMapper` has no V3 references,
+  so the V3 init chain disappears entirely. See ADR-0061 Entry 4.
 
-  Per ADR-0060 (SB3 = prod-grade), options A/B/C are valid. Option
-  A is most surgical but invasive (every test using ObjectMapper).
-  Estimated effort : multi-day work.
+ADR-0061 Entry 2 status was 🔧 PARTIAL → updated to ✅ FIXED in the
+same commit. The matrix is now production-grade per ADR-0060.
 
-## 🟡 UI CI debt — 2026-04-24 evening + 04:49 night work
+**Verification command (local, ~25 min for the full matrix)** :
 
-Started day with 4 `allow_failure=true` jobs failing on UI main.
-After 7 waves of fixes :
+```bash
+for args in "" "-Dcompat" "-Dcompat -Djava17" "-Dsb3" "-Dsb3 -Djava17"; do
+  echo "=== mvn verify $args ===" && mvn clean verify $args -q 2>&1 | tail -3
+done
+```
 
-- **grype:scan** : ✅ CONFIRMED FIXED via [!120](https://gitlab.com/mirador1/mirador-ui/-/merge_requests/120) — `/grype` absolute path, shield removed. Green on multiple main pipelines.
-- **dockle** : ✅ CONFIRMED FIXED via [!121](https://gitlab.com/mirador1/mirador-ui/-/merge_requests/121) — svc tarball pattern (`docker:28` + `docker pull --platform` + `docker save` + `dockle --input`). Green on multiple main pipelines.
-- **e2e:kind** : 🟡 IN-FLIGHT FIX via [!125](https://gitlab.com/mirador1/mirador-ui/-/merge_requests/125) (wave 7) — root cause finally identified after 4 pivots :
-  1. `--wait` regression (postgres init crash via init-sonar.sql bind mount becoming a directory) — fixed in !122
-  2. pg_isready loop pivot — fixed in !122
-  3. init-sonar.sql strip from compose — fixed in !123
-  4. `getent hosts db` diagnostic — surfaced real root cause in !124
-  5. Docker network connect was failing silently because `$(hostname)` returns the GitLab `--hostname` (e.g. `runner-yt-cpyt8r-...`) NOT the docker container NAME → fixed in !125 via `/proc/self/cgroup` ID extraction.
-- **sonarcloud** : 🟡 IN-FLIGHT FIX via [!125](https://gitlab.com/mirador1/mirador-ui/-/merge_requests/125) (wave 7) — 3-step root cause :
-  1. Token rotated by user (auth works) ✅
-  2. heap 4096 → 8192 (lower flake rate) ✅
-  3. `workerCount=2` (reduces concurrent subprocess heap) — wave 6
-  4. NEW : tree-sitter (Sonar's JS parser) couldn't write to
-     `/home/scanner-cli/.tree-sitter/lib` (read-only path in
-     scanner-cli image). Pipeline #2478601087 evidence : the
-     WebSocket-close was a CONSEQUENCE of tree-sitter init failing.
-     Fix in !125 : add `HOME: ${CI_PROJECT_DIR}/.sonar` to job
-     variables → tree-sitter writes to writable CI dir.
+All 5 invocations exit 0 ; CI matrix in `.gitlab-ci/test-matrix.gitlab-ci.yml`
+should reflect the same.
 
-If !125 lands the 4 jobs all green, that closes the UI CI debt
-session in full (4/4 fixes confirmed, all `allow_failure: true`
-shields removable).
+## 🟡 UI CI debt — 2026-04-24 evening + 04:49 night + 2026-04-25 audit
 
-If !125 still fails, next escalation candidates :
-- e2e:kind : try `network_mode: external` strategy with pre-created
-  network shared between job container and compose stack
-- sonarcloud : upgrade sonar-scanner-cli image if Sonar fixed the
-  tree-sitter perms upstream
+Started 2026-04-24 with 4 `allow_failure=true` jobs failing on UI main.
+After 11 waves of fixes :
+
+- **grype:scan** : ✅ CONFIRMED CLOSED via [!120](https://gitlab.com/mirador1/mirador-ui/-/merge_requests/120) — `/grype` absolute path, shield removed. Green 5/5 on recent main pipelines.
+- **dockle** : ✅ CONFIRMED CLOSED via [!121](https://gitlab.com/mirador1/mirador-ui/-/merge_requests/121) — svc tarball pattern (`docker:28` + `docker pull --platform` + `docker save` + `dockle --input`). Green 5/5 on recent main pipelines.
+- **sonarcloud** : 🟢 SCOPED-OUT 2026-04-25 13:24 via [fefb950](https://gitlab.com/mirador1/mirador-ui/-/commit/fefb950) + [ADR-0011](file:///Users/benoitbesson/dev/js/mirador-ui/docs/adr/0011-sonarcloud-js-bridge-flaky.md). Was removed in wave 11 commit [3e80d81](https://gitlab.com/mirador1/mirador-ui/-/commit/3e80d81), pipeline [#463](https://gitlab.com/mirador1/mirador-ui/-/pipelines/2479217597) failed with `WebSocket connection closed abnormally` (tree-sitter perms fix held — new failure mode is JS bridge crash mid-analysis). Per CLAUDE.md "Surgical fixes" option (c), flipped to `when: manual` + `allow_failure: true` (canonical scope-out, NOT shield) — job visible + manually triggerable but doesn't gate pipeline status. Distinct from the forbidden `when: on_success` + `allow_failure: true` shield. Exit criterion : 5+ consecutive green manual runs after bridge crash root cause is fixed → flip back to automatic. ADR-0011 lists 5 candidate fix paths.
+- **e2e:kind** : 🔴 SHIELD REFRESHED 2026-04-25 with new dated TODO 2026-05-25 (30d) in [`.gitlab-ci/test.yml` line 82](file:///Users/benoitbesson/dev/js/mirador-ui/.gitlab-ci/test.yml). Docker plumbing fixed (waves 1-7 + wave 11 SPA serving), but 3 `@golden` Playwright specs still RED (login, customer-crud, health) — root cause now in spec timing (backend boot / Keycloak readiness / actuator health races). Plan documented inline in test.yml + audit at [docs/audit/ui-ci-debt-status.md](file:///Users/benoitbesson/dev/js/mirador-ui/docs/audit/ui-ci-debt-status.md) → enrich test-results upload (actuator/health JSON + backend logs at failure), add `waitForResponse(/health/)` in spec helpers, scope-out via `rules: when: never` on main if still flaky after both.
+
+**Net status 2026-04-25 13:30** : 2/4 closed (grype, dockle), 1/4 scoped-out via `when: manual` + ADR (sonarcloud), 1/4 still shielded with fresh dated exit ticket (e2e:kind, TODO 2026-05-25).
+
+Full audit + verification commands : [docs/audit/ui-ci-debt-status.md](file:///Users/benoitbesson/dev/js/mirador-ui/docs/audit/ui-ci-debt-status.md).
 
 ---
 
