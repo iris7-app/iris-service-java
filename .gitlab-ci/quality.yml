@@ -5,6 +5,11 @@
 
 sonar-analysis:
   stage: sonar
+  # Route to macbook-local (group runner). Without this tag the job goes
+  # to SaaS shared runners and fails with ci_quota_exceeded. Same fix as
+  # UI 2026-04-25 (commit ef126fb).
+  tags:
+    - macbook-local
   variables:
     # Allow JVM to self-attach (Mockito byte-buddy requirement on Java 25)
     MAVEN_OPTS: >-

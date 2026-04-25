@@ -2,72 +2,46 @@
 
 <sub>**English** · [Français](README.fr.md)</sub>
 
-<!-- Build / release status. GitLab badges first — canonical CI.
-     GitHub badges (CodeQL, Scorecard) render only on the GitHub mirror. -->
-[![pipeline](https://gitlab.com/mirador1/mirador-service/badges/main/pipeline.svg)](https://gitlab.com/mirador1/mirador-service/-/pipelines)
-[![coverage](https://gitlab.com/mirador1/mirador-service/badges/main/coverage.svg)](https://gitlab.com/mirador1/mirador-service/-/pipelines)
-[![latest release](https://gitlab.com/mirador1/mirador-service/-/badges/release.svg)](https://gitlab.com/mirador1/mirador-service/-/releases)
-[![CodeQL](https://github.com/mirador1/mirador-service/actions/workflows/codeql.yml/badge.svg)](https://github.com/mirador1/mirador-service/actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/mirador1/mirador-service/badge)](https://scorecard.dev/viewer/?uri=github.com/mirador1/mirador-service)
-
-<!-- Tech badges — grouped by concern so the README reflects the ADR story,
-     not just a technology dump. Each group corresponds to an ADR or a
-     docs/architecture/*.md page. Bumping the list here should mirror
-     docs/reference/technologies.md. -->
-
-**Runtime**
-![Java 25](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
-![Spring Boot 4](https://img.shields.io/badge/Spring_Boot-4-6DB33F?logo=springio&logoColor=white)
-![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
-![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-KRaft-231F20?logo=apachekafka&logoColor=white)
-![Redis 7](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)
-![Angular 21](https://img.shields.io/badge/Angular-21_zoneless-DD0031?logo=angular&logoColor=white)
-
-**Platform**
-![Docker](https://img.shields.io/badge/Docker-compose_+_buildx-2496ED?logo=docker&logoColor=white)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-GKE_Autopilot_+_kind-326CE5?logo=kubernetes&logoColor=white)
-![Terraform](https://img.shields.io/badge/Terraform-GKE_+_GSM-844FBA?logo=terraform&logoColor=white)
-![Argo CD](https://img.shields.io/badge/Argo_CD-GitOps-EF7B4D?logo=argo&logoColor=white)
-![Argo Rollouts](https://img.shields.io/badge/Argo_Rollouts-canary-EF7B4D?logo=argo&logoColor=white)
-![External Secrets](https://img.shields.io/badge/External_Secrets-GSM-326CE5?logo=kubernetes&logoColor=white)
-![cert-manager](https://img.shields.io/badge/cert--manager-Let's_Encrypt-326CE5?logo=kubernetes&logoColor=white)
-![Unleash](https://img.shields.io/badge/Unleash-feature_flags-000000)
-
-**Observability**
+<!-- Top-line badges : 8 essentials. Build status + 4 baseline tech + 3
+     industrial gates (security, SLO, mutation). The exhaustive tech
+     coverage lives in the "Technology coverage" section further down,
+     so the head of the README reads as an outcome, not a tech dump. -->
+[![pipeline](https://gitlab.com/mirador1/mirador-service-java/badges/main/pipeline.svg)](https://gitlab.com/mirador1/mirador-service-java/-/pipelines)
+[![coverage](https://gitlab.com/mirador1/mirador-service-java/badges/main/coverage.svg)](https://gitlab.com/mirador1/mirador-service-java/-/pipelines)
+[![SonarCloud](https://img.shields.io/badge/SonarCloud-quality_gate-F3702A?logo=sonarcloud&logoColor=white)](https://sonarcloud.io/project/overview?id=mirador1_mirador-service)
+![Java 21 LTS · 25](https://img.shields.io/badge/Java-21_LTS_+_25_compat-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot 3.x · 4](https://img.shields.io/badge/Spring_Boot-3.x_LTS_+_4_compat-6DB33F?logo=springio&logoColor=white)
+![GitOps Argo CD](https://img.shields.io/badge/Argo_CD-GitOps_+_canary-EF7B4D?logo=argo&logoColor=white)
 ![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-traces_+_logs_+_metrics-7F52FF?logo=opentelemetry&logoColor=white)
-![Grafana LGTM](https://img.shields.io/badge/Grafana-LGTM-F46800?logo=grafana&logoColor=white)
-![Tempo](https://img.shields.io/badge/Tempo-traces-F46800?logo=grafana&logoColor=white)
-![Loki](https://img.shields.io/badge/Loki-logs-F46800?logo=grafana&logoColor=white)
-![Mimir](https://img.shields.io/badge/Mimir-Prom_API-F46800?logo=grafana&logoColor=white)
-![Pyroscope](https://img.shields.io/badge/Pyroscope-continuous_profiling-F46800?logo=grafana&logoColor=white)
+![SLO 99.5%](https://img.shields.io/badge/SLO-99.5%25_+_burn_rate-2D7FF9)
 
-**Security & supply chain**
-![Auth0 + Keycloak](https://img.shields.io/badge/Auth0_+_Keycloak-OIDC-EB5424?logo=auth0&logoColor=white)
-![Resilience4j](https://img.shields.io/badge/Resilience4j-CB_+_retry_+_bulkhead-1B5E20)
-![Bucket4j](https://img.shields.io/badge/Bucket4j-rate_limit-4A90E2)
-![Kyverno](https://img.shields.io/badge/Kyverno-policies-326CE5?logo=kubernetes&logoColor=white)
-![cosign + SBOM](https://img.shields.io/badge/cosign_+_SBOM-supply_chain-2D7FF9)
-![Trivy / Grype / Syft](https://img.shields.io/badge/Trivy_Grype_Syft-image_scan-1904DA?logo=aquasecurity&logoColor=white)
-![Semgrep](https://img.shields.io/badge/Semgrep-SAST-1E1E2E?logo=semgrep&logoColor=white)
-![OWASP Dep-Check](https://img.shields.io/badge/OWASP_Dep--Check-CVE_scan-000000?logo=owasp&logoColor=white)
+## What this project proves
 
-**Quality**
-![SonarCloud](https://img.shields.io/badge/SonarCloud-static_analysis-F3702A?logo=sonarcloud&logoColor=white)
-![PIT mutation](https://img.shields.io/badge/PIT-mutation_tests-4CAF50)
-![JaCoCo](https://img.shields.io/badge/JaCoCo-unit_+_IT_coverage-8CBF26)
-![Testcontainers](https://img.shields.io/badge/Testcontainers-k8s_+_JVM-2496ED?logo=docker&logoColor=white)
-![Vitest](https://img.shields.io/badge/Vitest-UI_unit-6E9F18?logo=vitest&logoColor=white)
-![Playwright](https://img.shields.io/badge/Playwright-E2E_kind--in--CI-2EAD33?logo=playwright&logoColor=white)
-![k6](https://img.shields.io/badge/k6-load_tests-7D64FF?logo=k6&logoColor=white)
-![Chaos Mesh](https://img.shields.io/badge/Chaos_Mesh-NetworkChaos-FF6B35?logo=kubernetes&logoColor=white)
+Mirador is a production-grade Java backend demonstrator focused on industrial software concerns:
+- diagnosing incidents through logs, metrics and traces;
+- securing APIs with JWT/OIDC, rate limiting and audit logs;
+- validating architecture decisions through ADRs;
+- running quality gates in GitLab CI;
+- showing how a backend can evolve across Java/Spring versions without rewriting the system.
 
-**CI / release**
-![GitLab CI](https://img.shields.io/badge/GitLab_CI-canonical-FC6D26?logo=gitlab&logoColor=white)
-![Jenkinsfile](https://img.shields.io/badge/Jenkinsfile-parity-D24939?logo=jenkins&logoColor=white)
-![Renovate](https://img.shields.io/badge/Renovate-bump_bot-1A1F6C?logo=renovatebot&logoColor=white)
-![lefthook](https://img.shields.io/badge/lefthook-pre--push_gates-000000)
-![commitlint](https://img.shields.io/badge/Conventional_Commits-enforced-FE5196)
-![gitleaks](https://img.shields.io/badge/gitleaks-secret_scan-FD7014)
+The default branch uses recent versions to explore the future stack.
+**A conservative production target would be Java 21 LTS + Spring Boot 3.x** — the compat
+matrix in CI proves both stacks build + test green from the same source tree, so a real
+rollout would freeze on the LTS pair without any code change.
+
+## TL;DR for hiring managers (60 sec read)
+
+- **Industrial backend pattern** : Customer onboarding pipeline with KYC-style enrichment,
+  Kafka-driven audit events, regulatory traceability, and incident diagnostic endpoints — not a CRUD demo.
+- **Observability-first** : every layer (HTTP, JVM, DB pool, Kafka, Redis) emits OTel traces +
+  metrics + structured logs. **3 SLOs defined-as-code** (Sloth) with multi-window multi-burn-rate
+  alerting (Google SRE Workbook) and a Grafana SLO dashboard.
+- **Security supply chain** : JWT + refresh-token rotation, OWASP Dep-Check + Trivy + Grype +
+  Syft + cosign + SBOM, Kyverno cluster policies, External Secrets Operator over GSM.
+- **Quality gates** : SonarCloud + PIT mutation + JaCoCo coverage + Testcontainers ITs +
+  Spotless/Checkstyle/SpotBugs/PMD all blocking in CI. ArchUnit enforces hexagonal layering.
+- **Resilient operations** : Argo CD GitOps + Argo Rollouts canary, Resilience4j circuit-
+  breaker + retry, chaos endpoints, runbook-linked alerts. Cluster lifecycle via Terraform.
 
 # Mirador — the watchtower for a real running system
 
@@ -76,10 +50,19 @@
 > _Built with the right tools and the right methods._
 
 **Mirador** — Spanish for *watchtower* — is a vantage point. The project
-picks a concrete Customer API backend and stands watch over it from every
-angle at once: **the code, the runtime metrics, the CI/CD pipelines, and
-the industry-standard tooling wired around it**. The same live backend is
-visible through two complementary "windows":
+picks a concrete **Customer onboarding & enrichment service** and stands
+watch over it from every angle at once : **the code, the runtime metrics,
+the CI/CD pipelines, and the industry-standard tooling wired around it**.
+
+The mini-domain is deliberately industrial : a Customer goes through
+**registration → validation → external enrichment (JSONPlaceholder + Ollama
+LLM) → Kafka audit events → state tracking → incident diagnostic endpoints**
+(`/customers/diagnostic/{slow-query,db-failure,kafka-timeout}` for
+controlled chaos). It mirrors the shape of a regulated-industry onboarding
+flow (KYC, AML, customer 360°) without inheriting the regulatory weight,
+so the focus stays on the engineering disciplines.
+
+The same live backend is visible through two complementary "windows" :
 
 - the paired UI ([`mirador-ui`](https://gitlab.com/mirador1/mirador-ui))
   shows it from the **business angle** — REST endpoints, customer data,
@@ -87,11 +70,14 @@ visible through two complementary "windows":
 - Grafana shows it from the **observability angle** — Prometheus
   metrics, Tempo traces, Loki logs, all flowing through OpenTelemetry.
 
-Both panes look at the exact same `mirador-service` instance; nothing
+Both panes look at the exact same `mirador-service-java` instance; nothing
 is mocked between them.
 
-This repository is the **Spring Boot 4 / Java 25 backend**. It is the one
-being watched.
+This repository is the **Spring Boot 4 / Java 25 backend** (default
+branch). The CI compat matrix also builds + tests green on **Java 21 LTS +
+Spring Boot 3.x** from the same code — that's the conservative production
+target. See [What this proves for a senior backend architect](#what-this-proves-for-a-senior-backend-architect)
+below for the recruiter-facing summary.
 
 What the project actually exercises:
 
@@ -136,6 +122,8 @@ is here, and what was rejected to get here*.
 
 ## Table of contents
 
+- [What this proves for a senior backend architect](#what-this-proves-for-a-senior-backend-architect)
+- [Technology coverage](#technology-coverage)
 - [Why this, not that — the arbitrages](#why-this-not-that--the-arbitrages)
 - [Simplification levers](#simplification-levers)
 - [AI-assisted integration — where it contributed, where it didn't](#ai-assisted-integration--where-it-contributed-where-it-didnt)
@@ -149,6 +137,63 @@ is here, and what was rejected to get here*.
 - [CI/CD](#cicd)
 - [Screenshots](#screenshots)
 - [Detailed documentation](#detailed-documentation)
+
+---
+
+## What this proves for a senior backend architect
+
+| Concern | What this repo demonstrates | Why it matters in production |
+|---|---|---|
+| **System design** | Hexagonal layering enforced by ArchUnit ; ADRs (39+) document each rejection ; Kafka request-reply pattern with correlation ID + timeout ; Resilience4j circuit-breaker + retry on every external call. | Architecture decisions are reviewable + reversible ; the system is built around use cases, not frameworks. |
+| **Security** | JWT (HS256) + refresh-token rotation + jti revocation ; Auth0 + Keycloak both wired ; rate limiting (Bucket4j) ; SAST (Semgrep) + SCA (OWASP Dep-Check + Trivy + Grype) + image signing (cosign) + SBOM (Syft) all blocking in CI. | Defence in depth, supply chain integrity, no "we'll add it later". |
+| **Observability** | OTel SDK → Collector → LGTM ; **3 SLOs defined-as-code via Sloth** with multi-window multi-burn-rate alerting (Google SRE Workbook) ; Grafana SLO dashboard tracks error budget consumption. | "Are we within contract this month?" is an objective question with a graph, not a vibe check. |
+| **Data + state** | PostgreSQL + Flyway migrations ; Redis ring buffer + cache ; Kafka KRaft with auto-create off in prod ; idempotent consumers ; transactional outbox pattern (see ADR). | State is intentional, migrations are reviewable, replays are possible. |
+| **CI/CD discipline** | GitLab CI exclusively (no SaaS quota) ; group-level runner serves 4 repos ; lefthook 3-tier hooks ; conventional-commits enforced ; SonarCloud + JaCoCo + PIT mutation all gated ; multi-arch Docker via buildx. | Quality contracts > reviewer goodwill ; regressions break the build, not the next deploy. |
+| **Operations** | Argo CD GitOps ; Argo Rollouts canary ; chaos diagnostic endpoints ; runbook URLs in every alert ; RTO/RPO discussed in SLA doc ; ephemeral cluster (cost-controlled) with budget alerts. | The system is operable, not just deployable. |
+| **Evolution** | Compat matrix Java 17/21/25 × SB3/SB4 — same source tree, both stacks build + test green ; ADRs supersede each other rather than rewriting docs ; Renovate auto-bumps with grouped MRs. | Tech evolves without rewrites ; conservative LTS path is always reachable. |
+| **Polyrepo coherence** | Sibling repos ([UI](https://gitlab.com/mirador1/mirador-ui), [Python mirror](https://gitlab.com/mirador1/mirador-service-python), [shared infra](https://gitlab.com/mirador1/mirador-service-shared)) share runner + CI templates + observability + ADR cross-references via git submodule. | Demonstrates how to keep multiple services consistent without monorepo lock-in. |
+
+---
+
+## Technology coverage
+
+The badge row at the top is **deliberately curated** — 8 essentials. The full
+matrix below is the honest "tech zoo" view, kept here so reviewers can verify
+the breadth without drowning in the headline. Each entry maps to an ADR or
+a `docs/architecture/*.md` page (see [`docs/reference/technologies.md`](docs/reference/technologies.md)
+for the canonical list).
+
+**Runtime** — Java 21 LTS + Java 25 (compat matrix) · Spring Boot 3.x + 4
+(compat matrix) · PostgreSQL 17 · Apache Kafka KRaft · Redis 7 · Angular 21
+zoneless (sibling repo).
+
+**Platform** — Docker compose + buildx + QEMU multi-arch · Kubernetes (GKE
+Autopilot + kind in CI) · Terraform (GKE + GSM) · Argo CD GitOps · Argo
+Rollouts canary · External Secrets Operator + Google Secret Manager ·
+cert-manager + Let's Encrypt · Unleash feature flags.
+
+**Observability** — OpenTelemetry (traces + logs + metrics) · Grafana LGTM
+stack (Tempo / Loki / Mimir) · Pyroscope continuous profiling ·
+**Sloth-generated SLO rules + multi-window burn-rate alerts** · Grafana SLO
+dashboard with error budget tracking.
+
+**Security & supply chain** — Auth0 + Keycloak OIDC dual path · JWT HS256 +
+refresh rotation + Redis blacklist · Resilience4j (CB + retry + bulkhead) ·
+Bucket4j rate limiting · Kyverno cluster policies · cosign image signing ·
+Syft SBOM · Trivy / Grype container scan · Dockle Dockerfile lint · Semgrep
+SAST · OWASP Dependency-Check (CVE) · gitleaks (secret scan).
+
+**Quality** — SonarCloud (group-level token) · PIT mutation testing · JaCoCo
+unit + integration coverage · Spotless + Checkstyle + SpotBugs + PMD all
+blocking · Testcontainers (Postgres / Kafka / Redis / kind) · Vitest UI unit
+· Playwright E2E kind-in-CI · k6 load tests · Chaos Mesh NetworkChaos.
+
+**CI / release** — GitLab CI exclusively (group-level macbook-local runner)
+· Jenkinsfile parity reference · Renovate auto-bumps with grouped MRs ·
+lefthook pre-commit + commit-msg + pre-push gates · conventional-commits
+enforced · pip-audit (Python sibling) · changelog + GitLab release shell
+scripts in shared submodule · CodeQL + OpenSSF Scorecard on the GitHub
+mirror.
 
 ---
 
@@ -461,7 +506,7 @@ Optional (for frontend):
 ### First-time setup
 
 ```bash
-git clone https://gitlab.com/benoit.besson/mirador-service.git && cd mirador-service
+git clone https://gitlab.com/mirador1/mirador-service-java.git && cd mirador-service-java
 bash run.sh all
 ```
 
@@ -469,7 +514,7 @@ That's it. Docker starts automatically. Sign in at http://localhost:8080/swagger
 
 > **With the Angular frontend** (second terminal):
 > ```bash
-> git clone https://gitlab.com/benoit.besson/mirador-ui.git && cd mirador-ui
+> git clone https://gitlab.com/mirador1/mirador-ui.git && cd mirador-ui
 > bash run.sh
 > ```
 > UI at http://localhost:4200 — delegates infrastructure to the backend `run.sh`.

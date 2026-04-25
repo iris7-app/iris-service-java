@@ -16,8 +16,14 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     # `run.sh all` keeps the original "kitchen sink" semantics by
     # activating both. `docs` (maven-site, compodoc) is opt-in only —
     # `run.sh site` brings maven-site up on demand.
+    # redis-commander dropped 2026-04-25 from `all` invocation : the project is
+    # unmaintained (last release 2021-07), and the `0.8.1` tag was yanked from
+    # Docker Hub making the all-up fail mid-stream. redisinsight covers the
+    # same Redis-browser UX. Users who specifically want redis-commander can
+    # still run it manually : `docker compose --profile admin up -d redis-commander`
+    # (and accept that the pin needs maintenance — see TASKS.md).
     docker compose --profile full --profile admin up -d \
-      db kafka redis ollama keycloak cloudbeaver kafka-ui redisinsight redis-commander
+      db kafka redis ollama keycloak cloudbeaver kafka-ui redisinsight
     # Start observability stack (lgtm, cors-proxy, docker-proxy) — all
     # now live under the `observability` profile.
     docker compose -f deploy/compose/observability.yml --profile observability up -d
