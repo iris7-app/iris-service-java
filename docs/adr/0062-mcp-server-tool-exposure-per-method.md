@@ -215,6 +215,67 @@ tool and not notice, both are too generic.
   is checked by `eslint`-equivalent at PR review time, not enforced)
 - Each `@ToolParam(required = false)` Java parameter must be Optional or nullable
 
+## Tool catalogue (initial scope)
+
+The first MCP server release exposes 5 tool families. Each `@Tool` lives
+in the corresponding service ; signatures are sketched here, full Javadoc
++ `@ToolParam` descriptions in the implementation.
+
+### Domain tools (Order/Product/Customer/Chaos)
+
+| Tool | Description (LLM-facing) |
+|---|---|
+| `list_recent_orders` | Newest-first list of orders, capped at 100. Optional `status` filter, optional `customerId` filter. |
+| `get_order_by_id` | Full order header + lines for a single ID. Returns 404-style empty if absent. |
+| `create_order` | Creates an empty order for a customer. Returns the new ID. Idempotency-Key reuse via the existing IdempotencyFilter. |
+| `cancel_order` | Marks an order CANCELLED + cascades line removal. |
+| `find_low_stock_products` | Products below a stock threshold ; default threshold 10. |
+| `get_customer_360` | Customer + count of their orders + total revenue. Aggregate read. |
+| `trigger_chaos_experiment` | Wraps `/chaos/{scenario}` — slow-query, db-failure, kafka-timeout, etc. |
+
+### Observability tools (added to scope 2026-04-26)
+
+The Mirador backend is fundamentally an observability + chaos demo —
+exposing the same telemetry to the LLM closes the loop : the assistant
+can investigate an incident, query metrics, fetch logs, even render a
+Grafana panel, all in plain English.
+
+| Tool | Description | Backing data source |
+|---|---|---|
+| `tail_logs` | Returns the last N log lines, optionally filtered by level (INFO/WARN/ERROR), MDC `request_id`, or trace-id. Default N = 50, max 500. | Loki (LGTM container) via LogQL ; falls back to in-process ring buffer if Loki unreachable |
+| `query_metric` | Runs a single Prometheus instant query and returns the value(s). Caller passes a PromQL expression ; tool wraps `/api/v1/query`. | Mimir (LGTM) `/api/v1/query` endpoint |
+| `query_metric_range` | Time-series version : start, end, step ; returns a compact `[(timestamp, value)]` list. | Mimir `/api/v1/query_range` |
+| `get_health` | Returns `actuator/health` with composite + sub-indicators (db, kafka, redis). | Spring Boot Actuator |
+| `get_health_detail` | Same but with `details : true` (admin-gated). | Spring Boot Actuator |
+| `list_grafana_dashboards` | Returns dashboards visible to the configured Grafana org, with UID + title + URL. | Grafana `/api/search` (read-only token) |
+| `get_grafana_panel_values` | Fetches the underlying time-series of one panel by `dashboardUid` + `panelId`. The LLM can then summarise without needing to render. | Grafana `/api/datasources/proxy/...` ; or directly Mimir if PromQL is known |
+| `get_openapi_spec` | Returns the full OpenAPI 3.1 spec OR a paths-only summary if `summary=true`. Lets the LLM understand the HTTP surface to suggest next actions. | `springdoc-openapi` `/v3/api-docs` |
+
+These observability tools are gated by **role** (read-only role can call
+the `tail_logs` / `query_metric*` / `get_grafana_*` / `get_openapi_spec`
+tools ; only admin role can call `get_health_detail`, `trigger_chaos_experiment`).
+The role check uses Spring Security's existing `@PreAuthorize` —
+`@Tool` annotation does NOT bypass auth, the LLM call goes through the
+same SecurityContext as a REST call.
+
+### Implications for the implementation
+
+- **3 new service classes** : `LogsService`, `MetricsService`, `GrafanaService`,
+  each with `@Tool`-annotated methods. Plus `OpenApiService` (very thin —
+  delegate to springdoc).
+- **Configuration** : `MIRADOR_GRAFANA_URL`, `MIRADOR_GRAFANA_TOKEN`,
+  `MIRADOR_LOKI_URL`, `MIRADOR_MIMIR_URL` env vars (env-aware so kind/prod
+  use the in-cluster service names, local uses the LGTM container at 3000).
+- **Caching** : `query_metric` results cached 5s via Caffeine — LLM often
+  asks same query twice in a row when reasoning, no point hitting Mimir
+  twice.
+- **Rate limiting** : MCP endpoint inherits `RateLimitingFilter` (existing
+  Bucket4j 100 req/min per IP). LLM agents that go into a tool-call storm
+  get 429-throttled, not crash the backend.
+- **Audit** : every tool call writes a `audit_event` row (action =
+  `MCP_TOOL_CALL`, detail = JSON of args, user_id from JWT). Same table
+  as login audits — single trail.
+
 ## References
 
 - [Anthropic — Tool use guidance](https://docs.anthropic.com/en/docs/build-with-claude/tool-use)
