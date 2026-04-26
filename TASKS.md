@@ -80,4 +80,82 @@ Captured from portfolio review session feedback :
   workflow (record-demo.sh in shared) once the SLO dashboard is connected
   to a live LGTM stack.
 
+## 🎯 Augmenter la surface fonctionnelle — nouvelles entités
+
+☐ Ajouter 3 entités au backend Java pour étendre la surface fonctionnelle
+au-delà de `Customer`.
+
+**Scope final (validé utilisateur 2026-04-26)** : Pattern A simplifié —
+`Customer` reste tel quel (continue à porter l'auth/identité existante),
+3 nouvelles entités pour la surface e-commerce :
+
+- **`Order`** — entité principale, FK `customer_id` → `Customer` (existant),
+  statut (PENDING / CONFIRMED / SHIPPED / CANCELLED), `total_amount`
+  calculé.
+- **`Product`** — entité indépendante : `name`, `description`,
+  `unit_price`, `stock_quantity`.
+- **`OrderLine`** — entité (PAS un simple join — porte un état propre :
+  quantité + prix snapshot + statut individuel + cycle de vie). Relation
+  Order ↔ Product avec : `quantity`, `unit_price_at_order` (immutable,
+  snapshot du prix au moment de la commande pour audit), statut individuel
+  (PENDING / SHIPPED / REFUNDED).
+
+**Pourquoi OrderLine entité et pas join pur** : carries snapshot du prix
+(perdu sinon quand le produit change de prix), refund/cancel par ligne,
+inventory tracking précis, possibilité de discount par ligne plus tard.
+Test "est-ce une entité ?" : ID propre + état mutable au-delà des FKs → OUI.
+
+### Acceptance criteria
+
+#### Code & schéma
+
+- [ ] 3 migrations Flyway (V8 = order, V9 = product, V10 = order_line)
+- [ ] Spring Data JPA repositories par entité (Order, Product, OrderLine)
+- [ ] Domain feature-slicing per ADR-0008 (`com.mirador.order.*`,
+      `com.mirador.product.*`)
+- [ ] REST controllers : full CRUD (`/orders`, `/products`,
+      `/orders/{id}/lines/{lineId}`) + OpenAPI annotations
+- [ ] ADR documentant le modèle de données + relations (justifie OrderLine
+      comme entité plutôt que join pur)
+
+#### Tests (cf. ADR-0007 industrial best practices)
+
+- [ ] **JUnit unit tests** (`src/test/java/com/mirador/{order,product}/`) :
+      ≥ 1 test par méthode publique, AAA pattern, tests edge cases
+      (null inputs, empty collections, boundary values).
+- [ ] **Spring Boot integration tests** (`@SpringBootTest` + `@Testcontainers`
+      Postgres) : full HTTP roundtrip (create → read → update → delete),
+      validation des contraintes JPA, transactions rollback.
+- [ ] **Property-based tests** (jqwik ou similaire) sur invariants :
+      `total_amount == Σ(line.quantity × line.unit_price_at_order)`,
+      `stock_quantity ≥ 0`, OrderLine.unit_price_at_order immutability.
+- [ ] **Test PIT mutations** : score ≥ 75 % sur le nouveau code
+      (existing PIT config dans pom.xml).
+
+#### Couverture (gate explicite)
+
+- [ ] **JaCoCo coverage ≥ 90 %** (lignes + branches) sur le nouveau code
+      (`com.mirador.{order,product}.*`). Configurer `jacoco-maven-plugin`
+      `<rule>` avec `BUNDLE` minimum 90 % — fail le build si en-dessous.
+- [ ] **Coverage report HTML** publié dans CI artifacts (`target/site/jacoco/`).
+- [ ] **Trend tracking** : intégrer le delta de coverage dans la CI MR
+      pipeline (commenter le %.
+
+#### Update outils
+
+- [ ] Update `bin/dev/api-smoke.sh` avec les nouveaux endpoints
+      (POST /orders avec 2 OrderLines, GET, DELETE, vérifier le total)
+- [ ] Update `bin/dev/sections/code.sh` pour inclure les nouveaux modules
+      dans les checks
+- [ ] CHANGELOG entry au prochain `stable-vX.Y.Z`
+
+### Cross-repo coordination (cf. common ADR-0001 polyrepo)
+
+Doit être implementé **EN PARALLÈLE** dans
+[`mirador-service-python`](https://gitlab.com/mirador1/mirador-service-python)
+(même API contract OpenAPI) ET visualisé dans
+[`mirador-ui`](https://gitlab.com/mirador1/mirador-ui) (pages list / create
+/ edit). Voir `TASKS.md` de chaque repo. Acceptance partielle si l'un des
+3 repos n'a pas livré.
+
 ## 🔧 Other
