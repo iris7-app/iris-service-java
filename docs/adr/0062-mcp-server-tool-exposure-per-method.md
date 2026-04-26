@@ -1,6 +1,6 @@
 # ADR-0062 — MCP server : `@Tool` per-method on the service layer
 
-**Status** : Proposed
+**Status** : Accepted
 **Date** : 2026-04-26
 **Sibling docs** :
 - [shared ADR-0059 — Customer/Order/Product/OrderLine data model](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0059-customer-order-product-data-model.md)
@@ -117,6 +117,26 @@ When we add a new helper method to a service, it doesn't accidentally
 become an LLM-facing tool. A class-level `@ExposeAllMethods` would silently
 broaden the contract on every commit. `@Tool` per-method is the explicit
 intent : adding it = decision to commit.
+
+### 6. The "decision space cut in half" framing
+
+A class-level "this service handles orders" leaves the LLM with N candidate
+methods, no internal ordering. Per-method `@Tool(description=…)` carves the
+input space :
+
+> "Lists ORDERS FOR A CUSTOMER, newest-first, capped at 100. Use this when
+> the user asks 'what did customer 42 buy?'."
+
+That single sentence eliminates `getOrderById`, `cancelOrder`, `addLine`,
+`getOrdersForToday` from consideration. The LLM picks faster, picks more
+reliably, and stops asking for clarification it shouldn't have to ask.
+
+### 7. Tool name decoupling
+
+Java idioms favour terse verbs : `list()`, `get()`, `update()`. MCP tool
+names benefit from longer snake_case identifiers : `list_recent_orders_for_customer`,
+`find_low_stock_products`. `@Tool(name=…)` lets us decouple wire-name from
+Java method name — a class-level switch wouldn't.
 
 ## Alternatives considered
 
