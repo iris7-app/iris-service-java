@@ -85,6 +85,14 @@ Captured from portfolio review session feedback :
 ☐ Ajouter 3 entités au backend Java pour étendre la surface fonctionnelle
 au-delà de `Customer`.
 
+**🚩 État au flush 2026-04-26 12:14** : Claude a démarré le foundation
+work (V7+V8+V9 migrations) mais l'utilisateur a interrompu les writes.
+Raison de l'interruption pas explicite — possiblement scope trop large
+d'un coup, ou souhait de redémarrer la session avec contexte propre.
+**Action au prochain reprise** : confirmer avec l'utilisateur si on
+reprend le foundation tel quel OU si on doit cadrer plus serré (ex :
+juste Product + Order sans OrderLine, ou plus petite incrémentation).
+
 **Scope final (validé utilisateur 2026-04-26)** : Pattern A simplifié —
 `Customer` reste tel quel (continue à porter l'auth/identité existante),
 3 nouvelles entités pour la surface e-commerce :
@@ -100,6 +108,12 @@ au-delà de `Customer`.
   snapshot du prix au moment de la commande pour audit), statut individuel
   (PENDING / SHIPPED / REFUNDED).
 
+**Contexte schéma existant** (vérifié 2026-04-26) : migrations Flyway
+courent V1-V6. V6 = `app_user` (auth, séparé de `customer`). Donc les
+nouvelles migrations sont **V7 (product), V8 (orders), V9 (order_line)**.
+Tables existantes à NE PAS toucher : `customer`, `app_user`,
+`audit_event`, `refresh_token`, `shedlock`.
+
 **Pourquoi OrderLine entité et pas join pur** : carries snapshot du prix
 (perdu sinon quand le produit change de prix), refund/cancel par ligne,
 inventory tracking précis, possibilité de discount par ligne plus tard.
@@ -109,7 +123,8 @@ Test "est-ce une entité ?" : ID propre + état mutable au-delà des FKs → OUI
 
 #### Code & schéma
 
-- [ ] 3 migrations Flyway (V8 = order, V9 = product, V10 = order_line)
+- [ ] 3 migrations Flyway (V7 = product, V8 = orders, V9 = order_line —
+      next available numbers ; V1-V6 already used)
 - [ ] Spring Data JPA repositories par entité (Order, Product, OrderLine)
 - [ ] Domain feature-slicing per ADR-0008 (`com.mirador.order.*`,
       `com.mirador.product.*`)
@@ -157,5 +172,22 @@ Doit être implementé **EN PARALLÈLE** dans
 [`mirador-ui`](https://gitlab.com/mirador1/mirador-ui) (pages list / create
 / edit). Voir `TASKS.md` de chaque repo. Acceptance partielle si l'un des
 3 repos n'a pas livré.
+
+## 🤔 Awaiting clarification (flush 2026-04-26)
+
+- ☐ User wrote "Pertinent du projet l99" mid-session — interpretation
+  unclear (was it questioning whether the bump-common-everywhere.sh
+  effort is relevant to the project? referencing some issue #l99 or
+  #199?). Ask at session restart what that meant.
+
+- ☐ User interrupted my Write of `V7__create_product.sql` +
+  `V8__create_orders.sql` + `V9__create_order_line.sql` shortly after.
+  Possibly related to the "Pertinent" question. Don't restart the
+  foundation work without confirming :
+    1. Scope still A (3 entities = Order + Product + OrderLine), OR
+       a smaller increment ?
+    2. Migration numbering V7/V8/V9 (verified next-available) OK ?
+    3. Begin with which entity first (Product is most independent, no
+       FK dependencies) ?
 
 ## 🔧 Other
