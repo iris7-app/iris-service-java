@@ -924,7 +924,14 @@
                             <outputDirectory>${project.reporting.outputDirectory}/jacoco-merged</outputDirectory>
                         </configuration>
                     </execution>
-                    <!-- Coverage gate: fail if instruction coverage < 60 % on merged data -->
+                    <!-- Coverage gate: two-tier per shared ADR-0059.
+                         - global BUNDLE >= 70% (infrastructure/config excluded)
+                         - new e-commerce packages com.mirador.{order,product}.* >= 40%
+                           regression gate ; the property tests + cascade integration tests
+                           cover pure-domain methods (canTransitionTo, computeTotal) at
+                           100%, but CRUD controllers + repositories are still ~50%.
+                           CLIMB PLAN: 40% now → 70% after @WebMvcTest land → 90% final.
+                    -->
                     <execution>
                         <id>check</id>
                         <goals><goal>check</goal></goals>
@@ -937,8 +944,22 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <!-- 70 %: infrastructure/config excluded; see jacoco <excludes> above -->
                                             <minimum>0.70</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>com.mirador.order</include>
+                                        <include>com.mirador.product</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <!-- regression gate ; climb plan 40 → 70 → 90 -->
+                                            <minimum>0.40</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
