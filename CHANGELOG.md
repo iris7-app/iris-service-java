@@ -200,3 +200,4 @@ For the in-flight Phase B refactor targets, see [`TASKS.md`](TASKS.md).
 [stable-v1.0.6]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.6
 [stable-v1.0.5]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.5
 [stable-v1.0.4]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.4
+
