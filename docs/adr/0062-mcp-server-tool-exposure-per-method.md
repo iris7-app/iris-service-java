@@ -13,6 +13,37 @@ to LLM clients via the [Model Context Protocol](https://modelcontextprotocol.io/
 A `claude` CLI session pointed at our backend should be able to query, summarise,
 and trigger demos in plain English.
 
+### Why MCP over the alternative — Bash through CLI tools
+
+The default Claude-Code workflow today is to spawn shell commands :
+`glab mr list`, `kubectl get pods`, `docker exec postgres-demo psql -c "…"`,
+`curl localhost:8080/actuator/health | jq`. This works but pays a steep tax
+on every operation :
+
+| Aspect | Shell-via-Bash | MCP server |
+|---|---|---|
+| Output | Raw text — LLM parses ad-hoc, hallucinates structure | Typed JSON, schema-driven |
+| Errors | Exit code + stderr, conventions vary per tool | Structured `code` + `message` per the MCP spec |
+| Injection | Shell escaping is fragile, risky | Params typed by signature, no eval |
+| Auth | Inherits the shell user's full perms | Per-tool `@PreAuthorize`, role-scoped |
+| Audit | None by default | One `audit_event` row per call (action + args + user) |
+| Rate-limit | None | Inherits the existing Bucket4j filter |
+| Streaming | Buffered stdout, no progress | MCP `progress notification` mid-call |
+| Cross-platform | BSD vs GNU divergence (sed, date, …) | Same JSON contract everywhere |
+| Composability | Pipes + intermediate parsing | Clean JSON chaining |
+| Caching | Hand-rolled per call | Caffeine TTL declared on the tool |
+| New-team-member ramp-up | Must learn N CLI syntaxes | Asks in English, MCP bridges |
+
+The shell-only path can be made to work, but every operation pays the
+tax. MCP is the "stop paying that tax" decision : the contract is typed,
+auth is enforced once, audit is automatic, and the LLM picks the tool
+from a structured catalogue instead of constructing brittle shell
+incantations.
+
+This is the **central motivation** for MCP, beyond the demo wow-factor :
+it lifts shell-level operations into a typed, audited, secured API
+without writing a new REST endpoint for every single tool.
+
 [Spring AI 1.0.0+](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html)
 ships an MCP server starter that auto-wires the HTTP/SSE endpoint and registers
 methods marked with `@Tool` as MCP tools.
