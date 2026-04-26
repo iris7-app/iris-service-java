@@ -76,6 +76,7 @@ workflow:
         - ".gitmodules"     # Added 2026-04-26 so submodule SHA bumps trigger the pipeline (otherwise bump-only MRs sit blocked on ci_must_pass with no pipeline ever firing)
         - "infra/common/**/*"
         - "infra/shared/**/*"
+        - ".grype.yaml"     # Added 2026-04-26 so grype CVE-suppression edits trigger a pipeline
     # Main branch pushes — same allowlist, compared against HEAD~1 (last commit).
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
       changes:
@@ -101,6 +102,7 @@ workflow:
         - "deploy/**/*"
         - "scripts/**/*"
         - "bin/**/*"
+        - ".grype.yaml"     # Same as MR rule above — keeps post-merge pipelines aware of grype config drift
     # Scheduled pipelines: two named schedules (native build + report generation).
     # Configure each in GitLab → CI/CD → Schedules. The REPORT_PIPELINE variable
     # distinguishes the report schedule from the native-build schedule.
