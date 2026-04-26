@@ -89,9 +89,9 @@ Foundation **shippée 2026-04-26** dans [stable-v1.2.3](https://gitlab.com/mirad
 
 ### Reste à compléter (post-foundation)
 
-- ☐ **ADR data model** : documenter Order ↔ Product ↔ OrderLine + justifier
-  OrderLine comme entité (snapshot prix immutable, statut individuel,
-  refund par ligne) — pas un simple join.
+- ✅ **ADR data model** — landed 2026-04-26 in shared as
+  [shared ADR-0059](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0059-customer-order-product-data-model.md)
+  (cross-language : Java + Python + UI). Documents 6 invariants for property tests.
 - ☐ **JaCoCo coverage ≥ 90 %** sur `com.mirador.{order,product}.*` :
   configurer `<rule><BUNDLE>` à 90 % dans `jacoco-maven-plugin` — fail
   build si en-dessous. Aujourd'hui min global = 70 %.

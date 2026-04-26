@@ -1,0 +1,126 @@
+package com.mirador.order;
+
+import net.jqwik.api.Arbitraries;
+import net.jqwik.api.Arbitrary;
+import net.jqwik.api.Combinators;
+import net.jqwik.api.ForAll;
+import net.jqwik.api.Property;
+import net.jqwik.api.Provide;
+import net.jqwik.api.constraints.Size;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Property-based tests for the invariants of the Order/OrderLine domain
+ * documented in shared ADR-0059.
+ *
+ * <p>Each {@code @Property} method captures one invariant ; jqwik generates
+ * random inputs and shrinks failures to the smallest counter-example. This
+ * complements example-based JUnit tests by exploring far more of the input
+ * space than a hand-written test could.
+ *
+ * @see <a href="https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0059-customer-order-product-data-model.md">ADR-0059</a>
+ */
+class OrderInvariantsPropertyTest {
+
+    /**
+     * Invariant 1 (ADR-0059) :
+     * <pre>Order.totalAmount == Σ(line.quantity × line.unitPriceAtOrder)</pre>
+     *
+     * <p>Verified against {@link Order#computeTotal(java.util.Collection)} —
+     * the canonical implementation of the invariant. jqwik generates random
+     * line lists of varying size + price + quantity ; the test recomputes
+     * the sum independently and asserts equality.
+     *
+     * <p>Independent recomputation matters : if the production code drifts
+     * (e.g. someone "optimises" the stream into a fold that drops decimals),
+     * this test catches it because the alternate path stays simple.
+     */
+    @Property(tries = 100)
+    void totalAmount_equalsSumOfLines(@ForAll("orderLines") @Size(min = 0, max = 20) List<OrderLine> lines) {
+        BigDecimal computed = Order.computeTotal(lines);
+
+        BigDecimal expected = lines.stream()
+                .map(line -> line.getUnitPriceAtOrder()
+                        .multiply(BigDecimal.valueOf(line.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        assertThat(computed)
+                .as("computeTotal(%d lines) must equal Σ(qty × unitPrice)", lines.size())
+                .isEqualByComparingTo(expected);
+    }
+
+    /**
+     * Empty / null input boundary : both must yield {@link BigDecimal#ZERO}.
+     * Property test rather than example because we want to formalise the
+     * "no lines = no money" invariant as a contract, not a one-shot.
+     */
+    @Property(tries = 1)
+    void totalAmount_emptyOrNull_isZero() {
+        assertThat(Order.computeTotal(List.of())).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(Order.computeTotal(null)).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    /**
+     * Sum is non-negative for any well-formed line list (qty > 0 and price > 0).
+     *
+     * <p>Captures the implicit business rule : an order's total is never
+     * negative under valid inputs. Negative totals would only emerge from a
+     * bug — generating thousands of random inputs that never produce one
+     * gives high confidence the invariant holds.
+     */
+    @Property(tries = 100)
+    void totalAmount_nonNegative_forValidLines(@ForAll("orderLines") List<OrderLine> lines) {
+        BigDecimal total = Order.computeTotal(lines);
+        assertThat(total).isGreaterThanOrEqualTo(BigDecimal.ZERO);
+    }
+
+    /**
+     * Linearity : doubling every quantity doubles the total.
+     *
+     * <p>This is a pure mathematical property of the formula
+     * {@code Σ(qty × price)} — verifying it experimentally proves the
+     * implementation didn't sneak in non-linear behaviour (e.g. quantity
+     * tiers, bulk discounts) that would belong in a different layer.
+     */
+    @Property(tries = 50)
+    void totalAmount_linear_inQuantity(@ForAll("orderLines") @Size(min = 1, max = 10) List<OrderLine> lines) {
+        BigDecimal originalTotal = Order.computeTotal(lines);
+
+        // Double every quantity in-place
+        lines.forEach(line -> line.setQuantity(line.getQuantity() * 2));
+
+        BigDecimal doubledTotal = Order.computeTotal(lines);
+
+        assertThat(doubledTotal)
+                .as("doubling all quantities must double the total")
+                .isEqualByComparingTo(originalTotal.multiply(BigDecimal.valueOf(2)));
+    }
+
+    // ── Generators ──────────────────────────────────────────────────────
+
+    @Provide
+    Arbitrary<OrderLine> orderLine() {
+        Arbitrary<Integer> quantity = Arbitraries.integers().between(1, 1_000);
+        Arbitrary<BigDecimal> unitPrice = Arbitraries.bigDecimals()
+                .between(new BigDecimal("0.01"), new BigDecimal("99999.99"))
+                .ofScale(2);
+
+        return Combinators.combine(quantity, unitPrice).as((qty, price) -> {
+            OrderLine line = new OrderLine();
+            line.setQuantity(qty);
+            line.setUnitPriceAtOrder(price.setScale(2, RoundingMode.HALF_UP));
+            line.setStatus(OrderLineStatus.PENDING);
+            return line;
+        });
+    }
+
+    @Provide
+    Arbitrary<List<OrderLine>> orderLines() {
+        return orderLine().list().ofMinSize(0).ofMaxSize(20);
+    }
+}
