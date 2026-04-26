@@ -264,30 +264,45 @@ in the corresponding service ; signatures are sketched here, full Javadoc
 | `get_customer_360` | Customer + count of their orders + total revenue. Aggregate read. |
 | `trigger_chaos_experiment` | Wraps `/chaos/{scenario}` — slow-query, db-failure, kafka-timeout, etc. |
 
-### Observability tools (added to scope 2026-04-26)
+### Observability tools — backend-LOCAL only (added 2026-04-26)
 
-The Mirador backend is fundamentally an observability + chaos demo —
-exposing the same telemetry to the LLM closes the loop : the assistant
-can investigate an incident, query metrics, fetch logs, even render a
-Grafana panel, all in plain English.
+**Architectural constraint** : the Mirador backend MUST stay agnostic of
+infrastructure tools (Mimir, Grafana, Loki, GitLab, GitHub, kubectl, …).
+Coupling the domain backend to specific infra tools would :
+- Couple deploys (Spring Boot can't ship without Loki reachable),
+- Bloat the dependency tree (`grafana-rest-client`, etc.),
+- Leak deployment-environment knowledge into the application,
+- Force every consumer (kind, GKE, AWS, on-prem) to ship the same observability stack.
 
-| Tool | Description | Backing data source |
+So the Mirador MCP server only exposes what the backend **already owns
+in-process** :
+
+| Tool | Description | Backing source (in-process only) |
 |---|---|---|
-| `tail_logs` | Returns the last N log lines, optionally filtered by level (INFO/WARN/ERROR), MDC `request_id`, or trace-id. Default N = 50, max 500. | Loki (LGTM container) via LogQL ; falls back to in-process ring buffer if Loki unreachable |
-| `query_metric` | Runs a single Prometheus instant query and returns the value(s). Caller passes a PromQL expression ; tool wraps `/api/v1/query`. | Mimir (LGTM) `/api/v1/query` endpoint |
-| `query_metric_range` | Time-series version : start, end, step ; returns a compact `[(timestamp, value)]` list. | Mimir `/api/v1/query_range` |
-| `get_health` | Returns `actuator/health` with composite + sub-indicators (db, kafka, redis). | Spring Boot Actuator |
-| `get_health_detail` | Same but with `details : true` (admin-gated). | Spring Boot Actuator |
-| `list_grafana_dashboards` | Returns dashboards visible to the configured Grafana org, with UID + title + URL. | Grafana `/api/search` (read-only token) |
-| `get_grafana_panel_values` | Fetches the underlying time-series of one panel by `dashboardUid` + `panelId`. The LLM can then summarise without needing to render. | Grafana `/api/datasources/proxy/...` ; or directly Mimir if PromQL is known |
-| `get_openapi_spec` | Returns the full OpenAPI 3.1 spec OR a paths-only summary if `summary=true`. Lets the LLM understand the HTTP surface to suggest next actions. | `springdoc-openapi` `/v3/api-docs` |
+| `tail_logs` | Last N log lines with level / MDC filter ; default N = 50, max 500. | Logback ring-buffer appender attached at startup. NO Loki call. |
+| `get_metrics` | Returns specific Micrometer registry samples by name + tags filter. | `MeterRegistry` injected directly. NO Mimir call. |
+| `get_health` | Composite + sub-indicator status. | Spring Boot Actuator's `HealthEndpoint` bean. |
+| `get_health_detail` | Same, with details. Admin-gated. | Same. |
+| `get_actuator_env(prefix)` | Spring environment props matching a prefix, redacting secrets. | Actuator `EnvironmentEndpoint`. |
+| `get_actuator_info()` | Build / git / version info. | Actuator `InfoEndpoint`. |
+| `get_openapi_spec(summary)` | Full OpenAPI 3.1 OR paths-only summary. | `springdoc-openapi` in-process. |
 
-These observability tools are gated by **role** (read-only role can call
-the `tail_logs` / `query_metric*` / `get_grafana_*` / `get_openapi_spec`
-tools ; only admin role can call `get_health_detail`, `trigger_chaos_experiment`).
-The role check uses Spring Security's existing `@PreAuthorize` —
-`@Tool` annotation does NOT bypass auth, the LLM call goes through the
-same SecurityContext as a REST call.
+**External infra MCP servers** (Mimir, Grafana, Loki, GitLab, GitHub) live
+**outside** the Mirador codebase :
+- Use community / official MCP servers (Anthropic ships some,
+  [github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)).
+- Each Claude Code user adds them independently via `claude mcp add`.
+- The application's session ends up with N MCP servers ; Claude composes
+  across them (e.g., `mirador.get_health` + `prometheus.query` in the
+  same prompt) ; Mirador's backend never imports any infra-tool client.
+
+This split keeps the deploy unit (Spring Boot jar) decoupled from the
+deploy environment (which observability stack, which CI vendor).
+
+These backend-local observability tools are gated by **role** (read-only
+role can call all of them except `get_health_detail` and
+`trigger_chaos_experiment`, which are admin-only). Role check uses
+Spring Security's `@PreAuthorize` — `@Tool` does NOT bypass auth.
 
 ### Implications for the implementation
 
