@@ -70,8 +70,8 @@ public class ActuatorService {
     /**
      * Production constructor — Spring auto-wires everything.
      *
-     * <p>Both Actuator beans are wrapped in {@link ObjectProvider} so the
-     * service still loads when the endpoint is disabled
+     * <p>The two optional Actuator beans (health, info) are wrapped in
+     * {@link ObjectProvider} so the service still loads when the endpoint is disabled
      * ({@code management.endpoint.<x>.access=none}) or excluded from
      * {@code management.endpoints.web.exposure.include}. Calls to a tool
      * that needs an absent endpoint return an explicit "endpoint
