@@ -49,6 +49,19 @@ class ProductHttpITest extends AbstractIntegrationTest {
         return "-it-" + System.nanoTime();
     }
 
+    private String testIp;
+
+    @org.junit.jupiter.api.BeforeEach
+    void assignTestIp() {
+        // Per-test X-Forwarded-For so the RateLimitingFilter assigns a
+        // dedicated bucket. Without this, ITs sharing 127.0.0.1 deplete
+        // the per-IP 100-req/min bucket and ProductHttpITest can flake
+        // on the multi-call roundtrip when the order of test execution
+        // pushes it past 100 requests.
+        long nano = System.nanoTime();
+        testIp = "10." + ((nano >> 16) & 0xFF) + "." + ((nano >> 8) & 0xFF) + "." + (nano & 0xFF);
+    }
+
     // ─── happy path : POST → GET → PUT → DELETE ─────────────────────────────
 
     @Test
@@ -58,6 +71,7 @@ class ProductHttpITest extends AbstractIntegrationTest {
         // POST /products → 201 Created
         MvcResult created = mockMvc.perform(post("/products")
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"name":"%s","description":"hello","unitPrice":"19.99","stockQuantity":42}
@@ -69,12 +83,13 @@ class ProductHttpITest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.stockQuantity").value(42))
                 .andReturn();
 
-        Long id = com.jayway.jsonpath.JsonPath.read(
-                created.getResponse().getContentAsString(), "$.id");
+        Long id = ((Number) com.jayway.jsonpath.JsonPath.read(
+                created.getResponse().getContentAsString(), "$.id")).longValue();
 
         // GET /products/{id} → 200
         mockMvc.perform(get("/products/{id}", id)
-                        .with(user("admin").roles("ADMIN")))
+                        .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.name").value(name));
@@ -82,6 +97,7 @@ class ProductHttpITest extends AbstractIntegrationTest {
         // PUT /products/{id} → 200 with updated fields
         mockMvc.perform(put("/products/{id}", id)
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"name":"%s","description":"updated","unitPrice":"29.99","stockQuantity":7}
@@ -92,12 +108,14 @@ class ProductHttpITest extends AbstractIntegrationTest {
 
         // DELETE /products/{id} → 204
         mockMvc.perform(delete("/products/{id}", id)
-                        .with(user("admin").roles("ADMIN")))
+                        .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp))
                 .andExpect(status().isNoContent());
 
         // GET /products/{id} → 404 after deletion
         mockMvc.perform(get("/products/{id}", id)
-                        .with(user("admin").roles("ADMIN")))
+                        .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp))
                 .andExpect(status().isNotFound());
     }
 
@@ -107,6 +125,7 @@ class ProductHttpITest extends AbstractIntegrationTest {
     void post_emptyName_returns400() throws Exception {
         mockMvc.perform(post("/products")
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"name":"","unitPrice":"1.00","stockQuantity":1}
@@ -118,6 +137,7 @@ class ProductHttpITest extends AbstractIntegrationTest {
     void post_negativeUnitPrice_returns400() throws Exception {
         mockMvc.perform(post("/products")
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"name":"Negative","unitPrice":"-0.01","stockQuantity":0}
@@ -129,6 +149,7 @@ class ProductHttpITest extends AbstractIntegrationTest {
     void post_negativeStock_returns400() throws Exception {
         mockMvc.perform(post("/products")
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"name":"NegStock","unitPrice":"1.00","stockQuantity":-5}
@@ -141,7 +162,8 @@ class ProductHttpITest extends AbstractIntegrationTest {
     @Test
     void get_unknownId_returns404() throws Exception {
         mockMvc.perform(get("/products/{id}", 999_999_999L)
-                        .with(user("admin").roles("ADMIN")))
+                        .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp))
                 .andExpect(status().isNotFound());
     }
 
@@ -150,7 +172,8 @@ class ProductHttpITest extends AbstractIntegrationTest {
         // Some DELETE implementations treat absent as idempotent (204) ;
         // others 404. Both shapes are valid REST — assert the union.
         mockMvc.perform(delete("/products/{id}", 999_999_998L)
-                        .with(user("admin").roles("ADMIN")))
+                        .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp))
                 .andExpect(result -> {
                     int s = result.getResponse().getStatus();
                     if (s != 404 && s != 204) {
@@ -164,6 +187,7 @@ class ProductHttpITest extends AbstractIntegrationTest {
     @Test
     void post_anonymous_returns401() throws Exception {
         mockMvc.perform(post("/products")
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"name":"NoAuth","unitPrice":"1.00","stockQuantity":1}
@@ -183,6 +207,7 @@ class ProductHttpITest extends AbstractIntegrationTest {
             String n = "PageProbe" + uniq() + "_" + i;
             mockMvc.perform(post("/products")
                             .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                             .contentType(APPLICATION_JSON)
                             .content("""
                                     {"name":"%s","unitPrice":"1.00","stockQuantity":1}
@@ -192,6 +217,7 @@ class ProductHttpITest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/products")
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .param("size", "2")
                         .param("page", "0"))
                 .andExpect(status().isOk())
@@ -205,6 +231,7 @@ class ProductHttpITest extends AbstractIntegrationTest {
         String token = "SearchableUnique" + uniq();
         mockMvc.perform(post("/products")
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"name":"%s","unitPrice":"1.00","stockQuantity":1}
@@ -214,6 +241,7 @@ class ProductHttpITest extends AbstractIntegrationTest {
         // Search with the unique token — exactly 1 hit.
         mockMvc.perform(get("/products")
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .param("search", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].name").value(token));

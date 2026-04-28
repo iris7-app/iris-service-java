@@ -55,6 +55,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
 
     private Long customerId;
     private Long productId;
+    private String testIp;
 
     @BeforeEach
     void seed() {
@@ -72,6 +73,16 @@ class OrderHttpITest extends AbstractIntegrationTest {
         p.setStockQuantity(100);
         p.setUpdatedAt(Instant.now());
         productId = productRepo.save(p).getId();
+
+        // Each test gets a unique X-Forwarded-For value so the per-IP
+        // RateLimitingFilter assigns it its own token bucket. Without
+        // this, the entire IT suite shares the 127.0.0.1 bucket
+        // (depleted ≥ 100 requests in any single 60s window) and the
+        // multi-call OrderHttpITest scenarios get 429s. A 10.x.x.x
+        // private-range IP keyed off System.nanoTime() avoids any
+        // collision with ITs run in parallel.
+        long nano = System.nanoTime();
+        testIp = "10." + ((nano >> 16) & 0xFF) + "." + ((nano >> 8) & 0xFF) + "." + (nano & 0xFF);
     }
 
     // ─── happy path : POST /orders → POST 2 lines → GET → DELETE line → GET ─
@@ -82,6 +93,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
         // POST /orders → 201 Created with totalAmount = 0
         MvcResult created = mockMvc.perform(post("/orders")
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"customerId":%d}
@@ -99,6 +111,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
         // POST line 1 (quantity=2) — total becomes 2 × 9.99 = 19.98
         MvcResult line1 = mockMvc.perform(post("/orders/{orderId}/lines", orderId)
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"productId":%d,"quantity":2}
@@ -112,6 +125,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
         // POST line 2 (quantity=3) — total becomes (2 + 3) × 9.99 = 49.95
         mockMvc.perform(post("/orders/{orderId}/lines", orderId)
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"productId":%d,"quantity":3}
@@ -120,19 +134,22 @@ class OrderHttpITest extends AbstractIntegrationTest {
 
         // GET /orders/{id} — total = 49.95, 2 lines visible
         mockMvc.perform(get("/orders/{id}", orderId)
-                        .with(user("admin").roles("ADMIN")))
+                        .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(orderId))
                 .andExpect(jsonPath("$.totalAmount").value(49.95));
 
         // DELETE line 1 — total becomes 3 × 9.99 = 29.97
         mockMvc.perform(delete("/orders/{orderId}/lines/{lineId}", orderId, line1Id)
-                        .with(user("admin").roles("ADMIN")))
+                        .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp))
                 .andExpect(status().isNoContent());
 
         // GET again — total recomputed to 29.97
         mockMvc.perform(get("/orders/{id}", orderId)
-                        .with(user("admin").roles("ADMIN")))
+                        .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalAmount").value(29.97));
     }
@@ -143,6 +160,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
     void post_missingCustomerId_returns400() throws Exception {
         mockMvc.perform(post("/orders")
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -155,6 +173,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
 
         mockMvc.perform(post("/orders/{orderId}/lines", orderId)
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"productId":%d,"quantity":-1}
@@ -172,6 +191,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
         // PENDING → SHIPPED : not allowed (must go through CONFIRMED)
         mockMvc.perform(put("/orders/{id}/status", orderId)
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"status":"SHIPPED"}
@@ -186,6 +206,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
 
         mockMvc.perform(put("/orders/{id}/status", orderId)
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"status":"CONFIRMED"}
@@ -199,7 +220,8 @@ class OrderHttpITest extends AbstractIntegrationTest {
     @Test
     void get_unknownOrder_returns404() throws Exception {
         mockMvc.perform(get("/orders/{id}", 999_999_999L)
-                        .with(user("admin").roles("ADMIN")))
+                        .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp))
                 .andExpect(status().isNotFound());
     }
 
@@ -207,6 +229,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
     void updateStatus_unknownOrder_returns404() throws Exception {
         mockMvc.perform(put("/orders/{id}/status", 999_999_998L)
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"status":"CONFIRMED"}
@@ -219,6 +242,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
     @Test
     void post_anonymous_returns401() throws Exception {
         mockMvc.perform(post("/orders")
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"customerId":1}
@@ -231,6 +255,7 @@ class OrderHttpITest extends AbstractIntegrationTest {
     private Long createOrderHelper() throws Exception {
         MvcResult r = mockMvc.perform(post("/orders")
                         .with(user("admin").roles("ADMIN"))
+                        .header("X-Forwarded-For", testIp)
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"customerId":%d}
