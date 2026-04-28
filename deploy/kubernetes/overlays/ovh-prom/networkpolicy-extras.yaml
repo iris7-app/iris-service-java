@@ -10,7 +10,7 @@
 #      (in `monitoring`, port 9090). Without this, the new Grafana
 #      datasource shows "Bad Gateway" / timeout when querying.
 #
-# `monitoring → app:8080` (Prometheus scraping Mirador's /actuator/prometheus)
+# `monitoring → app:8080` (Prometheus scraping Iris's /actuator/prometheus)
 # is ALREADY allowed by the base `allow-port-forward-to-backend` rule in
 # base/networkpolicies.yaml — that rule has no `from` restriction on the
 # ingress port 8080, so any pod in any namespace (including monitoring) can
@@ -35,7 +35,7 @@ metadata:
   name: allow-infra-egress-to-monitoring
   namespace: infra
   labels:
-    app.kubernetes.io/part-of: mirador
+    app.kubernetes.io/part-of: iris
     app.kubernetes.io/component: networkpolicy
 spec:
   # Empty podSelector = applies to all pods in `infra`. Strictest sensible

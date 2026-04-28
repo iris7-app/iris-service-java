@@ -9,7 +9,7 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     ensure_docker
     echo "Restarting everything (clean)..."
     # Kill the running Spring app (target Java process only, not Docker)
-    pgrep -f 'MiradorApplication' | xargs kill 2>/dev/null || true
+    pgrep -f 'IrisApplication' | xargs kill 2>/dev/null || true
     pgrep -f 'spring-boot:run' | xargs kill 2>/dev/null || true
     # Stop all containers (both compose files)
     docker compose -f deploy/compose/observability.yml down

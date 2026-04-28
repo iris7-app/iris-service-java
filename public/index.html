@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mirador — a watchtower demo for modern platform practices</title>
-    <meta name="description" content="Mirador is a Spring Boot 4 / Java 25 demo that showcases 30+ industrial platform patterns (GitOps, observability, security, resilience) on a GKE Autopilot cluster spun up on demand." />
+    <title>Iris — a watchtower demo for modern platform practices</title>
+    <meta name="description" content="Iris is a Spring Boot 4 / Java 25 demo that showcases 30+ industrial platform patterns (GitOps, observability, security, resilience) on a GKE Autopilot cluster spun up on demand." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='56' font-size='56'%3E🗼%3C/text%3E%3C/svg%3E" />
     <style>
       :root { --bg:#0b1320; --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --card:#111827; }
@@ -35,7 +35,7 @@
   </head>
   <body>
     <header>
-      <h1><span class="emoji">🗼</span>Mirador</h1>
+      <h1><span class="emoji">🗼</span>Iris</h1>
       <p class="tagline">
         A watchtower over industrial platform practices. Spring Boot 4 / Java 25
         backend + Angular 21 frontend, demonstrating 30+ patterns you'd expect
@@ -51,9 +51,9 @@
           The cluster <strong>does not expose any port to the public internet</strong>.
           No Grafana, no Argo CD, no API — all reached through
           <code>kubectl port-forward</code> tunnels from a developer laptop (see
-          <a href="https://gitlab.com/mirador1/mirador-service/-/blob/main/docs/adr/0025-ui-local-only-no-public-prod-ingress.md">ADR-0025</a>).
+          <a href="https://gitlab.com/iris-7/iris-service/-/blob/main/docs/adr/0025-ui-local-only-no-public-prod-ingress.md">ADR-0025</a>).
           It also sleeps by default to keep costs at ~€2 / month
-          (<a href="https://gitlab.com/mirador1/mirador-service/-/blob/main/docs/adr/0022-ephemeral-demo-cluster.md">ADR-0022</a>).
+          (<a href="https://gitlab.com/iris-7/iris-service/-/blob/main/docs/adr/0022-ephemeral-demo-cluster.md">ADR-0022</a>).
         </p>
         <p>
           To see the live demo: clone the repo, run
@@ -62,8 +62,8 @@
           environment in the topbar.
         </p>
         <p>
-          <a class="cta" href="mailto:benoit.besson@gmail.com?subject=Mirador%20demo%20request">📧 Request a walkthrough</a>
-          <a class="cta secondary" href="https://gitlab.com/mirador1/mirador-service">📁 Browse the code</a>
+          <a class="cta" href="mailto:benoit.besson@gmail.com?subject=Iris%20demo%20request">📧 Request a walkthrough</a>
+          <a class="cta secondary" href="https://gitlab.com/iris-7/iris-service">📁 Browse the code</a>
         </p>
       </div>
 
@@ -86,15 +86,15 @@
         <h2>ADRs — architecture decisions (23 recorded)</h2>
         <p class="tagline">
           Every non-obvious choice in the codebase is justified in an
-          <a href="https://gitlab.com/mirador1/mirador-service/-/tree/main/docs/adr">ADR</a>
+          <a href="https://gitlab.com/iris-7/iris-service/-/tree/main/docs/adr">ADR</a>
           with context, alternatives considered, and consequences.
           Highlights:
         </p>
         <ul class="bullets">
-          <li><a href="https://gitlab.com/mirador1/mirador-service/-/blob/main/docs/adr/0015-argocd-for-gitops-deployment.md">ADR-0015</a> — Argo CD for GitOps deployment</li>
-          <li><a href="https://gitlab.com/mirador1/mirador-service/-/blob/main/docs/adr/0017-jvm-25-spring-boot-4-strategy.md">ADR-0017</a> — why bleeding-edge Java 25 + Spring Boot 4</li>
-          <li><a href="https://gitlab.com/mirador1/mirador-service/-/blob/main/docs/adr/0021-cost-deferred-industrial-patterns.md">ADR-0021</a> — patterns deferred for cost reasons + self-hosted alternatives</li>
-          <li><a href="https://gitlab.com/mirador1/mirador-service/-/blob/main/docs/adr/0022-ephemeral-demo-cluster.md">ADR-0022</a> — ephemeral demo cluster pattern</li>
+          <li><a href="https://gitlab.com/iris-7/iris-service/-/blob/main/docs/adr/0015-argocd-for-gitops-deployment.md">ADR-0015</a> — Argo CD for GitOps deployment</li>
+          <li><a href="https://gitlab.com/iris-7/iris-service/-/blob/main/docs/adr/0017-jvm-25-spring-boot-4-strategy.md">ADR-0017</a> — why bleeding-edge Java 25 + Spring Boot 4</li>
+          <li><a href="https://gitlab.com/iris-7/iris-service/-/blob/main/docs/adr/0021-cost-deferred-industrial-patterns.md">ADR-0021</a> — patterns deferred for cost reasons + self-hosted alternatives</li>
+          <li><a href="https://gitlab.com/iris-7/iris-service/-/blob/main/docs/adr/0022-ephemeral-demo-cluster.md">ADR-0022</a> — ephemeral demo cluster pattern</li>
         </ul>
       </section>
 
@@ -113,9 +113,9 @@
 
     <footer>
       <p>
-        <a href="https://gitlab.com/mirador1/mirador-service">gitlab.com/mirador1/mirador-service</a> ·
-        <a href="https://gitlab.com/mirador1/mirador-ui">/mirador-ui</a> ·
-        <a href="https://sonarcloud.io/project/overview?id=mirador1_mirador-service">SonarCloud</a>
+        <a href="https://gitlab.com/iris-7/iris-service">gitlab.com/iris-7/iris-service</a> ·
+        <a href="https://gitlab.com/iris-7/iris-ui">/iris-ui</a> ·
+        <a href="https://sonarcloud.io/project/overview?id=iris-7_iris-service">SonarCloud</a>
       </p>
       <p>MIT-licensed portfolio demo · Built with an ephemeral €2/month cluster</p>
     </footer>

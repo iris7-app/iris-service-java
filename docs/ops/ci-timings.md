@@ -1,4 +1,4 @@
-# CI / CD timings — mirador-service
+# CI / CD timings — iris-service
 
 Measured job durations from the 5 most recent successful MR pipelines and the
 3 most recent main-branch pipelines (2026-04-16 to 2026-04-17). All values are
@@ -83,17 +83,17 @@ any significant CI change and commit the updated table.
 ```bash
 # Fetch the last 5 successful MR pipelines + 3 main pipelines as JSON.
 for pid in $(glab api \
-  "projects/mirador1%2Fmirador-service/pipelines?status=success&per_page=5" \
+  "projects/iris-7%2Firis-service/pipelines?status=success&per_page=5" \
   | python3 -c 'import json,sys;[print(p["id"]) for p in json.load(sys.stdin)]'); do
-  glab api "projects/mirador1%2Fmirador-service/pipelines/$pid/jobs?per_page=100" \
-    > /tmp/mirador_jobs_$pid.json
+  glab api "projects/iris-7%2Firis-service/pipelines/$pid/jobs?per_page=100" \
+    > /tmp/iris_jobs_$pid.json
 done
 
 python3 <<'PY'
 import json, glob
 from collections import defaultdict
 per_job = defaultdict(list)
-for f in sorted(glob.glob('/tmp/mirador_jobs_*.json')):
+for f in sorted(glob.glob('/tmp/iris_jobs_*.json')):
     for j in json.load(open(f)):
         if j.get('status') == 'success' and j.get('duration') is not None:
             per_job[j['name']].append(j['duration'])

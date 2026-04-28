@@ -125,7 +125,7 @@ portfolio project.
 ## Addendum (2026-04-21) — Path B implemented
 
 The `OpenApiCustomizer` outlined in **Path B** above was implemented in
-`com.mirador.api.OpenApiConfig#openApiSchemaSanitizer()` and the two
+`org.iris.api.OpenApiConfig#openApiSchemaSanitizer()` and the two
 Spectral rules were re-enabled in `.spectral.yaml`.
 
 ### What the customizer actually does

@@ -162,10 +162,10 @@ integration-test:keycloak:
 # SonarCloud is the SaaS version of SonarQube — free for public repos on sonarcloud.io.
 #
 # Prerequisites (one-time setup):
-#   1. Create org at https://sonarcloud.io (log in with GitLab → import mirador1 group)
-#   2. Import the mirador-service project
+#   1. Create org at https://sonarcloud.io (log in with GitLab → import iris-7 group)
+#   2. Import the iris-service project
 #   3. Generate a token at https://sonarcloud.io/account/security
-#   4. Set SONAR_TOKEN in GitLab group CI/CD variables (mirador1 → Settings → CI/CD)
+#   4. Set SONAR_TOKEN in GitLab group CI/CD variables (iris-7 → Settings → CI/CD)
 #
 # sonar.organization and sonar.projectKey are set in pom.xml sonar properties.
 .compat-job: &compat-job

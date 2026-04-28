@@ -26,7 +26,7 @@ bin/dev/api-smoke.sh
 
 # Or drive it yourself for a non-default env:
 hurl --test \
-     --variable base=https://mirador-service-dev.example.com \
+     --variable base=https://iris-service-dev.example.com \
      --variable run_id=$(date +%s%N) \
      docs/api/smoke.hurl
 ```

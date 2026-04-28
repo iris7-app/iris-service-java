@@ -11,7 +11,7 @@
 //   Jenkins is the de-facto standard in a lot of enterprise environments
 //   (banking, insurance, telco) where GitLab SaaS isn't available. The
 //   goal of this file is to prove the project's industrial tooling isn't
-//   GitLab-specific — a team adopting Mirador inside a Jenkins shop can
+//   GitLab-specific — a team adopting Iris inside a Jenkins shop can
 //   re-use everything (Testcontainers, SBOM, cosign, PIT, Sonar, Semgrep)
 //   without rewriting from scratch.
 //
@@ -75,7 +75,7 @@ pipeline {
     // re-download 500 MB of artifacts per stage.
     MAVEN_OPTS = "-Dmaven.repo.local=${env.WORKSPACE}/.m2/repository"
     // Image coordinates — match registry convention.
-    IMAGE_NAME = 'mirador-service'
+    IMAGE_NAME = 'iris-service'
     IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT?.take(8) ?: 'local'}"
   }
 
@@ -198,7 +198,7 @@ pipeline {
       }
       post {
         success {
-          archiveArtifacts artifacts: 'target/mirador-*.jar', fingerprint: true
+          archiveArtifacts artifacts: 'target/iris-*.jar', fingerprint: true
         }
       }
     }

@@ -1,11 +1,11 @@
-# Methods and techniques — mirador
+# Methods and techniques — iris
 
 Companion document to
 [`technologies.md`](technologies.md). That file lists **tools**
 (libraries, frameworks, services). This file lists **methods and
 techniques** — patterns, practices, methodologies — and says for
 each one what it is, where it's documented canonically, and why
-Mirador uses it.
+Iris uses it.
 
 Hierarchically organised by concern. Every entry has four fields:
 - **Name** — canonical spelling
@@ -27,7 +27,7 @@ their place survive.
 - **Reference**: [Martin Fowler — Layered architecture](https://martinfowler.com/bliki/PresentationDomainDataLayering.html)
 - **What it does**: Separates controller / service / repository so that each
   layer depends only on the one below.
-- **Why here**: Spring Boot's default shape. Mirador stays conventional on
+- **Why here**: Spring Boot's default shape. Iris stays conventional on
   purpose — the value is in the observability wiring, not in architectural
   exotism (see ADR-0021 editorial rule).
 
@@ -55,7 +55,7 @@ their place survive.
 - **What it does**: Starts real Docker containers (Postgres, Kafka, Redis)
   for each integration test run, so the code-under-test faces real
   protocols instead of mocks.
-- **Why here**: Mirador tests Postgres row-level behaviour, Kafka reply
+- **Why here**: Iris tests Postgres row-level behaviour, Kafka reply
   timeouts, Redis idempotency — all three have mock-only alternatives
   that lie about edge cases. See
   [ADR on integration testing strategy](../adr/).
@@ -77,7 +77,7 @@ their place survive.
 
 #### Contract testing — declined
 - **Reference**: [Pact](https://pact.io) / [Spring Cloud Contract](https://spring.io/projects/spring-cloud-contract)
-- **Why declined for now**: Mirador has one consumer (mirador-ui) and
+- **Why declined for now**: Iris has one consumer (iris-ui) and
   the two repos ship paired releases. Contract testing earns its place
   when N>1 consumers with independent release cycles. Kept on ROADMAP
   under "nice-to-have".
@@ -121,7 +121,7 @@ their place survive.
   version bump; merging the PR creates the tag + GitHub/GitLab release.
 - **Why here**: Removes the "write the CHANGELOG, remember to tag"
   manual step that drifts in every team. Paired tag cadence between
-  mirador-service and mirador-ui.
+  iris-service and iris-ui.
 
 ### 2.3 Pipeline composition
 
@@ -236,7 +236,7 @@ their place survive.
 - **What it does**: Base K8s manifests + per-environment patches
   (`overlays/local`, `overlays/gke`, etc.) without a templating
   language.
-- **Why here**: ADR-0002 vs Helm. Mirador has one chart; Kustomize's
+- **Why here**: ADR-0002 vs Helm. Iris has one chart; Kustomize's
   "no debug a Go-template string" win is decisive at this size.
 
 ### 3.4 Secret management
@@ -266,7 +266,7 @@ their place survive.
 - **Reference**: [Google SRE Book — Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
 - **What it does**: Four metrics cover most incidents: latency, traffic,
   errors, saturation.
-- **Why here**: Mirador's Grafana home dashboard is organised around
+- **Why here**: Iris's Grafana home dashboard is organised around
   these four, not around implementation-specific metrics.
 
 #### RED & USE methodologies
@@ -299,7 +299,7 @@ their place survive.
 - **Reference**: [logstash-logback-encoder](https://github.com/logfellow/logstash-logback-encoder)
 - **What it does**: Every log line is one JSON object with `traceId`,
   `spanId`, MDC keys — grepable by field, not by regex.
-- **Why here**: Loki's LogQL can filter `{app="mirador"} | json | traceId=...`
+- **Why here**: Loki's LogQL can filter `{app="iris"} | json | traceId=...`
   without parsing. Key prefix conventions (e.g. `kafka_enrich_timeout`)
   enable dashboard queries.
 

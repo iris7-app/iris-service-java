@@ -43,7 +43,7 @@ KIND_CONFIG="${KIND_CONFIG:-deploy/kubernetes/kind-config.yaml}"
 OVERLAY="${OVERLAY:-deploy/kubernetes/overlays/local}"
 TIMEOUT="${TIMEOUT:-5m}"
 
-# Infra pods we expect to become Ready. Deliberately skip the mirador
+# Infra pods we expect to become Ready. Deliberately skip the iris
 # backend — its image is built for amd64 only (buildx --platform linux/amd64
 # per CLAUDE.md), and the macbook-local runner is arm64. Forcing kind to
 # pull an amd64 image results in "exec format error"; cross-arch rebuild
@@ -308,6 +308,6 @@ fi
 
 echo ""
 echo "✅  K8s manifests applied cleanly and ${#ALL_PODS[@]} pods are Ready."
-echo "   (mirador backend pod deliberately skipped — image is amd64-only,"
+echo "   (iris backend pod deliberately skipped — image is amd64-only,"
 echo "    runner is arm64. GKE validation remains the source of truth for"
 echo "    the app pod itself.)"

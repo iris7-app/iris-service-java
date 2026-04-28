@@ -1,9 +1,9 @@
 # Auth0 tenant — current live state (2026-04-22)
 
 **What this doc is**: a snapshot of the actual dev Auth0 tenant
-configuration used by Mirador, as it was left after the 2026-04-21
+configuration used by Iris, as it was left after the 2026-04-21
 end-to-end debug session. Complements the generic
-[`auth0-tenant-setup.md`](https://gitlab.com/mirador1/mirador-ui/-/blob/main/docs/how-to/auth0-tenant-setup.md)
+[`auth0-tenant-setup.md`](https://gitlab.com/iris-7/iris-ui/-/blob/main/docs/how-to/auth0-tenant-setup.md)
 in the UI repo (which explains HOW to create a fresh tenant; this
 doc records WHAT exists on the current one).
 
@@ -21,11 +21,11 @@ avoiding "wait, what's the audience again?" lookups.
 
 ## Application (SPA)
 
-One SPA registered — the Mirador Angular UI.
+One SPA registered — the Iris Angular UI.
 
 | Key | Value | Set in |
 |---|---|---|
-| Name | `Mirador UI` | Auth0 dashboard |
+| Name | `Iris UI` | Auth0 dashboard |
 | Client ID | `DZKCwZ9dqAk3dOtVdDfc2rLJOenxidX6` | `AUTH0_CLIENT_ID` UI constant |
 | Client Secret | *(SPA — no secret, PKCE flow)* | N/A |
 | Type | Single Page Application | mandatory for the Angular SDK |
@@ -49,13 +49,13 @@ gitleaks doesn't false-flag them as generic API keys.
 
 | Key | Value |
 |---|---|
-| Name | `Mirador API` |
-| Identifier (audience) | `https://mirador-api` |
+| Name | `Iris API` |
+| Identifier (audience) | `https://iris-api` |
 | JWT profile | Auth0 |
 | JWT signing alg | RS256 |
 | Token expiration | 86400 seconds (24 h — default) |
 | Allow offline access | ON (enables refresh tokens) |
-| Skip consent for first-party | ON (Mirador UI is first-party — no consent screen when using email/password) |
+| Skip consent for first-party | ON (Iris UI is first-party — no consent screen when using email/password) |
 
 ## Connections enabled
 
@@ -74,7 +74,7 @@ each.
 
 3 roles created on the tenant:
 
-| Role | Purpose | Mirador authority |
+| Role | Purpose | Iris authority |
 |---|---|---|
 | `ROLE_ADMIN` | full access (CRUD + chaos + admin endpoints) | `ROLE_ADMIN` |
 | `ROLE_USER` | read + write (no delete) | `ROLE_USER` |
@@ -84,14 +84,14 @@ Assign via Auth0 dashboard → User Management → Users → `<user>` → Roles.
 
 ## Post-Login Action (Actions → Flows → Login)
 
-Exactly one custom Action wired to the Login flow: `mirador-inject-roles`.
+Exactly one custom Action wired to the Login flow: `iris-inject-roles`.
 Source lives at [`docs/api/auth0-action-roles.js`](auth0-action-roles.js)
 in this repo — committed so the Auth0 dashboard isn't the sole source
 of truth.
 
 Effect: every access token issued by the tenant includes a
-`https://mirador-api/roles` claim holding the list of Auth0 roles the
-user was assigned. The Mirador backend
+`https://iris-api/roles` claim holding the list of Auth0 roles the
+user was assigned. The Iris backend
 (`JwtAuthenticationFilter.authenticateExternalJwt`) reads this claim and
 grants the matching Spring Security authorities.
 
@@ -101,21 +101,21 @@ Example access token payload (decoded):
 {
   "iss": "https://dev-ksxj46zlkhk2gcvo.us.auth0.com/",
   "sub": "auth0|abc123",
-  "aud": ["https://mirador-api", "https://dev-ksxj46zlkhk2gcvo.us.auth0.com/userinfo"],
+  "aud": ["https://iris-api", "https://dev-ksxj46zlkhk2gcvo.us.auth0.com/userinfo"],
   "exp": 1745000000,
   "scope": "openid profile email",
-  "https://mirador-api/roles": ["ROLE_ADMIN"]
+  "https://iris-api/roles": ["ROLE_ADMIN"]
 }
 ```
 
-## Backend wiring (mirador-service)
+## Backend wiring (iris-service)
 
 Three env vars in `docker-compose.yml` + `application.yml`:
 
 ```yaml
 AUTH0_DOMAIN: dev-ksxj46zlkhk2gcvo.us.auth0.com
 AUTH0_ISSUER_URI: https://dev-ksxj46zlkhk2gcvo.us.auth0.com/   # TRAILING SLASH MANDATORY
-AUTH0_AUDIENCE: https://mirador-api
+AUTH0_AUDIENCE: https://iris-api
 ```
 
 The trailing slash on `AUTH0_ISSUER_URI` matters — Auth0 puts it in the
@@ -124,32 +124,32 @@ One-off typo = every token rejected with "Invalid issuer".
 
 Backend code paths:
 
-- `src/main/java/com/mirador/auth/Auth0Config.java` — bean wiring
-- `src/main/java/com/mirador/auth/JwtAuthenticationFilter.java` —
-  `authenticateAuth0()` reads the `https://mirador-api/roles` claim
+- `src/main/java/org/iris/auth/Auth0Config.java` — bean wiring
+- `src/main/java/org/iris/auth/JwtAuthenticationFilter.java` —
+  `authenticateAuth0()` reads the `https://iris-api/roles` claim
 - `src/main/resources/application.yml` — `spring.security.oauth2.resourceserver.jwt.issuer-uri`
 
-## UI wiring (mirador-ui)
+## UI wiring (iris-ui)
 
 Three constants at the top of `src/app/app.config.ts`:
 
 ```typescript
 const AUTH0_DOMAIN = 'dev-ksxj46zlkhk2gcvo.us.auth0.com';
 const AUTH0_CLIENT_ID = 'DZKCwZ9dqAk3dOtVdDfc2rLJOenxidX6';
-const AUTH0_AUDIENCE = 'https://mirador-api';
+const AUTH0_AUDIENCE = 'https://iris-api';
 ```
 
 Key UI files:
 
 - `src/app/app.config.ts` — AuthModule.forRoot() configuration
 - `src/app/core/auth/auth0-bridge.service.ts` — bridges Auth0 ID
-  token into Mirador's signal-based `AuthService`
+  token into Iris's signal-based `AuthService`
 - `src/app/core/auth/auth.interceptor.ts` — Auth0-aware 401 handler
   with silent token refresh + `X-Auth0-Retry` guard against infinite
   loops
 - `src/app/core/auth/auth.service.ts` — `isAdmin` computed reads THREE
-  claim shapes: Mirador-builtin `role`, Keycloak `realm_access.roles`,
-  Auth0 `https://mirador-api/roles`
+  claim shapes: Iris-builtin `role`, Keycloak `realm_access.roles`,
+  Auth0 `https://iris-api/roles`
 
 ## End-to-end login round-trip (sanity check)
 
@@ -168,13 +168,13 @@ Key UI files:
    - Validates signature via JWKS (public key auto-pulled)
    - Validates `iss` matches `AUTH0_ISSUER_URI`
    - Validates `aud` contains `AUTH0_AUDIENCE`
-   - Reads `https://mirador-api/roles` claim → grants authorities
+   - Reads `https://iris-api/roles` claim → grants authorities
    - Request proceeds with the right role
 
 ## Troubleshooting
 
 See the generic setup guide's Troubleshooting section
-([UI repo](https://gitlab.com/mirador1/mirador-ui/-/blob/main/docs/how-to/auth0-tenant-setup.md#troubleshooting)):
+([UI repo](https://gitlab.com/iris-7/iris-ui/-/blob/main/docs/how-to/auth0-tenant-setup.md#troubleshooting)):
 "Oops! something went wrong" vs 401 after sign-in vs 401 from
 protected endpoints.
 
@@ -189,15 +189,15 @@ Session-specific gotchas learned 2026-04-21:
    `getAccessTokenSilently()` + `X-Auth0-Retry` header guard against
    infinite loops).
 3. **isAdmin missed Auth0 claims** — the UI's `isAdmin` signal only
-   read `payload.role` (Mirador-builtin). Fixed in commit 3d28e11 to
-   also read `realm_access.roles` (Keycloak) + `https://mirador-api/roles`
+   read `payload.role` (Iris-builtin). Fixed in commit 3d28e11 to
+   also read `realm_access.roles` (Keycloak) + `https://iris-api/roles`
    (Auth0) — multi-format detection.
 
 ## Rotation / disaster recovery
 
 If the tenant is lost (deleted, unrecoverable dashboard error, etc.):
 
-1. Follow [`auth0-tenant-setup.md`](https://gitlab.com/mirador1/mirador-ui/-/blob/main/docs/how-to/auth0-tenant-setup.md) to create a fresh tenant.
+1. Follow [`auth0-tenant-setup.md`](https://gitlab.com/iris-7/iris-ui/-/blob/main/docs/how-to/auth0-tenant-setup.md) to create a fresh tenant.
 2. Re-create the 3 roles (`ROLE_ADMIN`, `ROLE_USER`, `ROLE_READER`)
    on the new tenant.
 3. Re-deploy the Post-Login Action by pasting
@@ -210,7 +210,7 @@ If the tenant is lost (deleted, unrecoverable dashboard error, etc.):
    Applications → toggle Authorized).
 7. Re-test the round-trip from the section above.
 
-The audience string (`https://mirador-api`) stays unchanged across
+The audience string (`https://iris-api`) stays unchanged across
 tenants by design — it's the API identifier, not a URL. Keeping it
 identical avoids a code change in the backend's `spring.security.oauth2
 .resourceserver.jwt.audiences` config.
@@ -221,5 +221,5 @@ identical avoids a code change in the backend's `spring.security.oauth2
   Post-Login Action source
 - [ADR-0047](../adr/0047-auth0-consent-for-social-logins.md) — why
   Google login keeps showing consent
-- [UI — auth0-tenant-setup.md](https://gitlab.com/mirador1/mirador-ui/-/blob/main/docs/how-to/auth0-tenant-setup.md) — generic setup guide
-- [ADR-0018 — JWT strategy](../adr/0018-jwt-strategy-hmac-refresh-rotation.md) — Mirador's broader JWT design
+- [UI — auth0-tenant-setup.md](https://gitlab.com/iris-7/iris-ui/-/blob/main/docs/how-to/auth0-tenant-setup.md) — generic setup guide
+- [ADR-0018 — JWT strategy](../adr/0018-jwt-strategy-hmac-refresh-rotation.md) — Iris's broader JWT design

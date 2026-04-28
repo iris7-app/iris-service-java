@@ -1,24 +1,24 @@
-# Alert: `MiradorBackendDown` / `MiradorBackendAbsent`
+# Alert: `IrisBackendDown` / `IrisBackendAbsent`
 
 Fired by one of two PrometheusRule expressions in
-`deploy/kubernetes/base/observability-prom/mirador-alerts.yaml`:
+`deploy/kubernetes/base/observability-prom/iris-alerts.yaml`:
 
-- `MiradorBackendDown` — `up{job=~"mirador.*"} == 0` for ≥ 2 min. Prometheus
+- `IrisBackendDown` — `up{job=~"iris.*"} == 0` for ≥ 2 min. Prometheus
   CAN scrape the target but gets a non-200 on `/actuator/prometheus`.
-- `MiradorBackendAbsent` — `absent(up{job=~"mirador.*"})` for ≥ 5 min. NO
+- `IrisBackendAbsent` — `absent(up{job=~"iris.*"})` for ≥ 5 min. NO
   target at all — the ServiceMonitor lost its selector, or the pod is gone.
 
 ## Quick triage (30 seconds)
 
 ```bash
 # 1. Is the pod alive?
-kubectl -n app get pods -l app=mirador -o wide
+kubectl -n app get pods -l app=iris -o wide
 
 # 2. Does the Service have endpoints?
-kubectl -n app get endpoints mirador
+kubectl -n app get endpoints iris
 
 # 3. Does the operator see the ServiceMonitor?
-kubectl -n monitoring get servicemonitor mirador -o yaml \
+kubectl -n monitoring get servicemonitor iris -o yaml \
   | yq '.metadata.labels'
 ```
 
@@ -34,8 +34,8 @@ new ServiceMonitor invisible.
 2. **Readiness stays FAIL** — pod is up but `/actuator/health/readiness`
    reports DOWN → endpoints stripped. Jump to `backend-503.md`.
 3. **ServiceMonitor label drift** — someone removed the `release` label
-   while editing. Prometheus shows zero targets for `mirador`; rules then
-   fire `MiradorBackendAbsent`.
+   while editing. Prometheus shows zero targets for `iris`; rules then
+   fire `IrisBackendAbsent`.
 4. **Namespace network policy** — the default-deny in `infra` blocks
    `monitoring → app:8080` on port `/actuator/prometheus`. Check
    `kubectl -n app describe networkpolicy`.
@@ -48,14 +48,14 @@ new ServiceMonitor invisible.
 kubectl -n monitoring port-forward svc/prometheus-kube-prom-stack-prometheus 9090:9090
 open http://localhost:9090/targets
 
-# If Prom sees mirador in "down" state, click the endpoint URL to get the
+# If Prom sees iris in "down" state, click the endpoint URL to get the
 # exact scrape error (DNS, TLS, connection refused, HTTP 4xx/5xx).
 
 # Pod logs — last startup + any error bursts
-kubectl -n app logs deploy/mirador --tail=80 --previous  # pre-crash logs
-kubectl -n app logs deploy/mirador --tail=80             # current
+kubectl -n app logs deploy/iris --tail=80 --previous  # pre-crash logs
+kubectl -n app logs deploy/iris --tail=80             # current
 
-# If MiradorBackendAbsent: confirm the ServiceMonitor is selected
+# If IrisBackendAbsent: confirm the ServiceMonitor is selected
 kubectl -n monitoring get prometheus -o yaml \
   | yq '.items[0].spec.serviceMonitorSelector'
 ```

@@ -311,7 +311,7 @@ dockle:
 #
 # Verify externally with:
 #   cosign verify \
-#     --certificate-identity "https://gitlab.com/iris-7/iris-service-java//.gitlab-ci.yml@refs/heads/main" \
+#     --certificate-identity "https://gitlab.com/iris-7/iris-service//.gitlab-ci.yml@refs/heads/main" \
 #     --certificate-oidc-issuer "https://gitlab.com" \
 #     $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA
 cosign:sign:
@@ -378,7 +378,7 @@ cosign:sign:
 # tampered or unsigned image cannot reach prod.
 #
 # The expected identity comes from GitLab's OIDC token (issuer +
-# project URL). If a sibling project tries to push a Mirador-named
+# project URL). If a sibling project tries to push a Iris-named
 # image, the cert won't match the expected `--certificate-identity-regexp`
 # and verification fails.
 cosign:verify:
@@ -414,7 +414,7 @@ cosign:verify:
     # `https://gitlab.com/iris-7/iris-service-java//.gitlab-ci.yml@refs/heads/main`
     # is what GitLab's OIDC produces for main-branch jobs (the `//` double-slash
     # is GitLab's actual subject format ; the project was renamed
-    # `mirador-service` → `mirador-service-java` 2026-04-25 ; this regex
+    # `iris-service` → `iris-service-java` 2026-04-25 ; this regex
     # was updated to match the new identity).
     - |
       cosign verify \
@@ -519,7 +519,7 @@ semgrep:
 # integration-test:keycloak) and a manual button. Output is a
 # browseable HTML report.
 #
-# Quality gate: targeted at 70 % mutation score on the `com.mirador.*`
+# Quality gate: targeted at 70 % mutation score on the `org.iris.*`
 # package (excluded: config classes, data classes — see pom.xml
 # `excludedClasses`). Lower than line-coverage on purpose: 70 % is
 # the industry-standard threshold for "tests actually exercise logic".

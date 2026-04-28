@@ -42,14 +42,14 @@ deploy/kubernetes/
 
 ## Namespaces
 
-Mirador follows the principle of least privilege: each pod lands in the
+Iris follows the principle of least privilege: each pod lands in the
 namespace whose PodSecurity profile and NetworkPolicy boundary fit its
 trust level. The split is deliberate — don't collapse everything into
 `default` "for simplicity". The security posture relies on the boundary.
 
 | Namespace            | Role                                                               | Pods deployed                                                                                                  | Why this namespace?                                                                                                                                                                                                                       |
 | -------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `app`                | Mirador backend runtime                                            | `mirador` (HPA, 1-5 replicas, default 2)                                                                       | Isolated from infra so PodSecurity `restricted:latest` enforces — the app is hardened (non-root UID 1000, read-only rootfs, drop-ALL caps, seccomp RuntimeDefault), unlike off-the-shelf infra charts.                                     |
+| `app`                | Iris backend runtime                                            | `iris` (HPA, 1-5 replicas, default 2)                                                                       | Isolated from infra so PodSecurity `restricted:latest` enforces — the app is hardened (non-root UID 1000, read-only rootfs, drop-ALL caps, seccomp RuntimeDefault), unlike off-the-shelf infra charts.                                     |
 | `infra`              | Stateful + auth + observability deps                               | `postgresql`, `kafka`, `redis`, `keycloak`, `unleash`, `unleash-db`, `unleash-proxy`, `lgtm`, `pyroscope`      | PodSecurity `baseline` — these charts don't fit `restricted` (root users, init-container capabilities, PVC fsGroup). Grouped so NetworkPolicy `allow-app-ingress-to-infra` can target a single namespace on Postgres/Redis/Kafka ports only. |
 | `observability`      | Reserved for future split (LGTM moved out of `infra`)              | (empty today)                                                                                                  | Placeholder — when LGTM + Pyroscope are extracted into a dedicated obs stack, they land here. Labelled `baseline` in `namespace.yaml` so Grafana's root-user sidecars won't block on day one.                                              |
 | `kube-system`        | K8s control plane (apiserver, scheduler, etcd, coredns, kube-proxy, kindnet) | standard                                                                                                       | K8s convention — never deploy app code here. On kind also hosts `kindnet` CNI.                                                                                                                                                               |
@@ -60,7 +60,7 @@ trust level. The split is deliberate — don't collapse everything into
 
 **Why the `app` / `infra` split matters concretely:**
 - PodSecurity admission at namespace level catches a container trying to
-  `runAsUser: 0` *before* it starts. If `mirador` ever regresses (e.g.
+  `runAsUser: 0` *before* it starts. If `iris` ever regresses (e.g.
   a base-image upgrade flips the default user back to root), the
   `restricted:latest` label on `app` rejects the rollout — no
   surprise-root in prod.
@@ -76,16 +76,16 @@ probes**, **what happens if it goes DOWN**, and **where its config
 lives**. Resource requests/limits follow
 [ADR-0014](../../docs/adr/0014-single-replica-for-demo.md).
 
-#### `mirador` (namespace `app`)
+#### `iris` (namespace `app`)
 
 - **Role**: Spring Boot 4 backend. Serves `/api/*` (customer domain),
   `/actuator/*` (health, Prometheus, quality, maintenance), `/auth/*`
   (JWT issuance, Keycloak OIDC relay), and pushes OTLP telemetry to
   `lgtm.infra:4317`.
-- **Image**: `registry.gitlab.com/mirador1/mirador-service/backend:main`
+- **Image**: `registry.gitlab.com/iris-7/iris-service/backend:main`
   (rolling tag, `imagePullPolicy: Always`; overridden to `Never` in the
   `local` overlay because kind side-loads images).
-- **Port**: `8080/TCP` (http, behind Service `mirador`).
+- **Port**: `8080/TCP` (http, behind Service `iris`).
 - **Probes**:
   - `startupProbe` `/actuator/health/liveness` — up to 5 min (60 × 5s)
     to absorb GKE Autopilot cold-start + JVM warm-up + Flyway migrations
@@ -99,7 +99,7 @@ lives**. Resource requests/limits follow
   ingress `/health` check fails and alerting fires (when wired).
 - **Config**: `base/backend/` — `deployment.yaml`, `service.yaml`,
   `hpa.yaml`, `configmap.yaml`, `poddisruptionbudget.yaml`. Sensitive
-  values come from Secret `mirador-secrets` (projected by ESO from GSM
+  values come from Secret `iris-secrets` (projected by ESO from GSM
   in `gke`, plaintext-applied in `local`).
 
 #### `postgresql` (namespace `infra`)
@@ -113,7 +113,7 @@ lives**. Resource requests/limits follow
 - **Port**: `5432/TCP` (Service `postgresql`).
 - **Probes**: `pg_isready -U demo -d customer-service` for both
   liveness and readiness.
-- **If DOWN**: `mirador` `readinessProbe` fails (DB health indicator
+- **If DOWN**: `iris` `readinessProbe` fails (DB health indicator
   red) and its pods leave the Service; UI sees 503 on `/api/customers`.
   Keycloak uses its embedded H2 (not this DB) so auth still works.
   PVC `postgres-data` (10 Gi) persists on the local-path provisioner.
@@ -132,7 +132,7 @@ lives**. Resource requests/limits follow
   unreliable from inside the pod — TCP is the pragmatic choice).
 - **If DOWN**: `/api/customers` POST/PUT succeeds (Kafka publish is
   async with a circuit breaker), but the event timeline stops updating
-  and outbound integrations stall. `mirador` readiness flips only if
+  and outbound integrations stall. `iris` readiness flips only if
   the CB stays open past the threshold.
 - **Config**: `base/stateful/kafka.yaml`.
 
@@ -146,7 +146,7 @@ lives**. Resource requests/limits follow
 - **Port**: `6379/TCP`.
 - **Probes**: `redis-cli ping` (liveness only — readiness is implicit
   on a ClusterIP Service).
-- **If DOWN**: JWT revocation checks fail-open (`mirador` logs a
+- **If DOWN**: JWT revocation checks fail-open (`iris` logs a
   warning and trusts the signature alone) and the ring-buffer widget
   on the dashboard shows stale data. Not a hard app stop.
 - **Config**: `base/stateful/redis.yaml`.
@@ -154,7 +154,7 @@ lives**. Resource requests/limits follow
 #### `keycloak` (namespace `infra`)
 
 - **Role**: OAuth2 / OIDC provider. The UI login form POSTs to
-  `/auth/login` on `mirador`, which relays token requests to Keycloak.
+  `/auth/login` on `iris`, which relays token requests to Keycloak.
   Runs `start-dev` — non-TLS, TLS termination at ingress in prod.
 - **Image**: `quay.io/keycloak/keycloak:26.2`.
 - **Port**: `8080/TCP` (Service `keycloak:80 → 8080`).
@@ -168,7 +168,7 @@ lives**. Resource requests/limits follow
 
 #### `unleash` (namespace `infra`)
 
-- **Role**: Feature-flag server. Flags today: `mirador.bio.enabled`
+- **Role**: Feature-flag server. Flags today: `iris.bio.enabled`
   (kill-switch for the Ollama-backed `/bio` endpoint). The browser
   never calls Unleash directly — see `unleash-proxy`.
 - **Image**: `unleashorg/unleash-server:7.6.3`.
@@ -198,7 +198,7 @@ lives**. Resource requests/limits follow
 
 - **Role**: Narrow read-only front-end proxy for Unleash
   ([ADR-0024](../../docs/adr/0024-bff-observability-proxy-and-unleash-without-sdk.md)
-  + ADR-0026). The browser calls `/proxy?appName=mirador-ui` with a
+  + ADR-0026). The browser calls `/proxy?appName=iris-ui` with a
   frontend token; the proxy relays to Unleash using a server-side
   admin token.
 - **Image**: `unleashorg/unleash-proxy:1.4.17`.
@@ -214,13 +214,13 @@ lives**. Resource requests/limits follow
 - **Role**: Grafana + Loki + Tempo + Mimir + OTel Collector in one pod
   ([ADR-0012](../../docs/adr/0012-stay-on-lgtm-with-bloom-filters.md),
   [ADR-0014](../../docs/adr/0014-single-replica-for-demo.md)). OTLP
-  ingest on 4317/4318; `mirador` pushes here.
+  ingest on 4317/4318; `iris` pushes here.
 - **Image**: `grafana/otel-lgtm:0.25.0`.
 - **Ports**: `3000` (Grafana), `4317/4318` (OTLP), `3100` (Loki),
   `3200` (Tempo), `9009` (Mimir) — all on Service `lgtm`.
 - **Probes**: `GET /api/health` on 3000 for readiness (liveness
   implicit on the process).
-- **If DOWN**: `mirador` OTLP export buffers briefly then drops
+- **If DOWN**: `iris` OTLP export buffers briefly then drops
   (exporter retries with backoff). The dashboard iframe shows
   "unreachable". App functionality is unaffected — observability is
   one-way push.
@@ -230,7 +230,7 @@ lives**. Resource requests/limits follow
 #### `pyroscope` (namespace `infra`)
 
 - **Role**: Continuous profiling server. The Java agent is embedded
-  in the `mirador` image (`pyroscope-java.jar`) and pushes CPU +
+  in the `iris` image (`pyroscope-java.jar`) and pushes CPU +
   memory samples here. Grafana's Pyroscope datasource links through.
 - **Image**: `grafana/pyroscope:1.14.0`.
 - **Port**: `4040/TCP`.
@@ -285,7 +285,7 @@ does **not** do variable substitution.
 
 | Overlay | Adds                                                                 | Removes                   | Patches                                                                 |
 | ------- | -------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------- |
-| `local` | `base/postgres` (in-cluster StatefulSet)                              | none                      | `imagePullPolicy: Never` on mirador + customer-ui (kind loads directly) |
+| `local` | `base/postgres` (in-cluster StatefulSet)                              | none                      | `imagePullPolicy: Never` on iris + customer-ui (kind loads directly) |
 | `gke`   | `cert-manager-gke-fix.yaml`, `cloud-sql-proxy.yaml`                   | `base/postgres` (skipped) | Ingress: cert-manager + TLS · Deployment: Cloud SQL proxy sidecar       |
 | `eks`   | `base/postgres`                                                       | none                      | none (cluster-specific IAM via Terraform)                               |
 | `aks`   | `base/postgres`                                                       | none                      | none (cluster-specific identities via Terraform)                        |

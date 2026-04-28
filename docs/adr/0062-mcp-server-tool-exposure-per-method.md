@@ -3,12 +3,12 @@
 **Status** : Accepted
 **Date** : 2026-04-26
 **Sibling docs** :
-- [shared ADR-0059 — Customer/Order/Product/OrderLine data model](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0059-customer-order-product-data-model.md)
-- [common ADR-0001 — polyrepo via submodule](https://gitlab.com/mirador1/mirador-common/-/blob/main/docs/adr/0001-shared-repo-via-submodule.md)
+- [shared ADR-0059 — Customer/Order/Product/OrderLine data model](https://gitlab.com/iris-7/iris-service-shared/-/blob/main/docs/adr/0059-customer-order-product-data-model.md)
+- [common ADR-0001 — polyrepo via submodule](https://gitlab.com/iris-7/iris-common/-/blob/main/docs/adr/0001-shared-repo-via-submodule.md)
 
 ## Context
 
-We want to expose the Mirador domain (Order / Product / Customer / Chaos / SLO)
+We want to expose the Iris domain (Order / Product / Customer / Chaos / SLO)
 to LLM clients via the [Model Context Protocol](https://modelcontextprotocol.io/).
 A `claude` CLI session pointed at our backend should be able to query, summarise,
 and trigger demos in plain English.
@@ -84,7 +84,7 @@ public class OrderService {
 @Configuration
 public class McpConfig {
     @Bean
-    public ToolCallbackProvider mirador(
+    public ToolCallbackProvider iris(
         OrderService orderSvc,
         ProductService productSvc,
         CustomerService customerSvc,
@@ -266,7 +266,7 @@ in the corresponding service ; signatures are sketched here, full Javadoc
 
 ### Observability tools — backend-LOCAL only (added 2026-04-26)
 
-**Architectural constraint** : the Mirador backend MUST stay agnostic of
+**Architectural constraint** : the Iris backend MUST stay agnostic of
 infrastructure tools (Mimir, Grafana, Loki, GitLab, GitHub, kubectl, …).
 Coupling the domain backend to specific infra tools would :
 - Couple deploys (Spring Boot can't ship without Loki reachable),
@@ -274,7 +274,7 @@ Coupling the domain backend to specific infra tools would :
 - Leak deployment-environment knowledge into the application,
 - Force every consumer (kind, GKE, AWS, on-prem) to ship the same observability stack.
 
-So the Mirador MCP server only exposes what the backend **already owns
+So the Iris MCP server only exposes what the backend **already owns
 in-process** :
 
 | Tool | Description | Backing source (in-process only) |
@@ -288,13 +288,13 @@ in-process** :
 | `get_openapi_spec(summary)` | Full OpenAPI 3.1 OR paths-only summary. | `springdoc-openapi` in-process. |
 
 **External infra MCP servers** (Mimir, Grafana, Loki, GitLab, GitHub) live
-**outside** the Mirador codebase :
+**outside** the Iris codebase :
 - Use community / official MCP servers (Anthropic ships some,
   [github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)).
 - Each Claude Code user adds them independently via `claude mcp add`.
 - The application's session ends up with N MCP servers ; Claude composes
-  across them (e.g., `mirador.get_health` + `prometheus.query` in the
-  same prompt) ; Mirador's backend never imports any infra-tool client.
+  across them (e.g., `iris.get_health` + `prometheus.query` in the
+  same prompt) ; Iris's backend never imports any infra-tool client.
 
 This split keeps the deploy unit (Spring Boot jar) decoupled from the
 deploy environment (which observability stack, which CI vendor).
@@ -317,7 +317,7 @@ The single criterion for "in app MCP" vs "external infra MCP" :
 | Domain (Order/Product/Customer/Chaos) | ✅ in app MCP | App owns the domain logic |
 | **Raw SQL query** on the DB | ❌ excluded | App accesses the DB ; the DB is the owner. Raw SQL bypasses the app's `@PreAuthorize` checks, leaks the schema, exposes auth tables (`app_user`, `refresh_token`) and admin tables (`flyway_schema_history`, `shedlock`). Granularity wrong : DBA-level, not application-view. |
 | Mimir / Prometheus query | ❌ excluded | App reports metrics TO Mimir but doesn't own it. External community MCP. |
-| Grafana panel render | ❌ excluded | Grafana is a separate service Mirador happens to feed. External MCP. |
+| Grafana panel render | ❌ excluded | Grafana is a separate service Iris happens to feed. External MCP. |
 | Loki tail | ❌ excluded | App ships logs TO Loki ; Loki is the aggregator. External MCP. |
 | K8s pod inspection | ❌ excluded | Platform concern, not application |
 | Kafka topic listing | ❌ excluded | Messaging infra, cross-applicative |
@@ -364,8 +364,8 @@ Spring Security's `@PreAuthorize` — `@Tool` does NOT bypass auth.
 - **3 new service classes** : `LogsService`, `MetricsService`, `GrafanaService`,
   each with `@Tool`-annotated methods. Plus `OpenApiService` (very thin —
   delegate to springdoc).
-- **Configuration** : `MIRADOR_GRAFANA_URL`, `MIRADOR_GRAFANA_TOKEN`,
-  `MIRADOR_LOKI_URL`, `MIRADOR_MIMIR_URL` env vars (env-aware so kind/prod
+- **Configuration** : `IRIS_GRAFANA_URL`, `IRIS_GRAFANA_TOKEN`,
+  `IRIS_LOKI_URL`, `IRIS_MIMIR_URL` env vars (env-aware so kind/prod
   use the in-cluster service names, local uses the LGTM container at 3000).
 - **Caching** : `query_metric` results cached 5s via Caffeine — LLM often
   asks same query twice in a row when reasoning, no point hitting Mimir

@@ -3,7 +3,7 @@
 - **Status**: Accepted
 - **Date**: 2026-04-19
 - **Related**: [ADR-0028](0028-kind-cluster-in-ci-for-manifest-validation.md)
-  (kind-in-CI manifest validation), mirador-ui ROADMAP Tier-1 #2
+  (kind-in-CI manifest validation), iris-ui ROADMAP Tier-1 #2
 
 ## Context
 
@@ -63,7 +63,7 @@ Three specs, not more:
 ### Target backend
 
 Here's the awkward part, and why this ADR exists: the kind cluster
-from ADR-0028 **skips the mirador backend pod** (the image is
+from ADR-0028 **skips the iris backend pod** (the image is
 amd64-only, the runner is arm64). The E2E has to hit a running
 backend somehow.
 
@@ -87,7 +87,7 @@ The `e2e:kind` job:
    (the backend's dependencies).
 2. `./run.sh app &` or `mvn spring-boot:run` in the background.
 3. `npm ci` in the UI repo, `npx playwright install chromium`.
-4. `npx ng build` + `npx http-server dist/mirador-ui` on port 4200.
+4. `npx ng build` + `npx http-server dist/iris-ui` on port 4200.
 5. `npx playwright test` against `http://localhost:4200`.
 6. Teardown (`docker compose down`).
 

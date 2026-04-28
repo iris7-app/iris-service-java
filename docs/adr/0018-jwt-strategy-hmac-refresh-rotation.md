@@ -6,7 +6,7 @@
 ## Context
 
 The service has to authenticate API callers across three paths
-(documented in `com.mirador.auth.package-info`): built-in JWT login,
+(documented in `org.iris.auth.package-info`): built-in JWT login,
 Keycloak/Auth0 OIDC, and machine-to-machine API keys. The built-in
 JWT path is the one the demo leans on most (Swagger UI flow, the
 Angular SPA login, all integration tests).
@@ -104,10 +104,10 @@ Negative:
 
 ## References
 
-- `com.mirador.auth.JwtTokenProvider` — all the logic in one class.
-- `com.mirador.auth.JwtAuthenticationFilter` — request-side JWT
+- `org.iris.auth.JwtTokenProvider` — all the logic in one class.
+- `org.iris.auth.JwtAuthenticationFilter` — request-side JWT
   validation + baggage propagation.
-- `com.mirador.auth.LoginAttemptService` — complementary brute-force
+- `org.iris.auth.LoginAttemptService` — complementary brute-force
   protection (5 failures → 15 min IP lockout), so the HMAC secret
   can't be trivially guessed online.
 - ADR-0016 — External Secrets Operator for rotating `jwt.secret`

@@ -49,7 +49,7 @@ Switch by exporting `TF_BIN=tofu` before running the helper scripts (`bin/cluste
 ## When to pick which
 
 **Default: use `gcp/`.** It's the only module applied in CI, tested in
-demos, and cost-measured (not estimated). If you're deploying Mirador as
+demos, and cost-measured (not estimated). If you're deploying Iris as
 a demo and don't have a strong reason to pick differently, stay on GCP.
 
 | If…                                                                       | Use        | Why                                                                                                    |
@@ -146,7 +146,7 @@ cp terraform.tfvars.example terraform.tfvars   # edit with real values
 
 terraform init \
   -backend-config="bucket=${GCP_PROJECT}-tf-state" \
-  -backend-config="prefix=mirador/gcp"
+  -backend-config="prefix=iris/gcp"
 # (reference modules use local backend — no -backend-config needed)
 
 terraform plan

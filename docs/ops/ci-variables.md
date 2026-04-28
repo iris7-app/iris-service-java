@@ -48,13 +48,13 @@ human clicks "Play" AND the target-specific variables below are set.
 | `AKS_CLUSTER` | AKS | Variable | AKS cluster name. |
 | `AKS_RG` | AKS | Variable | AKS resource group. |
 | `FLY_API_TOKEN` | Fly.io | Secret text (masked) | `flyctl` API token. |
-| `GCP_WIF_PROVIDER` | GKE | Variable | Workload Identity Federation provider path (e.g. `projects/<num>/locations/global/workloadIdentityPools/mirador/providers/gitlab`). |
-| `GCP_SERVICE_ACCOUNT` | GKE | Variable | Target GCP service account email (e.g. `mirador-ci@<proj>.iam.gserviceaccount.com`). |
+| `GCP_WIF_PROVIDER` | GKE | Variable | Workload Identity Federation provider path (e.g. `projects/<num>/locations/global/workloadIdentityPools/iris/providers/gitlab`). |
+| `GCP_SERVICE_ACCOUNT` | GKE | Variable | Target GCP service account email (e.g. `iris-ci@<proj>.iam.gserviceaccount.com`). |
 | `GCP_PROJECT` | GKE | Variable | GCP project ID. |
 | `GCP_OIDC_TOKEN` | GKE | Auto (JWT) | ID token GitLab mints for WIF — do NOT set manually; comes from the `id_tokens:` block in the job. |
 | `CLOUD_SQL_INSTANCE` | GKE | Variable | Cloud SQL instance connection name (if re-enabled — currently ADR-0013 keeps in-cluster PG). |
 | `K8S_HOST` / `K8S_SERVER` / `K8S_CA_CERT` / `K8S_TOKEN` | self-hosted k3s | Mixed | Generic Kubernetes target, for clusters outside AWS/Azure/GCP. `K8S_CA_CERT` is base64-encoded. |
-| `IMAGE_REGISTRY` | package | Variable | Registry hostname (e.g. `europe-west1-docker.pkg.dev/<proj>/mirador`). Defaults to `$CI_REGISTRY`. |
+| `IMAGE_REGISTRY` | package | Variable | Registry hostname (e.g. `europe-west1-docker.pkg.dev/<proj>/iris`). Defaults to `$CI_REGISTRY`. |
 
 ## Schedule triggers (manual — "Run pipeline" with variable override)
 
@@ -72,10 +72,10 @@ could be confused with CI variables.
 
 | Variable | Where it comes from | What it's for |
 |---|---|---|
-| `DB_PASSWORD` | GSM `mirador-db-password` → ESO → K8s Secret `mirador-secrets` | Postgres user password |
-| `JWT_SECRET` | GSM `mirador-jwt-secret` → ESO → K8s Secret `mirador-secrets` | HS256 signing key (256 bits) |
-| `API_KEY` | GSM `mirador-api-key` → ESO | External integration token |
-| ~~`GITLAB_API_TOKEN`~~ | ~~GSM `mirador-gitlab-api-token` → ESO~~ | **Retired 2026-04-22 per [ADR-0052](../adr/0052-backend-not-coupled-to-build-tools.md).** The pipeline-monitor feature moved out of the backend — the UI links to the GitLab pipelines page directly. Secret no longer needed on the prod JVM. |
+| `DB_PASSWORD` | GSM `iris-db-password` → ESO → K8s Secret `iris-secrets` | Postgres user password |
+| `JWT_SECRET` | GSM `iris-jwt-secret` → ESO → K8s Secret `iris-secrets` | HS256 signing key (256 bits) |
+| `API_KEY` | GSM `iris-api-key` → ESO | External integration token |
+| ~~`GITLAB_API_TOKEN`~~ | ~~GSM `iris-gitlab-api-token` → ESO~~ | **Retired 2026-04-22 per [ADR-0052](../adr/0052-backend-not-coupled-to-build-tools.md).** The pipeline-monitor feature moved out of the backend — the UI links to the GitLab pipelines page directly. Secret no longer needed on the prod JVM. |
 | `KEYCLOAK_ADMIN_PASSWORD` | GSM → `keycloak-secrets` | Keycloak bootstrap |
 | `KC_DB_PASSWORD` | GSM → `keycloak-secrets` | Keycloak's own Postgres user |
 

@@ -43,9 +43,9 @@ section_adr_index() {
   echo "▸ ADR flat-index auto-regen drift…"
   for repo in "$SVC_DIR" "$UI_DIR"; do
     local name=$(basename "$repo")
-    # Prefer the COMMON regenerator (factored 2026-04-26 into mirador-common
+    # Prefer the COMMON regenerator (factored 2026-04-26 into iris-common
     # per ADR-0001 + ADR-0060 — universal layer, separate from backend-only
-    # mirador-service-shared). Fall back order :
+    # iris-service-shared). Fall back order :
     #   1. infra/common/bin/dev/regen-adr-index.sh   (current canonical, since 2026-04-26 split)
     #   2. infra/shared/bin/dev/regen-adr-index.sh   (legacy, before common was split out)
     #   3. bin/dev/regen-adr-index.sh                (legacy, before factorisation)

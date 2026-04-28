@@ -1,6 +1,6 @@
 # C4 architecture diagrams
 
-A four-level [C4](https://c4model.com/) view of Mirador, rendered as
+A four-level [C4](https://c4model.com/) view of Iris, rendered as
 Mermaid so the diagrams live next to the code and version with it.
 
 GitHub + GitLab both render Mermaid blocks inline — open this file on
@@ -13,48 +13,48 @@ either platform and the diagrams paint themselves.
 
 ## Level 1 — System Context
 
-Where Mirador sits in the world. Who calls it, what it depends on.
+Where Iris sits in the world. Who calls it, what it depends on.
 
 ```mermaid
 C4Context
-  title System Context — Mirador
+  title System Context — Iris
 
   Person(operator, "Operator", "Demos the system, debugs incidents, runs chaos scenarios.")
   Person(developer, "Developer", "Reads ADRs, ships features via bin/ship/ship.sh.")
   Person(visitor, "Read-only visitor", "Curious dev / recruiter; sees the GIF demo + READMEs.")
 
-  System_Boundary(b1, "Mirador") {
-    System(mirador, "Mirador platform", "Customer-management API + observability UI + LGTM stack.")
+  System_Boundary(b1, "Iris") {
+    System(iris, "Iris platform", "Customer-management API + observability UI + LGTM stack.")
   }
 
   System_Ext(gitlab, "GitLab.com", "Canonical source of truth.<br/>CI runs on the local macbook-runner.")
-  System_Ext(github, "GitHub mirror (mirador1)", "Read-only mirror.<br/>CodeQL + OSSF Scorecard run there.")
+  System_Ext(github, "GitHub mirror (iris-7)", "Read-only mirror.<br/>CodeQL + OSSF Scorecard run there.")
   System_Ext(gke, "GKE Autopilot (ephemeral)", "Brought up on demand for the live demo,<br/>destroyed nightly (ADR-0022).")
   System_Ext(grafana_cloud, "Grafana Cloud LGTM", "Public Tempo / Loki / Mimir tenant for prod traces.")
   System_Ext(ollama, "Ollama (llama3.2)", "Local LLM for the bio enrichment demo.")
 
-  Rel(operator, mirador, "Uses")
+  Rel(operator, iris, "Uses")
   Rel(developer, gitlab, "git push, MR review")
   Rel(visitor, github, "Browses README + GIF")
   Rel(gitlab, github, "bin/ship/ship.sh mirror push")
   Rel(developer, gke, "demo-up.sh on demand")
-  Rel(mirador, ollama, "REST /api/generate", "for /customers/id/enrich")
-  Rel(mirador, grafana_cloud, "OTLP push (prod)", "traces + logs + metrics")
+  Rel(iris, ollama, "REST /api/generate", "for /customers/id/enrich")
+  Rel(iris, grafana_cloud, "OTLP push (prod)", "traces + logs + metrics")
 ```
 
 ---
 
 ## Level 2 — Container
 
-Inside Mirador: which processes / services exist, how they talk.
+Inside Iris: which processes / services exist, how they talk.
 
 ```mermaid
 C4Container
-  title Container — Mirador (local stack)
+  title Container — Iris (local stack)
 
   Person(user, "Operator")
 
-  System_Boundary(mirador, "Mirador") {
+  System_Boundary(iris, "Iris") {
     Container(ui, "Angular 21 UI", "TypeScript / zoneless", "Dashboard, customers, chaos, traces, logs, pipelines.")
     Container(backend, "Spring Boot 4 backend", "Java 25", "REST /customers, /auth, /actuator. JWT + OAuth2.")
     ContainerDb(db, "PostgreSQL 17", "JDBC", "Customers, audit events.<br/>Flyway migrations at startup.")
@@ -90,7 +90,7 @@ C4Component
   ContainerDb(cache, "Redis", "idempotency-key store")
   Container(broker, "Kafka", "customer.created topic")
 
-  Container_Boundary(api, "Mirador backend") {
+  Container_Boundary(api, "Iris backend") {
     Component(security, "SecurityFilterChain", "Spring Security", "JWT validation plus CORS allowlist incl. X-API-Version.")
     Component(rate, "RateLimitingFilter", "Bucket4j", "100 req per min per IP, see ADR-0019.")
     Component(idemp, "IdempotencyFilter", "Servlet filter", "POST and PUT only, replay-safe via Idempotency-Key header.")
@@ -138,6 +138,6 @@ When a new component runs in a feature slice (e.g. SagaOrchestrator
 on POST), update Level 3. **Do not add diagrams below Level 3** —
 the code itself is Level 4.
 
-If you add a new microservice or split Mirador, add Level 1 and 2
+If you add a new microservice or split Iris, add Level 1 and 2
 boxes for it; preserve the existing slice in Level 3 by renaming the
 container boundary to the new service name.

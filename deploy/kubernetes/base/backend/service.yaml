@@ -8,15 +8,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mirador
+  name: iris
   namespace: app
   labels:
-    app.kubernetes.io/name: mirador
+    app.kubernetes.io/name: iris
     app.kubernetes.io/component: backend
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: mirador
+    app.kubernetes.io/name: iris
     app.kubernetes.io/component: backend
   ports:
     - name: http

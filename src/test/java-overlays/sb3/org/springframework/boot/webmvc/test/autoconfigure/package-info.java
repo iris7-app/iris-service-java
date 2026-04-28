@@ -1,11 +1,11 @@
 /**
  * Test overlay — stubs a Spring Boot 4–only annotation for SB3 compatibility.
  *
- * <p>This package does NOT belong to the mirador codebase; the path matches
+ * <p>This package does NOT belong to the iris codebase; the path matches
  * {@code org.springframework.boot.webmvc.test.autoconfigure} to shadow the
  * real Spring annotation {@code @AutoConfigureMockMvc} in Spring Boot 4.
  *
- * <p>The test classes in {@code src/test/java/com/mirador/**} import
+ * <p>The test classes in {@code src/test/java/org/iris/**} import
  * {@link org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc}
  * (the SB4 location). In SB3, that package does NOT exist — the annotation
  * lives at {@code org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc}.

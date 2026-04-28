@@ -50,7 +50,7 @@ variable "cluster_name" {
 # Role        : Container image URI — points at a pushed Docker image.
 # Why         : No default — forcing an explicit value at plan time
 #               prevents accidentally deploying a stale "latest" tag. For
-#               ECR: `<account>.dkr.ecr.<region>.amazonaws.com/mirador:<tag>`.
+#               ECR: `<account>.dkr.ecr.<region>.amazonaws.org/iris:<tag>`.
 #               For Docker Hub / GitLab Registry: full URI incl. host.
 #               Image must be linux/amd64 (Fargate doesn't support arm64
 #               in all regions as of 2026-04 — check per-region before
@@ -62,10 +62,10 @@ variable "cluster_name" {
 #               - An image on ECR in a different account requires
 #                 `repositoryCredentials` even for Fargate. For cross-account
 #                 sharing use ECR resource-based policies.
-# Related     : main.tf → aws_ecs_task_definition.mirador.container_definitions.
+# Related     : main.tf → aws_ecs_task_definition.iris.container_definitions.
 # =============================================================================
 variable "container_image" {
-  description = "Docker image URI to run (e.g. 123456789012.dkr.ecr.eu-west-3.amazonaws.com/mirador:stable)"
+  description = "Docker image URI to run (e.g. 123456789012.dkr.ecr.eu-west-3.amazonaws.org/iris:stable)"
   type        = string
 }
 
@@ -115,7 +115,7 @@ variable "task_cpu" {
 #               this is the first lever for "more headroom".
 # Gotchas     : Must match a valid CPU:memory pair. With cpu = 512, valid
 #               memory values are 1024-4096 MB.
-# Related     : main.tf → aws_ecs_task_definition.mirador.memory.
+# Related     : main.tf → aws_ecs_task_definition.iris.memory.
 # =============================================================================
 variable "task_memory" {
   description = "Fargate task memory in MB (must pair with task_cpu per AWS matrix)"

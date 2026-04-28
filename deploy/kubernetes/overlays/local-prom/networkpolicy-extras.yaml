@@ -11,8 +11,8 @@
 #      datasource shows "Bad Gateway" / timeout when querying.
 #
 #   2. kube-prom Prometheus (in `monitoring`) → app pods (in `app`,
-#      port 8080 = Mirador's Micrometer endpoint). NOT enabled here
-#      yet — would require a `ServiceMonitor` for the Mirador app
+#      port 8080 = Iris's Micrometer endpoint). NOT enabled here
+#      yet — would require a `ServiceMonitor` for the Iris app
 #      first. Tracked as a follow-up: ADR-0039 "Future work".
 #
 # We DO NOT add a default-deny in `monitoring` because the chart's
@@ -27,7 +27,7 @@ metadata:
   name: allow-infra-egress-to-monitoring
   namespace: infra
   labels:
-    app.kubernetes.io/part-of: mirador
+    app.kubernetes.io/part-of: iris
     app.kubernetes.io/component: networkpolicy
 spec:
   # Empty podSelector = applies to all pods in `infra`. Strictest sensible

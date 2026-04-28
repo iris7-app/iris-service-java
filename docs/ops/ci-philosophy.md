@@ -1,6 +1,6 @@
 # CI philosophy — why three CI systems, and how they fit together
 
-Mirador ships three sets of CI configuration files. This page
+Iris ships three sets of CI configuration files. This page
 explains what each one is for, which is authoritative, and why
 duplication is carefully avoided.
 
@@ -19,7 +19,7 @@ has to reinstate them before doing anything else.
 
 ### Rule 1 — GitLab is master. Always.
 
-- The canonical repo URL is `gitlab.com/mirador1/mirador-service` (or
+- The canonical repo URL is `gitlab.com/iris-7/iris-service` (or
   `-ui`). Every other surface (GitHub mirror, Artifact Registry
   image, Grafana dashboard) points back to it.
 - The **branch protection** is on GitLab `main`: no direct push, MR

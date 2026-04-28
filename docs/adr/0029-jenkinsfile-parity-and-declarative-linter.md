@@ -84,7 +84,7 @@ Idempotent, self-cleaning, pinned Jenkins image.
 
 ### Positive
 
-- **Adoption question answered.** A team evaluating Mirador for their
+- **Adoption question answered.** A team evaluating Iris for their
   Jenkins shop can clone, run `bin/ci/jenkins-lint.sh`, get a pass in
   under a minute, read [`docs/ops/jenkins.md`](../ops/jenkins.md),
   and know the stack fits.
@@ -125,9 +125,9 @@ Idempotent, self-cleaning, pinned Jenkins image.
 
 ## Revisit this when
 
-- **A real team adopts Mirador on Jenkins.** The Jenkinsfile becomes
+- **A real team adopts Iris on Jenkins.** The Jenkinsfile becomes
   a canary at that point — promote it, stop treating it as a
-  demonstrator, wire it into `bin/dev/mirador-doctor`.
+  demonstrator, wire it into `bin/dev/iris-doctor`.
 - **GitLab SaaS becomes unavailable** (paid-tier only, private
   networks, outages). Jenkins may become canonical.
 - **Jenkins releases a trustworthy hosted linter** (unlikely but

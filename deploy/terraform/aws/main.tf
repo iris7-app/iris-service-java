@@ -1,5 +1,5 @@
 # =============================================================================
-# Terraform — AWS infrastructure for mirador (reference implementation)
+# Terraform — AWS infrastructure for iris (reference implementation)
 #
 # Status: REFERENCE / STAGE 1 — not applied against a billing account.
 # Canonical target is GCP (see deploy/terraform/gcp/). This module exists
@@ -32,7 +32,7 @@
 #     the GCP module, saves ~8 resources).
 #   - ECS cluster (free — cluster abstraction, not a control plane).
 #   - IAM task-execution role (for ECR pull + CloudWatch Logs).
-#   - Fargate task definition for mirador-service.
+#   - Fargate task definition for iris-service.
 #   - Application Load Balancer (ALB) + target group + listener on port 80.
 #   - CloudWatch Logs group for task stdout/stderr.
 #
@@ -145,7 +145,7 @@ data "aws_subnets" "default" {
 #               - Container Insights (detailed CloudWatch metrics) is off
 #                 by default. Enabling it costs ~$1.50/cluster/month and
 #                 adds per-metric charges.
-# Related     : aws_ecs_service.mirador, aws_ecs_task_definition.mirador.
+# Related     : aws_ecs_service.iris, aws_ecs_task_definition.iris.
 # =============================================================================
 resource "aws_ecs_cluster" "main" {
   name = var.cluster_name
@@ -156,7 +156,7 @@ resource "aws_ecs_cluster" "main" {
   }
 
   tags = {
-    Project = "mirador"
+    Project = "iris"
     Env     = "reference"
     Managed = "terraform"
   }
@@ -175,14 +175,14 @@ resource "aws_ecs_cluster" "main" {
 #                 logs, task "works" but no visibility.
 #               - Encryption at rest (kms_key_id) is not set — stage 2
 #                 adds a customer-managed KMS key.
-# Related     : aws_ecs_task_definition.mirador.container_definitions.
+# Related     : aws_ecs_task_definition.iris.container_definitions.
 # =============================================================================
-resource "aws_cloudwatch_log_group" "mirador" {
+resource "aws_cloudwatch_log_group" "iris" {
   name              = "/ecs/${var.cluster_name}"
   retention_in_days = 7
 
   tags = {
-    Project = "mirador"
+    Project = "iris"
   }
 }
 
@@ -202,7 +202,7 @@ resource "aws_cloudwatch_log_group" "mirador" {
 #               - The AmazonECSTaskExecutionRolePolicy managed policy
 #                 covers ECR pull + CloudWatch logs only. Adding Secrets
 #                 Manager access needs an inline policy (stage 2).
-# Related     : aws_ecs_task_definition.mirador.execution_role_arn.
+# Related     : aws_ecs_task_definition.iris.execution_role_arn.
 # =============================================================================
 resource "aws_iam_role" "ecs_task_execution" {
   name = "${var.cluster_name}-task-execution"
@@ -219,7 +219,7 @@ resource "aws_iam_role" "ecs_task_execution" {
   })
 
   tags = {
-    Project = "mirador"
+    Project = "iris"
   }
 }
 
@@ -265,7 +265,7 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Project = "mirador" }
+  tags = { Project = "iris" }
 }
 
 resource "aws_security_group" "tasks" {
@@ -289,7 +289,7 @@ resource "aws_security_group" "tasks" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Project = "mirador" }
+  tags = { Project = "iris" }
 }
 
 # =============================================================================
@@ -311,7 +311,7 @@ resource "aws_security_group" "tasks" {
 #                 `terraform destroy` to work unconditionally.
 #               - Idle timeout defaults to 60s. Spring Boot async handlers
 #                 may need higher; tune in stage 2 if they appear.
-# Related     : aws_lb_target_group.mirador, aws_lb_listener.http.
+# Related     : aws_lb_target_group.iris, aws_lb_listener.http.
 # =============================================================================
 resource "aws_lb" "main" {
   name               = substr("${var.cluster_name}-alb", 0, 32)
@@ -322,10 +322,10 @@ resource "aws_lb" "main" {
 
   enable_deletion_protection = false
 
-  tags = { Project = "mirador" }
+  tags = { Project = "iris" }
 }
 
-resource "aws_lb_target_group" "mirador" {
+resource "aws_lb_target_group" "iris" {
   name        = substr("${var.cluster_name}-tg", 0, 32)
   port        = var.container_port
   protocol    = "HTTP"
@@ -342,7 +342,7 @@ resource "aws_lb_target_group" "mirador" {
     unhealthy_threshold = 3
   }
 
-  tags = { Project = "mirador" }
+  tags = { Project = "iris" }
 }
 
 resource "aws_lb_listener" "http" {
@@ -352,7 +352,7 @@ resource "aws_lb_listener" "http" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.mirador.arn
+    target_group_arn = aws_lb_target_group.iris.arn
   }
 }
 
@@ -379,9 +379,9 @@ resource "aws_lb_listener" "http" {
 #               - Environment variables are plain-text here. Stage 2 moves
 #                 DB password / JWT secret to Secrets Manager via the
 #                 `secrets` block in container_definitions.
-# Related     : aws_ecs_service.mirador (what actually runs this task).
+# Related     : aws_ecs_service.iris (what actually runs this task).
 # =============================================================================
-resource "aws_ecs_task_definition" "mirador" {
+resource "aws_ecs_task_definition" "iris" {
   family                   = var.cluster_name
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
@@ -390,7 +390,7 @@ resource "aws_ecs_task_definition" "mirador" {
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
 
   container_definitions = jsonencode([{
-    name      = "mirador"
+    name      = "iris"
     image     = var.container_image
     essential = true
     portMappings = [{
@@ -405,14 +405,14 @@ resource "aws_ecs_task_definition" "mirador" {
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        awslogs-group         = aws_cloudwatch_log_group.mirador.name
+        awslogs-group         = aws_cloudwatch_log_group.iris.name
         awslogs-region        = var.region
         awslogs-stream-prefix = "ecs"
       }
     }
   }])
 
-  tags = { Project = "mirador" }
+  tags = { Project = "iris" }
 }
 
 # =============================================================================
@@ -428,12 +428,12 @@ resource "aws_ecs_task_definition" "mirador" {
 #               - Deployment circuit breaker is off by default. Turning it
 #                 on would automatically roll back a failed deployment;
 #                 recommended for anything beyond stage 1.
-# Related     : aws_lb_target_group.mirador, aws_ecs_task_definition.mirador.
+# Related     : aws_lb_target_group.iris, aws_ecs_task_definition.iris.
 # =============================================================================
-resource "aws_ecs_service" "mirador" {
+resource "aws_ecs_service" "iris" {
   name            = var.cluster_name
   cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.mirador.arn
+  task_definition = aws_ecs_task_definition.iris.arn
   desired_count   = 1
   launch_type     = "FARGATE"
 
@@ -444,8 +444,8 @@ resource "aws_ecs_service" "mirador" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.mirador.arn
-    container_name   = "mirador"
+    target_group_arn = aws_lb_target_group.iris.arn
+    container_name   = "iris"
     container_port   = var.container_port
   }
 
@@ -453,5 +453,5 @@ resource "aws_ecs_service" "mirador" {
 
   depends_on = [aws_lb_listener.http]
 
-  tags = { Project = "mirador" }
+  tags = { Project = "iris" }
 }

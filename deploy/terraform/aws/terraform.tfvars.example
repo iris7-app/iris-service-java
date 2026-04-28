@@ -7,13 +7,13 @@
 # In CI, prefer TF_VAR_* environment variables over a tfvars file.
 # =============================================================================
 
-# Required — full URI to a Docker image that runs the mirador-service app.
+# Required — full URI to a Docker image that runs the iris-service app.
 # For ECR in your own account:
-#   123456789012.dkr.ecr.eu-west-3.amazonaws.com/mirador:stable
+#   123456789012.dkr.ecr.eu-west-3.amazonaws.org/iris:stable
 # For Docker Hub / GitLab Registry (public):
-#   registry.gitlab.com/mirador1/mirador-service:stable
+#   registry.gitlab.com/iris-7/iris-service:stable
 # Image MUST be linux/amd64 (Fargate doesn't support arm64 in every region).
-container_image = "123456789012.dkr.ecr.eu-west-3.amazonaws.com/mirador:stable"
+container_image = "123456789012.dkr.ecr.eu-west-3.amazonaws.org/iris:stable"
 
 # Optional — AWS region. Default: eu-west-3 (Paris). Other EU options:
 # eu-west-1 (Ireland, typically cheapest), eu-central-1 (Frankfurt).
@@ -34,4 +34,4 @@ container_image = "123456789012.dkr.ecr.eu-west-3.amazonaws.com/mirador:stable"
 
 # Stage 2 only — public hostname for ACM cert + Route53 alias.
 # Not consumed by main.tf yet; set this when wiring HTTPS.
-# app_host = "mirador.yourdomain.com"
+# app_host = "iris.yourdomain.com"

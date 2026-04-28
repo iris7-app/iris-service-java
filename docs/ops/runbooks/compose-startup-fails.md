@@ -50,7 +50,7 @@ docker compose -f deploy/compose/observability.yml config --quiet
 ## Fix that worked last time
 
 - **Docker down** — `open -a Docker`, wait 20s, re-run `./run.sh all`.
-- **Port conflict on 8080** — another mirador instance was still alive:
+- **Port conflict on 8080** — another iris instance was still alive:
   ```
   docker ps --filter publish=8080 --format "{{.Names}}" | xargs docker stop
   ```

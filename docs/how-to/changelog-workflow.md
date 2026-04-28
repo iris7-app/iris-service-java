@@ -1,6 +1,6 @@
 # Changelog workflow — hand-rolled release automation
 
-Mirador's release automation is a pair of shell scripts under
+Iris's release automation is a pair of shell scripts under
 [`bin/ship/`](../../bin/ship/) that run locally after a stable-v*
 tag is cut. This doc walks the 5-step workflow.
 
@@ -95,7 +95,7 @@ bin/ship/gitlab-release.sh stable-vX.Y.Z
 
 The script reads the annotated tag message (or `--notes "..."` if
 you want a custom description) and creates a Release object at
-<https://gitlab.com/mirador1/mirador-service/-/releases> via
+<https://gitlab.com/iris-7/iris-service/-/releases> via
 `glab release create`. Takes ~1 s.
 
 ### 5. Announce (optional)
@@ -107,7 +107,7 @@ batch of work referencing the new tag.
 
 ## How it interacts with tag conventions
 
-Mirador uses **one tag family** : `stable-vX.Y.Z`. There's no
+Iris uses **one tag family** : `stable-vX.Y.Z`. There's no
 parallel `vX.Y.Z` set anymore — release-please's automated `vX.Y.Z`
 tags are gone. Every release = one tag + one CHANGELOG entry + one
 Release object.

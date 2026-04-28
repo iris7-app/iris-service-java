@@ -25,7 +25,7 @@ communiqué produit)** :
   AI data capturée automatiquement
 - Alerting LLM-based ou rule-based
 
-Mirador a UN seul chemin AI en production : `BioService` qui appelle
+Iris a UN seul chemin AI en production : `BioService` qui appelle
 Ollama via Spring AI 1.1.4 pour générer des bios customer (2-3
 phrases) sur l'endpoint `GET /customers/{id}/bio`. Le chemin est
 protégé par Resilience4j (bulkhead + circuit breaker).
@@ -37,7 +37,7 @@ automatiquement : `spring.ai.chat.client` span avec les attributs
 latency, etc. Grafana Cloud AI Observability reconnaît ces attributs
 + construit automatiquement les dashboards AI correspondants.
 
-Mirador dispose déjà d'une infra OTel Collector configurée en
+Iris dispose déjà d'une infra OTel Collector configurée en
 **dual-export** (ADR-0054 : LGTM local + GitLab Observability).
 Ajouter Grafana Cloud comme troisième destination est une
 extension naturelle de cette architecture — pas une refonte.
@@ -61,7 +61,7 @@ triple-export sans changement de code dans l'app.
 
 2. **`src/main/resources/application.yml`** : section
    `spring.ai.chat.client.observations` avec `log-prompt` +
-   `log-completion` OPT-IN via `MIRADOR_AI_LOG_CONTENT` env var.
+   `log-completion` OPT-IN via `IRIS_AI_LOG_CONTENT` env var.
    Défaut **false** — les GenAI semantic conventions (model,
    tokens, latency) suffisent aux dashboards AI. Le content
    logging envoie le prompt + completion text, potentiellement
@@ -86,7 +86,7 @@ triple-export sans changement de code dans l'app.
 - **Complexité config** : 3 env vars Grafana Cloud à gérer
   (endpoint + token + content flag). Documentées dans
   `docs/architecture/observability.md`.
-- **Coût Grafana Cloud** : free tier couvre largement mirador
+- **Coût Grafana Cloud** : free tier couvre largement iris
   (single AI endpoint, <100 reqs/mois typiquement en demo). Si
   le projet scale ou intègre un second AI path, revoir la tier.
 - **Data privacy** : `log-prompt=true` envoie le contenu vers
@@ -107,7 +107,7 @@ triple-export sans changement de code dans l'app.
    export GRAFANA_CLOUD_OTLP_TOKEN="<base64 from UI>"
    ./bin/run.sh restart
    ```
-5. (Optionnel) `export MIRADOR_AI_LOG_CONTENT=true` pour
+5. (Optionnel) `export IRIS_AI_LOG_CONTENT=true` pour
    envoyer aussi le contenu prompt/completion (demo uniquement).
 6. Trigger un `POST /customers` + `GET /customers/{id}/bio` →
    traces visibles dans Grafana Cloud Explore avec les

@@ -210,7 +210,7 @@ pre-commit:
         bad = [(m.group(1).strip(), m.group(2).strip())
                for m in pattern.finditer(content)
                if not m.group(2).strip().startswith('${')
-               and m.group(1).strip() != 'mirador']
+               and m.group(1).strip() != 'iris']
         for a, v in bad:
             print(f"  {a}: {v}")
         sys.exit(1 if bad else 0)
@@ -297,7 +297,7 @@ commit-msg:
           echo "  fix: handle null email in CustomerController"
           echo "  docs(adr): record Kustomize decision"
           echo "  chore(deps): bump jjwt 0.12.6 -> 0.13.0"
-          echo "  refactor!: rename package com.example.app -> com.mirador"
+          echo "  refactor!: rename package com.example.app -> org.iris"
           echo ""
           echo "Doc: config/commitlint.config.mjs describes the rules."
           exit 1

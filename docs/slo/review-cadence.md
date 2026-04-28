@@ -1,8 +1,8 @@
-# SLO review cadence — Mirador Service (Java)
+# SLO review cadence — Iris Service (Java)
 
 > **Canonical cadence lives in shared** — see
 > [`infra/shared/docs/slo/review-cadence.md`](../../infra/shared/docs/slo/review-cadence.md)
-> ([direct GitLab link](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/slo/review-cadence.md)).
+> ([direct GitLab link](https://gitlab.com/iris-7/iris-service-shared/-/blob/main/docs/slo/review-cadence.md)).
 > The shared doc covers the "Why / Cadence (monthly + quarterly +
 > post-incident) / Decision matrix / Anti-patterns" — the same
 > framework applies to both Java and Python services.
@@ -17,10 +17,10 @@
 |---|---|
 | SLO definitions | [`docs/slo/slo.yaml`](slo.yaml) |
 | SLA promise | [`docs/slo/sla.md`](sla.md) |
-| SLO Overview dashboard (cross-repo) | [`infra/shared/.../slo-overview.json`](../../infra/shared/infra/observability/grafana/dashboards-lgtm/slo-overview.json) — UID `mirador-slo-overview` |
-| SLO Breakdown by Endpoint (Java-only) | [`infra/observability/grafana-dashboards/slo-breakdown-by-endpoint.json`](../../infra/observability/grafana-dashboards/slo-breakdown-by-endpoint.json) — UID `mirador-slo-breakdown-by-endpoint` |
-| Latency Heatmap (Java-only) | [`infra/observability/grafana-dashboards/latency-heatmap.json`](../../infra/observability/grafana-dashboards/latency-heatmap.json) — UID `mirador-latency-heatmap` |
-| Apdex (Java-only) | [`infra/observability/grafana-dashboards/apdex.json`](../../infra/observability/grafana-dashboards/apdex.json) — UID `mirador-apdex` |
+| SLO Overview dashboard (cross-repo) | [`infra/shared/.../slo-overview.json`](../../infra/shared/infra/observability/grafana/dashboards-lgtm/slo-overview.json) — UID `iris-slo-overview` |
+| SLO Breakdown by Endpoint (Java-only) | [`infra/observability/grafana-dashboards/slo-breakdown-by-endpoint.json`](../../infra/observability/grafana-dashboards/slo-breakdown-by-endpoint.json) — UID `iris-slo-breakdown-by-endpoint` |
+| Latency Heatmap (Java-only) | [`infra/observability/grafana-dashboards/latency-heatmap.json`](../../infra/observability/grafana-dashboards/latency-heatmap.json) — UID `iris-latency-heatmap` |
+| Apdex (Java-only) | [`infra/observability/grafana-dashboards/apdex.json`](../../infra/observability/grafana-dashboards/apdex.json) — UID `iris-apdex` |
 | Runbooks | [`docs/runbooks/slo-availability.md`](../runbooks/slo-availability.md), [`slo-latency.md`](../runbooks/slo-latency.md), [`slo-enrichment.md`](../runbooks/slo-enrichment.md) |
 
 The 3 Java-only dashboards (breakdown / heatmap / apdex) query the
@@ -33,18 +33,18 @@ won't render data for the Python service (which exposes
 Run these BEFORE the monthly meeting so the data is fresh :
 
 1. **Confirm Sloth recording rules are loaded.** Promethues should
-   have the `slo:current_burn_rate:ratio{sloth_id="mirador-service-*"}`
+   have the `slo:current_burn_rate:ratio{sloth_id="iris-service-*"}`
    recording rules. If empty after a deploy, regenerate
-   `deploy/kubernetes/observability-prom/mirador-slo.yaml` from
+   `deploy/kubernetes/observability-prom/iris-slo.yaml` from
    `docs/slo/slo.yaml` :
    ```
-   sloth generate -i docs/slo/slo.yaml -o deploy/kubernetes/observability-prom/mirador-slo.yaml
+   sloth generate -i docs/slo/slo.yaml -o deploy/kubernetes/observability-prom/iris-slo.yaml
    ```
 2. **Check Hikari / Tomcat / Kafka error counters** in Grafana — these
    often reveal "near-misses" that didn't break the SLO this month
    but flag tightening risk for next quarter.
 3. **Run `./mvnw -Pcoverage verify`** if coverage on the touched
-   feature slices (`com.mirador.{customer,order,product}.*`) dropped
+   feature slices (`org.iris.{customer,order,product}.*`) dropped
    below the per-package gates — coverage drift correlates with
    future incidents.
 4. **Check the OWASP / grype CVE counts** — security debt indirectly
@@ -90,7 +90,7 @@ decisions, SLA promise updates if any).
 ## See also
 
 - Shared canonical cadence : [`infra/shared/docs/slo/review-cadence.md`](../../infra/shared/docs/slo/review-cadence.md)
-- [ADR-0058 SLO/SLA with Sloth](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0058-slo-sla-with-sloth.md)
+- [ADR-0058 SLO/SLA with Sloth](https://gitlab.com/iris-7/iris-service-shared/-/blob/main/docs/adr/0058-slo-sla-with-sloth.md)
 - [SLA promise (Java)](sla.md)
 - [SLO definitions (Java)](slo.yaml)
 - [Google SRE Workbook ch. 4 — Implementing SLOs](https://sre.google/workbook/implementing-slos/)

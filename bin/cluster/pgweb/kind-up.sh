@@ -8,7 +8,7 @@
 # (see docs/architecture/environments-and-flows.md).
 #
 # Pre-requisites:
-#   1. kind cluster up (`kind create cluster --name mirador-local …`)
+#   1. kind cluster up (`kind create cluster --name iris-local …`)
 #   2. bin/cluster/port-forward/kind.sh --daemon           — tunnels open (we need 15432 here)
 #
 # Usage:
@@ -18,7 +18,7 @@
 
 set -eu
 
-KIND_CONTEXT="${KIND_CONTEXT:-kind-mirador-local}"
+KIND_CONTEXT="${KIND_CONTEXT:-kind-iris-local}"
 
 if [ "${1:-}" = "--down" ]; then
   docker compose --profile kind-tunnel stop pgweb-kind 2>/dev/null || true
@@ -42,7 +42,7 @@ fi
 # Fetch the DB password from the kind cluster Secret (same Secret name as prod
 # — ESO is not present on kind, so the Secret is created by the local overlay's
 # Secret generator or by a one-off kubectl create, whichever is current).
-PGWEB_DB_PASSWORD=$(kubectl --context "$KIND_CONTEXT" get secret mirador-secrets -n app \
+PGWEB_DB_PASSWORD=$(kubectl --context "$KIND_CONTEXT" get secret iris-secrets -n app \
     -o jsonpath='{.data.DB_PASSWORD}' 2>/dev/null | base64 -d || true)
 
 # Fallback to the compose default (demo/demo) if the Secret is not present —

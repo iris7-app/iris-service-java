@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Mirador is a **portfolio demo project**, not a production system with
+Iris is a **portfolio demo project**, not a production system with
 real users. It still takes security seriously because the same code
 and configuration patterns are used by others as a reference.
 
@@ -10,12 +10,12 @@ and configuration patterns are used by others as a reference.
 
 Instead, report them privately:
 
-- **Email**: security@mirador1.com (monitored)
+- **Email**: security@iris-7.com (monitored)
 - **GitLab**: open a
-  [confidential issue](https://gitlab.com/mirador1/mirador-service/-/issues/new?issue[confidential]=true)
+  [confidential issue](https://gitlab.com/iris-7/iris-service/-/issues/new?issue[confidential]=true)
   — only maintainers can see it.
 - **GitHub**: the mirror accepts
-  [security advisories](https://github.com/mirador1/mirador-service/security/advisories/new)
+  [security advisories](https://github.com/iris-7/iris-service/security/advisories/new)
   (private to maintainers).
 
 Include, at minimum:
@@ -42,7 +42,7 @@ illness. Urgent severity is paged via the email above.
 
 **In scope** (we will accept reports):
 
-- The Spring Boot 4 application (`src/main/java/com/mirador/**`)
+- The Spring Boot 4 application (`src/main/java/org/iris/**`)
 - Container image published to the Artifact Registry
 - Kubernetes manifests in `deploy/kubernetes/`
 - Terraform configuration in `deploy/terraform/`

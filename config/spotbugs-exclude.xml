@@ -30,7 +30,7 @@
       requires a subclass with a finalizer — impossible here since the class is a @Component.
     -->
     <Match>
-        <Class name="com.mirador.auth.JwtTokenProvider"/>
+        <Class name="org.iris.auth.JwtTokenProvider"/>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
     </Match>
 
@@ -44,8 +44,8 @@
     -->
     <Match>
         <Or>
-            <Class name="com.mirador.customer.BatchImportResult"/>
-            <Class name="com.mirador.customer.CursorPage"/>
+            <Class name="org.iris.customer.BatchImportResult"/>
+            <Class name="org.iris.customer.CursorPage"/>
         </Or>
         <Bug pattern="EI_EXPOSE_REP"/>
     </Match>
@@ -57,7 +57,7 @@
       helpers to return gracefully instead of crashing the actuator. Safe to exclude.
     -->
     <Match>
-        <Class name="com.mirador.observability.TestReportInfoContributor"/>
+        <Class name="org.iris.observability.TestReportInfoContributor"/>
         <Bug pattern="REC_CATCH_EXCEPTION"/>
     </Match>
 
@@ -72,7 +72,7 @@
       SpotBugs sees only the compiler-widened catch. Safe to exclude for this class.
     -->
     <Match>
-        <Class name="com.mirador.observability.QualityReportEndpoint"/>
+        <Class name="org.iris.observability.QualityReportEndpoint"/>
         <Bug pattern="REC_CATCH_EXCEPTION"/>
     </Match>
 

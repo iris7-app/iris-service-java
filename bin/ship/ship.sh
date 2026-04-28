@@ -47,13 +47,13 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-# Detect GitLab project path from the `origin` remote (e.g. mirador1/mirador-service).
+# Detect GitLab project path from the `origin` remote (e.g. iris-7/iris-service).
 GITLAB_PROJECT=$(git remote get-url origin 2>/dev/null | sed -E 's|.*gitlab\.com[:/](.+)\.git|\1|')
 GITHUB_REPO="${GITHUB_MIRROR:-}"   # Override per repo in an env file if needed
 if [[ -z "$GITHUB_REPO" ]]; then
   case "$GITLAB_PROJECT" in
-    mirador1/mirador-service) GITHUB_REPO="mirador1/mirador-service" ;;
-    mirador1/mirador-ui)      GITHUB_REPO="mirador1/mirador-ui" ;;
+    iris-7/iris-service) GITHUB_REPO="iris-7/iris-service" ;;
+    iris-7/iris-ui)      GITHUB_REPO="iris-7/iris-ui" ;;
     *)                        GITHUB_REPO="" ;;
   esac
 fi

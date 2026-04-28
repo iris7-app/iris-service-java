@@ -1,4 +1,4 @@
-# Mirador Service SLO definitions — Sloth format (https://sloth.dev/specs/v1/).
+# Iris Service SLO definitions — Sloth format (https://sloth.dev/specs/v1/).
 #
 # Each `slo` declares :
 #   - objective : target % (e.g. 99.5 = 99.5% of requests must succeed / be fast).
@@ -6,7 +6,7 @@
 #   - alerting  : multi-window multi-burn-rate config (Google SRE Workbook).
 #
 # Generate Prometheus rules from this file :
-#   sloth generate -i docs/slo/slo.yaml -o ../mirador-service-shared/deploy/kubernetes/observability-prom/mirador-slo.yaml
+#   sloth generate -i docs/slo/slo.yaml -o ../iris-service-shared/deploy/kubernetes/observability-prom/iris-slo.yaml
 #
 # The generated rules :
 # - Recording rules at 6 windows (5m, 30m, 1h, 2h, 6h, 1d, 3d) for each SLO.
@@ -14,7 +14,7 @@
 # - 2 ticket alerts (1d × 3× = 10% in 1d ; 3d × 1× = 10% in 3d).
 # - 1 metadata recording rule per SLO (objective + error_budget).
 #
-# Apply via Argo CD or kustomize alongside mirador-alerts.yaml.
+# Apply via Argo CD or kustomize alongside iris-alerts.yaml.
 #
 # Reference :
 # - https://sre.google/workbook/alerting-on-slos/  (multi-burn-rate pattern)
@@ -23,12 +23,12 @@
 version: "prometheus/v1"
 # Use Sloth's prom-operator K8s transform plugin via CLI :
 #   sloth generate --k8s-transform-plugin-id="sloth.dev/k8stransform/prom-operator-prometheus-rule/v1" \
-#     -i docs/slo/slo.yaml -o ../shared/deploy/kubernetes/observability-prom/mirador-slo.yaml
-service: "mirador-service"
+#     -i docs/slo/slo.yaml -o ../shared/deploy/kubernetes/observability-prom/iris-slo.yaml
+service: "iris-service"
 labels:
-  team: "mirador"
+  team: "iris"
   tier: "demo"
-  app: "mirador-service"
+  app: "iris-service"
 slos:
   # ───── SLO 1 : Availability ────────────────────────────────────────────────
   # 99% of all HTTP requests should NOT error (5xx).
@@ -42,17 +42,17 @@ slos:
         # error_query : the BAD events — count of 5xx (intentional 4xx-as-bad
         # excluded ; client errors don't burn server budget).
         error_query: |
-          sum(rate(http_server_requests_seconds_count{job="mirador-service",status=~"5.."}[{{.window}}]))
+          sum(rate(http_server_requests_seconds_count{job="iris-service",status=~"5.."}[{{.window}}]))
         # total_query : ALL HTTP requests (success + error)
         total_query: |
-          sum(rate(http_server_requests_seconds_count{job="mirador-service"}[{{.window}}]))
+          sum(rate(http_server_requests_seconds_count{job="iris-service"}[{{.window}}]))
     alerting:
-      name: MiradorServiceAvailabilitySLO
+      name: IrisServiceAvailabilitySLO
       labels:
         category: "availability"
       annotations:
         summary: "Availability SLO error budget burning"
-        runbook_url: "https://gitlab.com/mirador1/mirador-service-java/-/blob/main/docs/runbooks/slo-availability.md"
+        runbook_url: "https://gitlab.com/iris-7/iris-service-java/-/blob/main/docs/runbooks/slo-availability.md"
       page_alert:
         labels:
           severity: critical
@@ -73,19 +73,19 @@ slos:
         # bad = requests SLOWER than 0.5s
         error_query: |
           (
-            sum(rate(http_server_requests_seconds_count{job="mirador-service"}[{{.window}}]))
+            sum(rate(http_server_requests_seconds_count{job="iris-service"}[{{.window}}]))
             -
-            sum(rate(http_server_requests_seconds_bucket{job="mirador-service",le="0.5"}[{{.window}}]))
+            sum(rate(http_server_requests_seconds_bucket{job="iris-service",le="0.5"}[{{.window}}]))
           )
         total_query: |
-          sum(rate(http_server_requests_seconds_count{job="mirador-service"}[{{.window}}]))
+          sum(rate(http_server_requests_seconds_count{job="iris-service"}[{{.window}}]))
     alerting:
-      name: MiradorServiceLatencyP99SLO
+      name: IrisServiceLatencyP99SLO
       labels:
         category: "latency"
       annotations:
         summary: "Latency SLO error budget burning (p99 > 500ms)"
-        runbook_url: "https://gitlab.com/mirador1/mirador-service-java/-/blob/main/docs/runbooks/slo-latency.md"
+        runbook_url: "https://gitlab.com/iris-7/iris-service-java/-/blob/main/docs/runbooks/slo-latency.md"
       page_alert:
         labels:
           severity: critical
@@ -104,16 +104,16 @@ slos:
     sli:
       events:
         error_query: |
-          sum(rate(http_server_requests_seconds_count{job="mirador-service",uri=~".*/enrich.*",status="504"}[{{.window}}]))
+          sum(rate(http_server_requests_seconds_count{job="iris-service",uri=~".*/enrich.*",status="504"}[{{.window}}]))
         total_query: |
-          sum(rate(http_server_requests_seconds_count{job="mirador-service",uri=~".*/enrich.*"}[{{.window}}]))
+          sum(rate(http_server_requests_seconds_count{job="iris-service",uri=~".*/enrich.*"}[{{.window}}]))
     alerting:
-      name: MiradorEnrichmentSuccessSLO
+      name: IrisEnrichmentSuccessSLO
       labels:
         category: "business"
       annotations:
         summary: "Enrichment endpoint timing out — Kafka may be down"
-        runbook_url: "https://gitlab.com/mirador1/mirador-service-java/-/blob/main/docs/runbooks/slo-enrichment.md"
+        runbook_url: "https://gitlab.com/iris-7/iris-service-java/-/blob/main/docs/runbooks/slo-enrichment.md"
       page_alert:
         labels:
           severity: critical

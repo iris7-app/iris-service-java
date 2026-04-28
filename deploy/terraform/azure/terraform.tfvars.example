@@ -32,4 +32,4 @@
 
 # Stage 2 only — public hostname for Application Gateway + DNS record.
 # Not consumed by main.tf yet.
-# app_host = "mirador.yourdomain.com"
+# app_host = "iris.yourdomain.com"

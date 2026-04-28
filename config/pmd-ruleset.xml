@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
   =============================================================================
-  PMD ruleset for mirador-service  (PMD 7.20.0+ / maven-pmd-plugin 3.26.0)
+  PMD ruleset for iris-service  (PMD 7.20.0+ / maven-pmd-plugin 3.26.0)
   =============================================================================
 
   PMD Java has 8 rule categories; this file enables 7 of them and tunes
@@ -28,12 +28,12 @@
   https://pmd.github.io/pmd/pmd_release_notes.html).
   =============================================================================
 -->
-<ruleset name="mirador-rules"
+<ruleset name="iris-rules"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
 
-    <description>Mirador PMD ruleset — 7 categories enabled, Spring-aware exclusions</description>
+    <description>Iris PMD ruleset — 7 categories enabled, Spring-aware exclusions</description>
 
     <!-- =========================================================================
          BEST PRACTICES — general-purpose rules
@@ -94,7 +94,7 @@
              the fix from https://github.com/pmd/pmd/issues/5096 verified stable. -->
         <exclude name="LawOfDemeter"/>
         <!-- Flags every Spring package that spans multiple modules (controller +
-             service + repo in com.mirador.customer). The design IS intentionally
+             service + repo in org.iris.customer). The design IS intentionally
              package-per-feature; this rule assumes package-per-layer. -->
         <exclude name="LoosePackageCoupling"/>
         <!-- Re-imported below with industry-tuned thresholds

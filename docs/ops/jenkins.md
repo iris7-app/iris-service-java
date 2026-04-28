@@ -18,7 +18,7 @@ tooling** (Testcontainers, SBOM, cosign, Sonar, Semgrep, PIT) is
 portable, not GitLab-specific.
 
 This isn't about running both CIs at the same time. It's a parity
-demonstrator: a team adopting Mirador inside a Jenkins shop can
+demonstrator: a team adopting Iris inside a Jenkins shop can
 cherry-pick this pipeline and have a working build on day one.
 
 ## What the `Jenkinsfile` covers
@@ -64,19 +64,19 @@ The **skipped** stages are skipped on purpose, not by accident:
 
 ```bash
 # Bring up a local Jenkins with Docker-in-Docker capabilities.
-docker run -d --name mirador-jenkins-test \
+docker run -d --name iris-jenkins-test \
   -p 8080:8080 -p 50000:50000 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v jenkins_home:/var/jenkins_home \
   jenkins/jenkins:lts-jdk25
 
 # Initial admin password:
-docker exec mirador-jenkins-test cat /var/jenkins_home/secrets/initialAdminPassword
+docker exec iris-jenkins-test cat /var/jenkins_home/secrets/initialAdminPassword
 
 # In the web UI (http://localhost:8080):
 #   1. Install suggested plugins + "Docker Pipeline", "JaCoCo", "Pipeline: Stage View"
 #   2. New Item → Multibranch Pipeline
-#      → Git repo: https://github.com/mirador1/mirador-service
+#      → Git repo: https://github.com/iris-7/iris-service
 #      → Branch Sources: scan all branches
 #   3. Credentials → System → Global credentials (unrestricted)
 #      → Add "sonar-token" (Secret text), "cosign-password" (Secret text),

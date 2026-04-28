@@ -56,9 +56,9 @@ resources:
   # Prometheus Operator CRDs first, then CRs.
   - kube-prom-stack-crds.yaml
   - kube-prom-stack-rendered.yaml
-  # ServiceMonitor for the Mirador app's /actuator/prometheus.
-  - mirador-servicemonitor.yaml
-  # Mirador alert + recording rules (Phase 3 O2) — shared with all overlays.
+  # ServiceMonitor for the Iris app's /actuator/prometheus.
+  - iris-servicemonitor.yaml
+  # Iris alert + recording rules (Phase 3 O2) — shared with all overlays.
   - ../../base/observability-prom
   # Adds the kube-prom Prometheus as a 5th Grafana datasource in lgtm.
   - grafana-datasource-patch.yaml
@@ -73,7 +73,7 @@ patches:
       kind: Deployment
       name: lgtm
       namespace: observability
-  # OVH-specific Mirador app config (OTLP endpoint + Auth0 + CORS — same
+  # OVH-specific Iris app config (OTLP endpoint + Auth0 + CORS — same
   # as GCP since the lgtm pod is also in-cluster on OVH).
   - path: configmap-ovh-patch.yaml
     target:
@@ -90,8 +90,8 @@ patches:
   #     namespace: observability
 
 # Label all OVH-overlay-applied resources for blast-radius queries:
-# `kubectl get all -A -l mirador.target=ovh`.
+# `kubectl get all -A -l iris.target=ovh`.
 labels:
   - pairs:
-      mirador.target: ovh
+      iris.target: ovh
     includeSelectors: false

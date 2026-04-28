@@ -10,19 +10,19 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     command -v kubectl >/dev/null 2>&1 || { echo "❌  kubectl not installed — run: brew install kubectl"; exit 1; }
     ensure_docker
 
-    KIND_CLUSTER="mirador"
-    K8S_HOST="mirador.127.0.0.1.nip.io"
+    KIND_CLUSTER="iris"
+    K8S_HOST="iris.127.0.0.1.nip.io"
     # IMAGE_REGISTRY matches the ${IMAGE_REGISTRY}/backend:${IMAGE_TAG} pattern in manifests.
     # For kind, no external registry is used — images are loaded directly via `kind load`.
-    export IMAGE_REGISTRY="mirador"
+    export IMAGE_REGISTRY="iris"
     export IMAGE_TAG="local"
     export UI_IMAGE_TAG="local"
     export K8S_HOST
     # HTTP for local (no TLS); production uses https:// set by the CI deploy job
     export CORS_ALLOWED_ORIGINS="http://${K8S_HOST}:8090"
     # Must match ${IMAGE_REGISTRY}/backend:${IMAGE_TAG} and ${IMAGE_REGISTRY}/frontend:${UI_IMAGE_TAG}
-    BE_IMAGE="mirador/backend:local"
-    FE_IMAGE="mirador/frontend:local"
+    BE_IMAGE="iris/backend:local"
+    FE_IMAGE="iris/frontend:local"
 
     # ── 1. Create cluster (idempotent) ────────────────────────────────────
     if kind get clusters 2>/dev/null | grep -q "^${KIND_CLUSTER}$"; then
@@ -46,7 +46,7 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     echo "Building backend image ${BE_IMAGE}..."
     docker build -t "${BE_IMAGE}" . -q
     echo "Building frontend image ${FE_IMAGE}..."
-    docker build -t "${FE_IMAGE}" ../mirador-ui/ -q
+    docker build -t "${FE_IMAGE}" ../iris-ui/ -q
 
     # ── 4. Load images into kind (no external registry needed) ────────────
     echo "Loading images into kind cluster (this copies layer tarballs)..."
@@ -62,7 +62,7 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     DB_PASSWORD="${DB_PASSWORD:-localdev-pg-pass}"
     JWT_SECRET="${JWT_SECRET:-localdev-jwt-secret-32charss!}"
     API_KEY="${API_KEY:-localdev-api-key}"
-    kubectl create secret generic mirador-secrets \
+    kubectl create secret generic iris-secrets \
       --from-literal=DB_PASSWORD="${DB_PASSWORD}" \
       --from-literal=JWT_SECRET="${JWT_SECRET}" \
       --from-literal=API_KEY="${API_KEY}" \
@@ -102,7 +102,7 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     kubectl rollout status deployment/kafka       -n infra --timeout=120s
     kubectl rollout status deployment/redis       -n infra --timeout=120s
     echo "Waiting for application pods (Flyway migrations run on first start)..."
-    kubectl rollout status deployment/mirador -n app --timeout=300s
+    kubectl rollout status deployment/iris -n app --timeout=300s
     kubectl rollout status deployment/customer-ui      -n app --timeout=120s
 
     echo ""
@@ -114,6 +114,6 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     echo ""
     echo "  kubectl get pods -n app"
     echo "  kubectl get pods -n infra"
-    echo "  kubectl logs -n app deployment/mirador -f"
+    echo "  kubectl logs -n app deployment/iris -f"
     echo ""
     echo "  To delete the cluster: ./run.sh k8s-local-delete"

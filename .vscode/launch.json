@@ -1,10 +1,10 @@
 {
-  // VS Code debug configurations for the Mirador backend.
+  // VS Code debug configurations for the Iris backend.
   //
-  // F5 in any .java file → "Spring Boot — Mirador" launches the app
+  // F5 in any .java file → "Spring Boot — Iris" launches the app
   // attached to the debugger (Java extension required). Pick "Compound:
   // Backend + UI" from the dropdown to also start the Angular dev server
-  // in a sibling workspace folder (../mirador-ui).
+  // in a sibling workspace folder (../iris-ui).
   //
   // The infra (Postgres, Kafka, Redis) is expected to be up via
   // `./run.sh db kafka` or `./run.sh all` BEFORE pressing F5; the
@@ -13,25 +13,25 @@
   "configurations": [
     {
       "type": "java",
-      "name": "Spring Boot — Mirador",
+      "name": "Spring Boot — Iris",
       "request": "launch",
-      "mainClass": "com.mirador.MiradorApplication",
-      "projectName": "mirador",
+      "mainClass": "org.iris.IrisApplication",
+      "projectName": "iris",
       // Match `./run.sh app` env so VS Code F5 produces identical
       // observability output (OTLP → Tempo, structured Logback → Loki).
       "env": {
         "SPRING_PROFILES_ACTIVE": "local",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4318",
-        "OTEL_SERVICE_NAME": "mirador"
+        "OTEL_SERVICE_NAME": "iris"
       }
     },
     {
       "type": "node",
-      "name": "Angular dev server (mirador-ui)",
+      "name": "Angular dev server (iris-ui)",
       "request": "launch",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start"],
-      "cwd": "${workspaceFolder}/../../js/mirador-ui",
+      "cwd": "${workspaceFolder}/../../js/iris-ui",
       "console": "integratedTerminal",
       "skipFiles": ["<node_internals>/**"]
     }
@@ -42,7 +42,7 @@
       // their consoles split into two integrated-terminal panes so you
       // can tail logs from both without leaving the editor.
       "name": "Backend + UI (full stack)",
-      "configurations": ["Spring Boot — Mirador", "Angular dev server (mirador-ui)"],
+      "configurations": ["Spring Boot — Iris", "Angular dev server (iris-ui)"],
       "stopAll": true
     }
   ]

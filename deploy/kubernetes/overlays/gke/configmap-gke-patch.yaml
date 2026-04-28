@@ -12,7 +12,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mirador-config
+  name: iris-config
   namespace: app
 data:
   # OTLP export goes to the in-cluster LGTM stack (grafana/otel-lgtm,

@@ -17,7 +17,7 @@
 # Setup steps (one-time, run from Cloud Shell or gcloud CLI):
 # ─────────────────────────────────────────────────────────────
 # 1. Create the Cloud SQL instance:
-#      gcloud sql instances create mirador-db \
+#      gcloud sql instances create iris-db \
 #        --database-version=POSTGRES_17 \
 #        --tier=db-g1-small \
 #        --region=${GKE_REGION} \
@@ -25,12 +25,12 @@
 #        --network=default
 #
 # 2. Create the database and user:
-#      gcloud sql databases create mirador --instance=mirador-db
-#      gcloud sql users create demo --instance=mirador-db --password=<DB_PASSWORD>
+#      gcloud sql databases create iris --instance=iris-db
+#      gcloud sql users create demo --instance=iris-db --password=<DB_PASSWORD>
 #
 # 3. Get the instance connection name (used in the proxy --instance flag):
-#      gcloud sql instances describe mirador-db --format='value(connectionName)'
-#    → ${GCP_PROJECT}:${GKE_REGION}:mirador-db
+#      gcloud sql instances describe iris-db --format='value(connectionName)'
+#    → ${GCP_PROJECT}:${GKE_REGION}:iris-db
 #
 # 4. Enable Workload Identity on the GKE cluster:
 #      gcloud container clusters update ${GKE_CLUSTER} \
@@ -38,23 +38,23 @@
 #        --workload-pool=${GCP_PROJECT}.svc.id.goog
 #
 # 5. Create a GCP service account for the proxy:
-#      gcloud iam service-accounts create mirador-sql-proxy \
-#        --display-name="Mirador Cloud SQL Proxy"
+#      gcloud iam service-accounts create iris-sql-proxy \
+#        --display-name="Iris Cloud SQL Proxy"
 #      gcloud projects add-iam-policy-binding ${GCP_PROJECT} \
-#        --member="serviceAccount:mirador-sql-proxy@${GCP_PROJECT}.iam.gserviceaccount.com" \
+#        --member="serviceAccount:iris-sql-proxy@${GCP_PROJECT}.iam.gserviceaccount.com" \
 #        --role="roles/cloudsql.client"
 #
 # 6. Bind the K8s service account to the GCP service account (Workload Identity):
-#      kubectl create serviceaccount mirador-backend -n app
+#      kubectl create serviceaccount iris-backend -n app
 #      gcloud iam service-accounts add-iam-policy-binding \
-#        mirador-sql-proxy@${GCP_PROJECT}.iam.gserviceaccount.com \
+#        iris-sql-proxy@${GCP_PROJECT}.iam.gserviceaccount.com \
 #        --role="roles/iam.workloadIdentityUser" \
-#        --member="serviceAccount:${GCP_PROJECT}.svc.id.goog[app/mirador-backend]"
-#      kubectl annotate serviceaccount mirador-backend -n app \
-#        iam.gke.io/gcp-service-account=mirador-sql-proxy@${GCP_PROJECT}.iam.gserviceaccount.com
+#        --member="serviceAccount:${GCP_PROJECT}.svc.id.goog[app/iris-backend]"
+#      kubectl annotate serviceaccount iris-backend -n app \
+#        iam.gke.io/gcp-service-account=iris-sql-proxy@${GCP_PROJECT}.iam.gserviceaccount.com
 #
 # After setup, patch the backend Deployment to:
-#   - Use serviceAccountName: mirador-backend
+#   - Use serviceAccountName: iris-backend
 #   - Add the cloud-sql-proxy sidecar container (see below)
 #   - Set DB_HOST=127.0.0.1 (the proxy listens on localhost)
 # =============================================================================
@@ -65,14 +65,14 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: mirador-backend
+  name: iris-backend
   namespace: app
   labels:
-    app.kubernetes.io/name: mirador-backend
+    app.kubernetes.io/name: iris-backend
     app.kubernetes.io/component: backend
   annotations:
     # Replace with your GCP project ID — set at deploy time via envsubst
-    iam.gke.io/gcp-service-account: "mirador-sql-proxy@${GCP_PROJECT}.iam.gserviceaccount.com"
+    iam.gke.io/gcp-service-account: "iris-sql-proxy@${GCP_PROJECT}.iam.gserviceaccount.com"
 ---
 # ConfigMap: GKE-specific overrides for the backend ConfigMap.
 # DB_HOST=127.0.0.1 because the Cloud SQL Auth Proxy listens on localhost inside the pod.
@@ -80,10 +80,10 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mirador-config-gke-overrides
+  name: iris-config-gke-overrides
   namespace: app
   labels:
-    app.kubernetes.io/name: mirador
+    app.kubernetes.io/name: iris
     app.kubernetes.io/component: backend-gke-overrides
 data:
   # Cloud SQL Auth Proxy sidecar listens on localhost:5432 — no cross-pod networking needed.
@@ -93,11 +93,11 @@ data:
 # =============================================================================
 # To add the Cloud SQL Auth Proxy sidecar to the backend Deployment, patch it:
 #
-#   kubectl patch deployment mirador -n app --type=json -p='[
+#   kubectl patch deployment iris -n app --type=json -p='[
 #     {
 #       "op": "add",
 #       "path": "/spec/template/spec/serviceAccountName",
-#       "value": "mirador-backend"
+#       "value": "iris-backend"
 #     },
 #     {
 #       "op": "add",
@@ -109,7 +109,7 @@ data:
 #           "--structured-logs",
 #           "--port=5432",
 #           "--auto-iam-authn",
-#           "GCP_PROJECT:REGION:mirador-db"
+#           "GCP_PROJECT:REGION:iris-db"
 #         ],
 #         "resources": {
 #           "requests": {"memory": "32Mi", "cpu": "10m"},

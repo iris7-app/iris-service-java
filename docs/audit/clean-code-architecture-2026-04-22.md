@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-Mirador's overall posture is **good for a feature-sliced Spring Boot
+Iris's overall posture is **good for a feature-sliced Spring Boot
 service**, with several Clean Code outliers already scoped for Phase B
 refactors (file-length hygiene) and one Clean Architecture choice
 (feature-slicing over strict layered) explicitly documented in
@@ -24,7 +24,7 @@ B + Phase C + Phase 4 backlog items.
 
 ## Methodology
 
-- Audited svc repo Java (`src/main/java/com/mirador/`)
+- Audited svc repo Java (`src/main/java/org/iris/`)
 - Audited UI repo TypeScript (`src/app/`)
 - Focused on:
   - File + method sizes (Clean Code: "small functions")
@@ -154,8 +154,8 @@ exit tickets (ADR-0049).
 
 ### Context: ADR-0008 + ADR-0044 deliberate stance
 
-Mirador explicitly chose **feature-slicing over strict layered
-architecture** (ADR-0008: `com.mirador.{customer,auth,chaos,...}/`
+Iris explicitly chose **feature-slicing over strict layered
+architecture** (ADR-0008: `org.iris.{customer,auth,chaos,...}/`
 each containing controller+service+repository+DTOs) and rejected
 full Hexagonal (ADR-0044) in favour of **Hexagonal Lite**: one
 `port/` sub-package per feature when cross-feature coupling emerges.
@@ -201,16 +201,16 @@ Outbound collaborators that **could** be port-abstracted:
 ### 🟡 `@Entity` on domain classes = classic "anemic-ish" pattern
 
 Java classes with `@Entity`:
-- `com.mirador.auth.AppUser`
-- `com.mirador.auth.RefreshToken`
-- `com.mirador.customer.Customer`
+- `org.iris.auth.AppUser`
+- `org.iris.auth.RefreshToken`
+- `org.iris.customer.Customer`
 
 These are JPA entities directly used as domain models (reads + writes).
 Strict Clean Architecture says "domain model has no framework
 dependencies" → JPA annotations would sit on a separate persistence
 model, with a mapper translating between them.
 
-**Mirador's deliberate trade-off** (unwritten but observable):
+**Iris's deliberate trade-off** (unwritten but observable):
 - Gain: one less layer, no Customer ↔ CustomerEntity mapping
 - Cost: changing the DB schema = changing the domain; JPA lazy-loading
   quirks surface in the domain
@@ -294,7 +294,7 @@ Nothing new at this priority.
 3. ~~**`AuditEventPort`** (~1 h) — extract port for cross-feature auditing.
    Mirrors the `CustomerEventPort` pattern from ADR-0044. Unit tests
    stop needing Spring context.~~ **Done 2026-04-22** — shipped under
-   `com.mirador.observability.port.AuditEventPort`. `AuditService
+   `org.iris.observability.port.AuditEventPort`. `AuditService
    implements AuditEventPort`; `CustomerService` + `AuthController` now
    depend on the port (write side), read-side callers
    (`CustomerController.findByCustomerId`, `AuditController.findAll`)

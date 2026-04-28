@@ -12,7 +12,7 @@
 # for trend detection.
 section_bundle_size() {
   echo "▸ UI bundle size delta…"
-  local stats="$UI_DIR/dist/mirador-ui/stats.json"
+  local stats="$UI_DIR/dist/iris-ui/stats.json"
   if [[ ! -f "$stats" ]]; then
     finding info "UI bundle delta: stats.json not found (run \`npm run build -- --stats-json\` first)"
     return
@@ -61,7 +61,7 @@ section_lighthouse() {
   # Fast check: is the UI actually up? curl -f fails on non-2xx; --max-time
   # keeps a hung port from blocking the whole stability check.
   if ! curl -f -s --max-time 3 http://localhost:4200 >/dev/null 2>&1; then
-    finding info "Lighthouse: UI not on :4200 — skip (start with \`npm start\` in mirador-ui)"
+    finding info "Lighthouse: UI not on :4200 — skip (start with \`npm start\` in iris-ui)"
     return
   fi
   if ! command -v npx >/dev/null 2>&1; then

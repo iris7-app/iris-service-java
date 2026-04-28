@@ -2,16 +2,16 @@
 
 ## Why there is a GitHub mirror at all
 
-The canonical repo is on **GitLab** (`gitlab.com/mirador1/mirador-service`
-and `.../mirador-ui`). That's where the CI pipeline, the merge-request
+The canonical repo is on **GitLab** (`gitlab.com/iris-7/iris-service`
+and `.../iris-ui`). That's where the CI pipeline, the merge-request
 workflow, the Container Registry, and Renovate bot live.
 
 Most recruiters browse **GitHub**, not GitLab. A project invisible on
 GitHub is missing an audience at effectively zero cost to reach.
 
 The fix: a read-only GitHub **mirror** at
-[github.com/mirador1/mirador-service](https://github.com/mirador1/mirador-service)
-and [github.com/mirador1/mirador-ui](https://github.com/mirador1/mirador-ui).
+[github.com/iris-7/iris-service](https://github.com/iris-7/iris-service)
+and [github.com/iris-7/iris-ui](https://github.com/iris-7/iris-ui).
 It reflects `main` + tags on every push. **It is not a fork** — GitHub
 cannot host MRs against it; contributors are told to open MRs on
 GitLab.
@@ -44,7 +44,7 @@ check belongs on the canonical repo's CI, it stays on GitLab.
 - **Merge pull requests.** The GitHub mirror accepts zero contribution
   PRs. The repo description points contributors back to GitLab.
 - **Publish Docker images.** Artifact Registry on GCP is the canonical
-  registry (see ADR-0016 references in mirador-service). `ghcr.io`
+  registry (see ADR-0016 references in iris-service). `ghcr.io`
   could be a future alternative but isn't on the roadmap.
 - **Release notes.** `bin/ship/changelog.sh` on GitLab produces the
   CHANGELOG entries ; `bin/ship/gitlab-release.sh` promotes each
@@ -91,8 +91,8 @@ The local-push option wins because:
 bin/ship/ship.sh --wait
 
 # Mirror only (catch-up after a manual merge)
-git clone --mirror https://gitlab.com/mirador1/mirador-service.git /tmp/m.git
-(cd /tmp/m.git && git push --mirror https://github.com/mirador1/mirador-service.git)
+git clone --mirror https://gitlab.com/iris-7/iris-service.git /tmp/m.git
+(cd /tmp/m.git && git push --mirror https://github.com/iris-7/iris-service.git)
 rm -rf /tmp/m.git
 ```
 
@@ -110,7 +110,7 @@ rm -rf /tmp/m.git
   `allow_failure: true`. GitLab CI still reports green even if GitHub
   is unreachable, because the canonical repo is GitLab.
 - **Key rotated but not yet in GitLab**: same — `allow_failure: true`
-  means the pipeline proceeds, `mirador-doctor` or a manual
+  means the pipeline proceeds, `iris-doctor` or a manual
   `git ls-remote` check surfaces the drift.
 - **GitHub CI failing** (e.g. CodeQL false positive): doesn't affect
   the GitLab pipeline. Fix is opened on GitLab, lands, then the next
@@ -119,12 +119,12 @@ rm -rf /tmp/m.git
 ## Verify the mirror is in sync
 
 ```bash
-gitlab=$(git ls-remote https://gitlab.com/mirador1/mirador-service main | awk '{print $1}')
-github=$(git ls-remote https://github.com/mirador1/mirador-service main | awk '{print $1}')
+gitlab=$(git ls-remote https://gitlab.com/iris-7/iris-service main | awk '{print $1}')
+github=$(git ls-remote https://github.com/iris-7/iris-service main | awk '{print $1}')
 [ "$gitlab" = "$github" ] && echo "✅ in sync" || echo "❌ drift: GitLab=$gitlab GitHub=$github"
 ```
 
-This is one of the checks in `bin/dev/mirador-doctor` (extend when a drift
+This is one of the checks in `bin/dev/iris-doctor` (extend when a drift
 is ever observed).
 
 ## If you ever need to disable the mirror
@@ -134,8 +134,8 @@ is ever observed).
 glab variable delete GITHUB_MIRROR_SSH_KEY --scope=main
 
 # Destroy the GitHub repos (permanent, keeps the GitLab source):
-gh repo delete Beennnn/mirador-service --yes
-gh repo delete Beennnn/mirador-ui --yes
+gh repo delete Beennnn/iris-service --yes
+gh repo delete Beennnn/iris-ui --yes
 ```
 
 The disable path is deliberately cheap. If the GitHub mirror stops

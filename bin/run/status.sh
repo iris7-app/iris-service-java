@@ -8,7 +8,7 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
 
     echo ""
     echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║                   mirador status                   ║"
+    echo "║                   iris status                   ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo ""
 
@@ -20,8 +20,8 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     fi
 
     # Spring Boot app
-    if pgrep -f 'MiradorApplication' >/dev/null 2>&1; then
-      echo "  Spring Boot app     ✅ running (PID $(pgrep -f 'MiradorApplication' | head -1))"
+    if pgrep -f 'IrisApplication' >/dev/null 2>&1; then
+      echo "  Spring Boot app     ✅ running (PID $(pgrep -f 'IrisApplication' | head -1))"
     else
       echo "  Spring Boot app     ❌ not running"
     fi
@@ -96,6 +96,6 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     echo "  Grafana       http://localhost:3000  (Traces · Logs · Metrics · Profiles)"
     echo "  Mimir API     http://localhost:9091  (Prometheus-compatible metrics query)"
     echo "  Maven Site    http://localhost:8084  (run './run.sh site' to generate)"
-    echo "  Compodoc      http://localhost:8086  (run 'cd ../mirador-ui && npm run compodoc')"
+    echo "  Compodoc      http://localhost:8086  (run 'cd ../iris-ui && npm run compodoc')"
     echo "  SonarQube     http://localhost:9000  (run './run.sh sonar' after setting SONAR_TOKEN in .env)"
     echo ""

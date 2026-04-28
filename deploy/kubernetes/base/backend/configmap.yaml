@@ -12,10 +12,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mirador-config
+  name: iris-config
   namespace: app
   labels:
-    app.kubernetes.io/name: mirador
+    app.kubernetes.io/name: iris
     app.kubernetes.io/component: backend
 data:
   # ── Database ──────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ data:
   # API identifier registered in Auth0 Dashboard → Applications → APIs.
   # Used to validate the 'aud' claim in access tokens — prevents accepting
   # tokens issued for a different API in the same Auth0 tenant.
-  AUTH0_AUDIENCE: "https://mirador-api"
+  AUTH0_AUDIENCE: "https://iris-api"
 
   # ── CORS ──────────────────────────────────────────────────────────────────
   # In k8s, Nginx Ingress routes /api/* → backend and / → frontend, both on
@@ -70,7 +70,7 @@ data:
   # Used by /actuator/quality to show the last 10 pipelines for the project.
   # GITLAB_PROJECT_ID is the numeric project ID (Settings → General → Project ID).
   # GITLAB_API_TOKEN (read_api scope) is injected from K8s Secret — not here.
-  GITLAB_PROJECT_ID: "81014529"       # mirador-service project ID on gitlab.com
+  GITLAB_PROJECT_ID: "81014529"       # iris-service project ID on gitlab.com
   GITLAB_HOST_URL:   "https://gitlab.com"
 
   # ── Server ────────────────────────────────────────────────────────────────

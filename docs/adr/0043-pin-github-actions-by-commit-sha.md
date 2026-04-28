@@ -178,7 +178,7 @@ Scorecard analyzer. Still SHA-pinned for the same reason.
 - Scorecard relaxes the imposter-commit check → no operational
   change needed, but the deref step becomes less critical.
 - `actions/<X>` ship per-release SLSA v3 provenance + a
-  Mirador-side verify step → tighten the supply chain further.
+  Iris-side verify step → tighten the supply chain further.
 
 ## References
 

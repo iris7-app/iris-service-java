@@ -1,5 +1,5 @@
 # =============================================================================
-# Terraform — Scaleway infrastructure for mirador (EU-sovereign reference)
+# Terraform — Scaleway infrastructure for iris (EU-sovereign reference)
 #
 # Status: REFERENCE / STAGE 1 — not applied against a billing account.
 # Canonical target is GCP (see deploy/terraform/gcp/). This module exists
@@ -159,7 +159,7 @@ resource "scaleway_k8s_cluster" "main" {
   # `scaleway_k8s_pool` resources — no `default_pool` block at the
   # cluster root. See scaleway_k8s_pool.system below.
 
-  tags = ["project:mirador", "env:reference", "managed:terraform"]
+  tags = ["project:iris", "env:reference", "managed:terraform"]
 }
 
 # =============================================================================
@@ -199,5 +199,5 @@ resource "scaleway_k8s_pool" "system" {
   # dockershim.
   container_runtime = "containerd"
 
-  tags = ["project:mirador", "pool:system"]
+  tags = ["project:iris", "pool:system"]
 }

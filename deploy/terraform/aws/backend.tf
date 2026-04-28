@@ -9,23 +9,23 @@
 #
 #   terraform {
 #     backend "s3" {
-#       bucket         = "mirador-tf-state"
+#       bucket         = "iris-tf-state"
 #       key            = "aws/terraform.tfstate"
 #       region         = "eu-west-3"
-#       dynamodb_table = "mirador-tf-lock"   # required for state locking
+#       dynamodb_table = "iris-tf-lock"   # required for state locking
 #       encrypt        = true
 #     }
 #   }
 #
 # Prerequisites for S3 remote state (chicken-and-egg, create manually once):
-#   aws s3api create-bucket --bucket mirador-tf-state \
+#   aws s3api create-bucket --bucket iris-tf-state \
 #     --region eu-west-3 \
 #     --create-bucket-configuration LocationConstraint=eu-west-3
-#   aws s3api put-bucket-versioning --bucket mirador-tf-state \
+#   aws s3api put-bucket-versioning --bucket iris-tf-state \
 #     --versioning-configuration Status=Enabled
-#   aws s3api put-bucket-encryption --bucket mirador-tf-state \
+#   aws s3api put-bucket-encryption --bucket iris-tf-state \
 #     --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-#   aws dynamodb create-table --table-name mirador-tf-lock \
+#   aws dynamodb create-table --table-name iris-tf-lock \
 #     --attribute-definitions AttributeName=LockID,AttributeType=S \
 #     --key-schema AttributeName=LockID,KeyType=HASH \
 #     --billing-mode PAY_PER_REQUEST \

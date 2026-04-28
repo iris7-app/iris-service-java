@@ -106,10 +106,10 @@ Verify lgtm features still work:
 
 ```bash
 # Loki — should return some app log lines
-curl -s 'http://localhost:3100/loki/api/v1/query?query=%7Bservice_name%3D%22mirador%22%7D' | jq '.data.result | length'
+curl -s 'http://localhost:3100/loki/api/v1/query?query=%7Bservice_name%3D%22iris%22%7D' | jq '.data.result | length'
 
 # Tempo — list recent traces
-curl -s 'http://localhost:3200/api/search?tags=service.name%3Dmirador' | jq '.traces | length'
+curl -s 'http://localhost:3200/api/search?tags=service.name%3Diris' | jq '.traces | length'
 
 # Pyroscope — list profiles
 curl -s 'http://localhost:4040/api/apps' | jq 'length'

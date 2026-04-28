@@ -6,7 +6,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 source "$REPO_ROOT/bin/run/_preamble.sh"
 
-    KIND_CLUSTER="mirador"
+    KIND_CLUSTER="iris"
     echo "Deleting kind cluster '${KIND_CLUSTER}' and all its resources..."
     kind delete cluster --name "${KIND_CLUSTER}"
     echo "Cluster deleted."

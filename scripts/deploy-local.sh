@@ -25,7 +25,7 @@
 set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-CLUSTER_NAME="mirador"
+CLUSTER_NAME="iris"
 REGISTRY_NAME="registry"
 REGISTRY_PORT="5001"
 IMAGE_REGISTRY="localhost:${REGISTRY_PORT}"
@@ -137,7 +137,7 @@ fi
 if ! $SKIP_BUILD; then
   log "Building backend image..."
   docker build \
-    -t "${IMAGE_REGISTRY}/mirador:${IMAGE_TAG}" \
+    -t "${IMAGE_REGISTRY}/iris:${IMAGE_TAG}" \
     "$BACKEND_DIR"
   ok "Backend image built."
 
@@ -160,7 +160,7 @@ fi
 # network path and works without configuring containerd mirrors.
 # Docker layer caching means repeated builds are fast (only changed layers rebuild).
 log "Loading images into kind cluster..."
-kind load docker-image "${IMAGE_REGISTRY}/mirador:${IMAGE_TAG}" \
+kind load docker-image "${IMAGE_REGISTRY}/iris:${IMAGE_TAG}" \
   --name "$CLUSTER_NAME"
 if docker image inspect "${IMAGE_REGISTRY}/customer-observability-ui:${UI_IMAGE_TAG}" &>/dev/null; then
   kind load docker-image "${IMAGE_REGISTRY}/customer-observability-ui:${UI_IMAGE_TAG}" \
@@ -177,10 +177,10 @@ kubectl apply -f "$BACKEND_DIR/deploy/kubernetes/base/namespace.yaml"
 
 log "Creating secrets..."
 # The secret is needed in both namespaces:
-#   - app:   mirador Deployment reads DB_PASSWORD, JWT_SECRET, API_KEY
+#   - app:   iris Deployment reads DB_PASSWORD, JWT_SECRET, API_KEY
 #   - infra: postgres StatefulSet reads DB_PASSWORD for POSTGRES_PASSWORD
 for ns in app infra; do
-  kubectl create secret generic mirador-secrets \
+  kubectl create secret generic iris-secrets \
     --from-literal=DB_PASSWORD="$DB_PASSWORD" \
     --from-literal=JWT_SECRET="$JWT_SECRET" \
     --from-literal=API_KEY="$API_KEY" \
@@ -211,7 +211,7 @@ kubectl rollout status statefulset/postgresql -n infra --timeout=90s
 kubectl rollout status deployment/kafka     -n infra --timeout=120s
 
 log "Waiting for backend to be ready (may take up to 2 min for Flyway migrations)..."
-kubectl rollout status deployment/mirador -n app --timeout=180s
+kubectl rollout status deployment/iris -n app --timeout=180s
 
 if kubectl get deployment customer-ui -n app &>/dev/null; then
   log "Waiting for frontend to be ready..."

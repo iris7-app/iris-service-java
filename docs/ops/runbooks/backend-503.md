@@ -30,8 +30,8 @@ Ollama, disk space. Pick the DOWN one and jump to the right runbook.
 
 ```bash
 # Pod state
-kubectl -n app get pods -l app=mirador -o wide
-kubectl -n app logs deploy/mirador --tail=50
+kubectl -n app get pods -l app=iris -o wide
+kubectl -n app logs deploy/iris --tail=50
 
 # Readiness vs liveness — if liveness is UP but readiness DOWN,
 # the pod is alive but deliberately refusing traffic
@@ -39,7 +39,7 @@ curl http://localhost:8080/actuator/health/liveness
 curl http://localhost:8080/actuator/health/readiness
 
 # Last 20 error-rate lines (LokiQL)
-# {app="mirador"} |~ "ERROR" | json
+# {app="iris"} |~ "ERROR" | json
 # via Grafana Explore: http://localhost:23000/explore (prod tunnel)
 ```
 
@@ -52,7 +52,7 @@ curl http://localhost:8080/actuator/health/readiness
   kubectl delete pod postgresql-0 -n infra
   ```
 - **Kafka slow start** — the broker needs ~30s after pod start to be
-  ready. If the mirador pod started first and health-checked against
+  ready. If the iris pod started first and health-checked against
   an unready broker, it sticks in 503. Wait 60s and re-check.
 - **Ollama OOM** — deliberate degradation, the
   `/customers/{id}/bio` endpoint falls back to "Bio temporarily
@@ -65,7 +65,7 @@ If `/actuator/health` itself is unreachable (connection refused at the
 HTTP level, not just a 503 body), the pod is dead. Recreate:
 
 ```bash
-kubectl delete pod -n app -l app=mirador
+kubectl delete pod -n app -l app=iris
 ```
 
 If that doesn't recover within 60s, the cluster may be in a bad state.

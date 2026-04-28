@@ -8,8 +8,8 @@
 # for the full rationale.
 #
 # What this workflow does NOT do: unit tests, integration tests, Docker
-# build, deploy. All of that is on GitLab CI (gitlab.com/mirador1/
-# mirador-service). This file stays scoped to SAST only to avoid
+# build, deploy. All of that is on GitLab CI (gitlab.com/iris-7/
+# iris-service). This file stays scoped to SAST only to avoid
 # drifting into a duplicate test pipeline.
 # =============================================================================
 name: CodeQL

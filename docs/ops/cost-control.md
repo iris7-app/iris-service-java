@@ -1,6 +1,6 @@
 # Cost control — GCP billing alerts & cleanup
 
-Operational reference for keeping the Mirador GCP bill under the
+Operational reference for keeping the Iris GCP bill under the
 [ADR-0022](../adr/0022-ephemeral-cluster.md) €2/month target.
 
 - **Budget alert** — tells you when you're drifting.
@@ -11,7 +11,7 @@ Operational reference for keeping the Mirador GCP bill under the
 This page is the single source of truth for the three pieces. If one
 drifts out of sync with the others, fix it here first.
 
-## Budget alert — Mirador €10
+## Budget alert — Iris €10
 
 A monthly budget on the GCP billing account with a soft alert at 50 %
 and escalating thresholds up to 120 %. Created via `gcloud billing
@@ -24,7 +24,7 @@ from scratch if the billing admin ever deletes it.
 |---|---|
 | Billing account | `019384-EA1A6A-9D635C` |
 | Budget ID | `cb08b055-d30e-4830-a18a-94bed797f116` |
-| Display name | `Mirador €10 alert` |
+| Display name | `Iris €10 alert` |
 | Amount | `10 EUR` per calendar month |
 | Scope | Project `project-8d6ea68c-33ac-412b-8aa` only |
 | Credits treatment | `INCLUDE_ALL_CREDITS` (counts the free-tier $300 credit as real spend — the alert fires based on gross cost, not net after credit) |
@@ -59,7 +59,7 @@ gcloud services enable billingbudgets.googleapis.com
 
 gcloud billing budgets create \
   --billing-account=019384-EA1A6A-9D635C \
-  --display-name="Mirador €10 alert" \
+  --display-name="Iris €10 alert" \
   --budget-amount=10EUR \
   --threshold-rule=percent=0.5 \
   --threshold-rule=percent=0.8 \
@@ -147,11 +147,11 @@ static IP €1.50/month, NAT €1.20/month + egress, snapshots €0.025/GB).
 ### Cron (macOS launchd or GitLab scheduled pipeline)
 
 ```
-0 2 1 * *  cd /path/to/mirador-service && bin/budget/gcp-cost-audit.sh --yes
+0 2 1 * *  cd /path/to/iris-service && bin/budget/gcp-cost-audit.sh --yes
 ```
 
 The first of each month, silent purge. If you prefer email reports,
-redirect stdout to `mail -s "Mirador GCP audit" benoit.besson@gmail.com`.
+redirect stdout to `mail -s "Iris GCP audit" benoit.besson@gmail.com`.
 
 ## Auto-response — kill the cluster on 100 %
 
@@ -165,11 +165,11 @@ the bill at source.
 GCP Billing
   │ monthly spend sampling (~6 h cadence)
   ▼
-Budget "Mirador €10 alert (auto-kill)"
+Budget "Iris €10 alert (auto-kill)"
   │ threshold crossed (50 / 80 / 100 / 120 %)
   │ publishes to Pub/Sub topic
   ▼
-projects/<proj>/topics/mirador-budget-kill
+projects/<proj>/topics/iris-budget-kill
   │ Pub/Sub delivery (at-least-once)
   ▼
 Cloud Function "budget-kill" (2nd gen, Python 3.12)
@@ -205,7 +205,7 @@ One SA, one role, one project. Narrow on purpose.
 | Principal | Role | Scope | Granted by |
 |---|---|---|---|
 | `<project-number>-compute@developer.gserviceaccount.com` (Cloud Functions default runtime SA) | `roles/container.admin` | Project | `bin/budget/budget-kill-deploy.sh` step 4 |
-| `billing-budget-notifications@system.gserviceaccount.com` (GCP-managed) | `roles/pubsub.publisher` | Topic `mirador-budget-kill` only | `bin/budget/budget-kill-deploy.sh` step 5 |
+| `billing-budget-notifications@system.gserviceaccount.com` (GCP-managed) | `roles/pubsub.publisher` | Topic `iris-budget-kill` only | `bin/budget/budget-kill-deploy.sh` step 5 |
 
 Risks:
 
@@ -224,8 +224,8 @@ Risks:
 Dry-run the full wire by publishing a fake 100 % message to the topic:
 
 ```bash
-gcloud pubsub topics publish mirador-budget-kill \
-  --message='{"budgetDisplayName":"Mirador €10 alert (auto-kill)","alertThresholdExceeded":1.0,"costAmount":10.47,"budgetAmount":10.0,"currencyCode":"EUR"}'
+gcloud pubsub topics publish iris-budget-kill \
+  --message='{"budgetDisplayName":"Iris €10 alert (auto-kill)","alertThresholdExceeded":1.0,"costAmount":10.47,"budgetAmount":10.0,"currencyCode":"EUR"}'
 ```
 
 Then check the function log:

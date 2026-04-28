@@ -3,7 +3,7 @@
 ## Quick triage (30 seconds)
 
 ```bash
-bin/dev/mirador-doctor                              # full health scan
+bin/dev/iris-doctor                              # full health scan
 gcloud container clusters list                  # is the cluster even there?
 kubectl get pods -A --field-selector=status.phase!=Running
 ```
@@ -21,7 +21,7 @@ If pods are Pending with "Insufficient cpu/memory" → Autopilot quota.
 3. **Budget-kill fired.** The Cloud Function `budget-kill` deleted
    the cluster because the monthly budget hit 100% (ADR-0022 + cost-
    control.md). Legit behaviour, not a bug.
-4. **Image pull failure.** `ImagePullBackOff` on mirador:main — the
+4. **Image pull failure.** `ImagePullBackOff` on iris:main — the
    Argo CD sync references a tag the registry doesn't have. Usually
    a CI push that didn't complete.
 5. **Zone outage.** Rare, but real — check
@@ -36,18 +36,18 @@ gcloud container clusters describe mirador-prod --region=europe-west1 \
 
 # 2. Pending pods + events
 kubectl get events -A --sort-by=.lastTimestamp | tail -30
-kubectl describe pod -n app -l app=mirador | grep -A5 Events
+kubectl describe pod -n app -l app=iris | grep -A5 Events
 
 # 3. Terraform state lock
-gsutil ls gs://project-8d6ea68c-33ac-412b-8aa-tf-state/mirador/gcp/
-gcloud storage objects list gs://project-8d6ea68c-33ac-412b-8aa-tf-state/mirador/gcp/ | grep lock
+gsutil ls gs://project-8d6ea68c-33ac-412b-8aa-tf-state/iris/gcp/
+gcloud storage objects list gs://project-8d6ea68c-33ac-412b-8aa-tf-state/iris/gcp/ | grep lock
 
 # 4. Cloud Function that might have killed the cluster
 gcloud functions logs read budget-kill --region=europe-west1 --limit=20
 
 # 5. Registry tags available
 gcloud artifacts docker tags list \
-  europe-west1-docker.pkg.dev/project-8d6ea68c-33ac-412b-8aa/mirador/mirador \
+  europe-west1-docker.pkg.dev/project-8d6ea68c-33ac-412b-8aa/iris/iris \
   --limit=5
 ```
 
@@ -59,7 +59,7 @@ gcloud artifacts docker tags list \
 - **State lock** — delete the lock object (only if no other
   `terraform` is actually running):
   ```
-  gcloud storage rm gs://.../mirador/gcp/default.tflock
+  gcloud storage rm gs://.../iris/gcp/default.tflock
   ```
 - **budget-kill aftermath** — check `bin/budget/budget.sh status` and verify
   if the cap needs raising. If yes: `bin/budget/budget.sh set 20`. Then

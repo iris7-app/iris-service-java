@@ -1,6 +1,6 @@
-# Alert: `MiradorHeapHigh`
+# Alert: `IrisHeapHigh`
 
-Fired when `mirador:jvm_heap:used_ratio > 0.85` for ≥ 10 min — JVM heap is
+Fired when `iris:jvm_heap:used_ratio > 0.85` for ≥ 10 min — JVM heap is
 above 85 % of max. Warning-tier: the G1 collector handles this gracefully
 up to ~92 %, but sustained pressure predicts a GC-induced slowdown.
 
@@ -8,11 +8,11 @@ up to ~92 %, but sustained pressure predicts a GC-induced slowdown.
 
 ```bash
 # 1. Confirm the alert from Prometheus
-curl -s 'http://localhost:9090/api/v1/query?query=mirador:jvm_heap:used_ratio' \
+curl -s 'http://localhost:9090/api/v1/query?query=iris:jvm_heap:used_ratio' \
   | jq '.data.result[0].value[1]'
 
 # 2. What's the heap profile right now? Pyroscope has the answer:
-#    Pyroscope UI → profile type "alloc_space" on application "mirador"
+#    Pyroscope UI → profile type "alloc_space" on application "iris"
 #    Top 5 allocating stack frames = prime leak suspects.
 ```
 

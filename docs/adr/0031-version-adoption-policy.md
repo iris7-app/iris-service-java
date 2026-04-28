@@ -19,7 +19,7 @@ deferred because "it might break something", patches pile up, and
 the major upgrade hits when a breaking change is forced by a CVE.
 That's the worst of both worlds.
 
-This ADR codifies Mirador's adoption cadence per update class.
+This ADR codifies Iris's adoption cadence per update class.
 
 ## Decision
 

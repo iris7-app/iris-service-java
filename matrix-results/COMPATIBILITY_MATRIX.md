@@ -15,7 +15,7 @@ in flight on wave 4 re-trigger — expected to make further progress
 because wave 4 specifically addressed BOM precedence + RestTestClient
 exclude path + pre-java25 overlay (3 of the 4 SB3 structural debt items).
 
-## Wave 1 — Surgical fixes (svc 1.0.49 + 1.0.50, [!189](https://gitlab.com/mirador1/mirador-service/-/merge_requests/189) + [!190](https://gitlab.com/mirador1/mirador-service/-/merge_requests/190))
+## Wave 1 — Surgical fixes (svc 1.0.49 + 1.0.50, [!189](https://gitlab.com/iris-7/iris-service/-/merge_requests/189) + [!190](https://gitlab.com/iris-7/iris-service/-/merge_requests/190))
 
 1. ✅ Maven `java17` profile reordered to LAST in `<profiles>` → fixes "release version 21 not supported" cleanly. Verified via `mvn help:effective-pom -Dcompat -Djava17 | grep release` → `<release>17</release>`.
 2. ✅ Unnamed `_` in `catch ()` (29 sites, 10 files) + `try-with-resources` (1 site) → `ignored`.
@@ -23,22 +23,22 @@ exclude path + pre-java25 overlay (3 of the 4 SB3 structural debt items).
 4. ✅ ArchTest `kafka_listeners_should_reside_in_messaging_package` : `methods()` instead of `classes()` (real listeners use method-level annotation).
 5. ✅ ArchTest `rest_controllers_must_not_return_jpa_entities` : added `.haveSimpleNameNotEndingWith("DemoController")` exclusion.
 
-## Wave 2 — J17 overlays + IT tag-gating (svc 1.0.51, [!191](https://gitlab.com/mirador1/mirador-service/-/merge_requests/191))
+## Wave 2 — J17 overlays + IT tag-gating (svc 1.0.51, [!191](https://gitlab.com/iris-7/iris-service/-/merge_requests/191))
 
-1. ✅ J17 overlay : `src/main/java-overlays/java17/com/mirador/customer/AggregationService.java` (platform threads + try/finally instead of virtual threads + try-with-resources).
+1. ✅ J17 overlay : `src/main/java-overlays/java17/org/iris/customer/AggregationService.java` (platform threads + try/finally instead of virtual threads + try-with-resources).
 2. ✅ Inline `page.get(page.size()-1)` replacing `page.getLast()` in `CustomerService.java` (1 line, J21+ API).
 3. ✅ `@Tag("integration")` on `AbstractIntegrationTest` + failsafe `<excludes>**/*ITest.java</excludes>` in `compat` and `sb3` profiles → flips SB4+J21 from 61 IT errors → ✅ PASS.
 
-## Wave 3 — 4 surgical fixes uncovered by 1.0.51 validation (svc 1.0.52, [!192](https://gitlab.com/mirador1/mirador-service/-/merge_requests/192))
+## Wave 3 — 4 surgical fixes uncovered by 1.0.51 validation (svc 1.0.52, [!192](https://gitlab.com/iris-7/iris-service/-/merge_requests/192))
 
 1. ✅ SB3 overlay `CustomerController` : add `static final String PATH_CUSTOMERS = "/customers"` field referenced by `CustomerEnrichmentController` + `CustomerDiagnosticsController`.
 2. ✅ Main `SecurityConfig.securityFilterChain()` : add `throws Exception` (no-op in SB4, required by SB3's HttpSecurity DSL).
 3. ✅ `CustomerNewEndpointsITest.java` : 6× `.findAll().getFirst().getId()` → `.findAll().get(0).getId()` (J21+ → universal).
-4. ✅ J17 test overlay : `src/test/java-overlays/java17/com/mirador/customer/AggregationServicePropertyTest.java` (platform threads + try/finally) + Maven antrun copy step symmetric to main java17 overlay.
+4. ✅ J17 test overlay : `src/test/java-overlays/java17/org/iris/customer/AggregationServicePropertyTest.java` (platform threads + try/finally) + Maven antrun copy step symmetric to main java17 overlay.
 
-## Wave 4 — 3 SB3 structural fixes (svc 1.0.53, [!194](https://gitlab.com/mirador1/mirador-service/-/merge_requests/194))
+## Wave 4 — 3 SB3 structural fixes (svc 1.0.53, [!194](https://gitlab.com/iris-7/iris-service/-/merge_requests/194))
 
-1. ✅ SB3 RestTestClient exclude : maven-antrun fileset exclude pattern was stale (`com/example/customerservice/...` from a pre-rename of the project). Updated to `com/mirador/customer/CustomerRestClientITest.java`. Without this, the SB4-only RestTestClient test was being copied into merged-sources/test and failed to compile in SB3.
+1. ✅ SB3 RestTestClient exclude : maven-antrun fileset exclude pattern was stale (`com/example/customerservice/...` from a pre-rename of the project). Updated to `org/iris/customer/CustomerRestClientITest.java`. Without this, the SB4-only RestTestClient test was being copied into merged-sources/test and failed to compile in SB3.
 2. ✅ SB3 BOM precedence : added explicit `<dependencyManagement>` version pins for `spring-boot-test`, `spring-boot-test-autoconfigure`, `spring-boot-starter-test` to force SB3 versions (3.4.5). Maven's BOM-import precedence makes the parent pom's `spring-boot-starter-parent:4.0.5` BOM win for transitive deps even when the SB3 profile imports a competing BOM. Result : `spring-boot-test-autoconfigure:4.0.5` was on the classpath in SB3 mode → AutoConfigureMockMvc shim referenced SB3 package (`org.springframework.boot.test.autoconfigure.web.servlet`) which doesn't exist in SB4.
 3. ✅ pre-java25 overlay copy missing in SB3 antrun : the SB3 profile's antrun config copied `src/test/java-overlays/sb3` (AutoConfigureMockMvc bridge) but did NOT copy `src/test/java-overlays/pre-java25` (ScopedValue → InheritableThreadLocal swap for J21 target). Added the copy step matching the compat profile pattern. Without this, `TraceServiceTest.java:25` failed with "ScopedValue is a preview API and is disabled by default".
 
@@ -91,7 +91,7 @@ All 4 compat jobs run with `allow_failure: true` (informational matrix, doesn't 
 
 ```
 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile
-(default-compile) on project mirador: Fatal error compiling: error: release version 21 not supported
+(default-compile) on project iris: Fatal error compiling: error: release version 21 not supported
 ```
 
 **Root cause hypothesis** : the `-Djava17` Maven property is supposed to override the `<maven.compiler.release>` pom property to `17`, but the profile activation or property precedence doesn't actually lower it. The JDK installed on the runner IS 17 (else it wouldn't hit this error — it would be a different compatibility error).
@@ -106,11 +106,11 @@ Same fix applies to **SB4 + Java 17**.
 ### SB3 + Java 21 (compat-sb3-java21, job 14078246699)
 
 ```
-[ERROR] /src/main/java/com/mirador/api/ApiExceptionHandler.java:[61,50]
+[ERROR] /src/main/java/org/iris/api/ApiExceptionHandler.java:[61,50]
   unnamed variables are a preview feature and are disabled by default.
-[ERROR] /src/main/java/com/mirador/auth/AuthController.java:[126,44] (same)
-[ERROR] /src/main/java/com/mirador/auth/JwtAuthenticationFilter.java:[128,22] (same)
-[ERROR] /src/main/java/com/mirador/customer/RecentCustomerBuffer.java:[103,28] (same)
+[ERROR] /src/main/java/org/iris/auth/AuthController.java:[126,44] (same)
+[ERROR] /src/main/java/org/iris/auth/JwtAuthenticationFilter.java:[128,22] (same)
+[ERROR] /src/main/java/org/iris/customer/RecentCustomerBuffer.java:[103,28] (same)
 ```
 
 **Root cause** : code uses the `_` unnamed variable pattern (e.g. `catch (NumberFormatException _)`) which is a **preview** feature in Java 21 and **stable** only from Java 22+. Default target J25 compiles fine ; J21 without `--enable-preview` rejects.
@@ -147,7 +147,7 @@ Same root cause as SB3+J17 (`release version 21 not supported`).
 
 **Suggested fix** : add `.allowEmptyShould(true)` to the rule OR relocate the listener back to `..messaging..`.
 
-**Root cause #2** — a Controller in `com.mirador.customer` doesn't depend on `CustomerService`. Likely the new `CustomerEnrichmentController` or `CustomerDiagnosticsController` uses the repo or enrichment service directly. ADR-0051 invariant is "documentary" per the message — intent was that controllers route through the main service.
+**Root cause #2** — a Controller in `org.iris.customer` doesn't depend on `CustomerService`. Likely the new `CustomerEnrichmentController` or `CustomerDiagnosticsController` uses the repo or enrichment service directly. ADR-0051 invariant is "documentary" per the message — intent was that controllers route through the main service.
 
 **Suggested fix** : decide if ADR-0051 invariant #2 is still the intended pattern ; if yes, refactor the offending controller ; if no, relax the ArchTest to allow the exception.
 

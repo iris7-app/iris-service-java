@@ -5,7 +5,7 @@
 ```bash
 # Is the request actually reaching Kafka? Grep the backend logs for the
 # structured key added in commit 4782081:
-kubectl logs -n app deploy/mirador --tail=200 | grep -E "kafka_enrich_"
+kubectl logs -n app deploy/iris --tail=200 | grep -E "kafka_enrich_"
 ```
 
 Expected in normal operation:
@@ -39,13 +39,13 @@ kubectl -n infra exec -it statefulset/kafka -- \
 # 2. Consumer lag
 kubectl -n infra exec -it statefulset/kafka -- \
   kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe \
-  --group mirador-enrich
+  --group iris-enrich
 
 # 3. Active chaos experiments
 kubectl get networkchaos,podchaos,stresschaos -A
 
 # 4. Current rate of timeouts (Loki via Grafana Explore)
-#    {app="mirador"} |~ "kafka_enrich_timeout"
+#    {app="iris"} |~ "kafka_enrich_timeout"
 #    Grafana: bin/cluster/port-forward/prod.sh then http://localhost:23000/explore
 
 # 5. The Golden Signals dashboard in Grafana has a Kafka panel.
@@ -53,13 +53,13 @@ kubectl get networkchaos,podchaos,stresschaos -A
 
 ## Fix that worked last time
 
-The 2026-04-19 incident: Chaos Mesh `mirador-to-postgres-delay` was
+The 2026-04-19 incident: Chaos Mesh `iris-to-postgres-delay` was
 left active on the local kind cluster after a demo, delaying DB writes
 transitively under the Kafka listener (the listener stores the enriched
 customer before returning). Delete the CR:
 
 ```bash
-kubectl delete networkchaos mirador-to-postgres-delay -n app
+kubectl delete networkchaos iris-to-postgres-delay -n app
 ```
 
 The 2026-04-12 incident: Ollama pod was OOM-killed; bio generation
@@ -75,6 +75,6 @@ config. At that point:
 
 1. Roll back to the previous container image.
 2. Open a MR with the specific error trace from Tempo
-   (`{service.name="mirador", http.route="/customers/*/enrich"}`).
+   (`{service.name="iris", http.route="/customers/*/enrich"}`).
 3. Destroy the ephemeral cluster if demo time is short:
    `bin/cluster/demo/down.sh` then `bin/cluster/demo/up.sh`.

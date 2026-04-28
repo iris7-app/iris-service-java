@@ -35,9 +35,9 @@ the same Spring/Java/library API divergence from scratch.
 |---|---|
 | **Symptom** | `cannot find symbol method version()` in SB3 compile |
 | **Root cause** | `@GetMapping(version="1.0")` is a Spring Framework 7 feature. SB3 uses Spring Framework 6.x which doesn't have it. |
-| **Mechanism** | `OVERLAY` : `src/main/java-overlays/sb3/com/mirador/customer/CustomerController.java` does manual `@RequestHeader("X-API-Version")` dispatch via a wrapper Spring entry point + 2 test-callable helper methods (`getAll(Pageable, String)` + `getAllV2(Pageable, String)` matching main's signatures). |
+| **Mechanism** | `OVERLAY` : `src/main/java-overlays/sb3/org/iris/customer/CustomerController.java` does manual `@RequestHeader("X-API-Version")` dispatch via a wrapper Spring entry point + 2 test-callable helper methods (`getAll(Pageable, String)` + `getAllV2(Pageable, String)` matching main's signatures). |
 | **Status** | ✅ FIXED — svc 1.0.55 wave 6 |
-| **Files** | `src/main/java-overlays/sb3/com/mirador/customer/CustomerController.java` |
+| **Files** | `src/main/java-overlays/sb3/org/iris/customer/CustomerController.java` |
 
 ## Entry 2 : Jackson V2 (`com.fasterxml.jackson.*`) ↔ V3 (`tools.jackson.*`)
 
@@ -47,7 +47,7 @@ the same Spring/Java/library API divergence from scratch.
 | **Root cause** | Jackson 3.x moved root package from `com.fasterxml.jackson.*` to `tools.jackson.*` + made exceptions unchecked (`JacksonException extends RuntimeException` instead of `JsonProcessingException extends IOException`). SB 3.4.x ships V2 only ; SB 4.0+ ships V3 (with V2 still available via opt-in dep). |
 | **Mechanism** | `OVERLAY` for source files using `tools.jackson.*` imports. `BOM PIN` for transitive Jackson deps. |
 | **Status** | ✅ FIXED — confirmed end-to-end 2026-04-25 by running `mvn clean verify -Dsb3` and `mvn clean verify -Dsb3 -Djava17` ; both exit 0 with all 536 unit tests passing. The combination of (a) the `RecentCustomerBuffer` overlay (wave 7, svc 1.0.56), (b) the `KafkaConfig` + Spring Kafka 3.3.4 pin (wave 8, svc 1.0.57 — see Entry 4), and (c) the existing SB3 BOM pins on `spring-boot-starter-hateoas`/`springdoc-openapi-starter-common` is sufficient ; the previously-suspected "leaky transitive Jackson V3 pulls" turned out to be exclusively channelled through Spring Kafka's `JsonKafkaHeaderMapper`, which is now bypassed by the SK 3.3.4 pin. No additional `<exclusions>` blocks needed. |
-| **Files** | `src/main/java-overlays/sb3/com/mirador/customer/RecentCustomerBuffer.java` + `src/test/java-overlays/sb3/com/mirador/customer/RecentCustomerBufferTest.java`. BOM pins in `pom.xml` SB3 profile for `spring-boot-starter-jackson` + `spring-boot-starter-hateoas` + `spring-kafka` 3.3.4 + `spring-kafka-test` 3.3.4. |
+| **Files** | `src/main/java-overlays/sb3/org/iris/customer/RecentCustomerBuffer.java` + `src/test/java-overlays/sb3/org/iris/customer/RecentCustomerBufferTest.java`. BOM pins in `pom.xml` SB3 profile for `spring-boot-starter-jackson` + `spring-boot-starter-hateoas` + `spring-kafka` 3.3.4 + `spring-kafka-test` 3.3.4. |
 
 ## Entry 3 : Jackson V3 vs V2 — class-level differences (audit)
 
@@ -71,7 +71,7 @@ the same Spring/Java/library API divergence from scratch.
 | **Root cause** | Spring Kafka 4.0 ships V3-aware classes `JacksonJsonSerializer` / `JacksonJsonDeserializer` AND its internal `JsonKafkaHeaderMapper` hard-references Jackson V3 (`tools.jackson.databind.json.JsonMapper`) inside its constructor. Even building a basic `new KafkaTemplate(pf)` triggers V3 init via `MessagingMessageConverter` → `JsonKafkaHeaderMapper`. SB3 ships only Jackson V2, so the V3 init crashes at class-load time. The legacy `JsonSerializer` / `JsonDeserializer` (no `Jackson` prefix) exist on both Spring Kafka 3.x and 4.x and are V2-based. |
 | **Mechanism** | `BOM PIN` Spring Kafka 3.3.4 (last 3.x release on the SB 3.4.x line) in the SB3 profile + `OVERLAY` swap of `JacksonJsonSerializer` → `JsonSerializer` (and Deserializer counterpart) in both main and test files. SK 3.3.4 has no V3 references in `JsonKafkaHeaderMapper`, so the V3 chain is gone entirely. |
 | **Status** | ✅ FIXED — svc 1.0.57 wave 8 |
-| **Files** | `src/main/java-overlays/sb3/com/mirador/messaging/KafkaConfig.java`, `src/test/java-overlays/sb3/com/mirador/messaging/KafkaConfigTest.java`, pom.xml SB3 profile pins for `spring-kafka` + `spring-kafka-test` to 3.3.4. |
+| **Files** | `src/main/java-overlays/sb3/org/iris/messaging/KafkaConfig.java`, `src/test/java-overlays/sb3/org/iris/messaging/KafkaConfigTest.java`, pom.xml SB3 profile pins for `spring-kafka` + `spring-kafka-test` to 3.3.4. |
 
 ## Entry 5 : Spring Boot 4 `@GetMapping(version=)` rolled across `getAll` / `getAllV2`
 
@@ -90,7 +90,7 @@ the same Spring/Java/library API divergence from scratch.
 | **Root cause** | Spring Boot 3's `HttpSecurity` DSL methods (`csrf`, `cors`, `authorizeHttpRequests`, etc.) declare `throws Exception` ; SB4 dropped the throws. |
 | **Mechanism** | `THROWS` : add `throws Exception` to the `securityFilterChain` method signature in MAIN code. No-op in SB4 (stricter signature, never thrown) ; required for SB3 compile. |
 | **Status** | ✅ FIXED — svc 1.0.52 wave 3 |
-| **Files** | `src/main/java/com/mirador/auth/SecurityConfig.java` |
+| **Files** | `src/main/java/org/iris/auth/SecurityConfig.java` |
 
 ## Entry 7 : SB3 `spring-boot-test-autoconfigure` package layout
 

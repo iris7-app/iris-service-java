@@ -28,7 +28,7 @@ that scaling up is a one-line change when the demo grows into real use:
 
 | Layer | Replicas | Requests (CPU / mem) | Rationale |
 |---|---|---|---|
-| `app/mirador` backend | 1 | 250m / 512Mi | HPA wired to 0 min, 3 max when re-enabled |
+| `app/iris` backend | 1 | 250m / 512Mi | HPA wired to 0 min, 3 max when re-enabled |
 | `argocd-*` | 1 (core only) | 50–100m / 128–256Mi | ApplicationSet/Dex/Notifications dropped |
 | `external-secrets-*` | 1 | 50m / 128Mi | Single-tenant demo |
 | `cert-manager-*` | 1 | 50m / 128Mi | LetsEncrypt-prod handles one cert |
@@ -60,7 +60,7 @@ Negative:
 
 ## Scaling playbook (for when the demo grows up)
 
-1. **Backend**: `kubectl scale deployment mirador -n app --replicas=3`.
+1. **Backend**: `kubectl scale deployment iris -n app --replicas=3`.
    Or better, un-skip the HPA in `base/hpa.yaml` by setting
    `spec.minReplicas: 2, maxReplicas: 5` — the Deployment is already
    stateless, wired to Micrometer metrics, with HPA v2 behaviour tuning.

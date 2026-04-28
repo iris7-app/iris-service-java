@@ -3,23 +3,23 @@
 #
 # All three are declared with `action` (not `mode: once`) so they are
 # reproducible: delete the CR to stop, re-apply to replay. They target the
-# `mirador` backend pods in the `app` namespace.
+# `iris` backend pods in the `app` namespace.
 #
 # Trigger from the frontend Chaos page (Angular) which POSTs to the
 # Chaos Mesh dashboard API (port-forward to chaos-mesh-dashboard:2333).
 # =============================================================================
 
 ---
-# 1. Pod kill — random mirador pod gets SIGKILL every 2 minutes.
+# 1. Pod kill — random iris pod gets SIGKILL every 2 minutes.
 # Shows Spring Boot's restart time (readiness probe → traffic cut → new pod up)
 # on the Grafana golden-signals dashboard.
 apiVersion: chaos-mesh.org/v1alpha1
 kind: PodChaos
 metadata:
-  name: mirador-pod-kill
+  name: iris-pod-kill
   namespace: app
   labels:
-    app.mirador.demo/chaos: pod-kill
+    app.iris.demo/chaos: pod-kill
 spec:
   action: pod-kill
   mode: one  # exactly one random pod at a time (not all)
@@ -28,7 +28,7 @@ spec:
     namespaces:
       - app
     labelSelectors:
-      "app.kubernetes.io/name": mirador
+      "app.kubernetes.io/name": iris
       "app.kubernetes.io/component": backend
   # Chaos Mesh v2.7+ dropped the in-CR `scheduler.cron` field and moved
   # scheduling to a separate `Schedule` CR. A one-shot experiment is
@@ -38,25 +38,25 @@ spec:
   # https://chaos-mesh.org/docs/define-scheduling-rules/.
 
 ---
-# 2. Network delay — inject 200ms latency on egress from mirador pods
+# 2. Network delay — inject 200ms latency on egress from iris pods
 # toward postgres for 1 minute. Shows up as a p99 spike on the DB
 # latency panel + downstream effect on HTTP response times.
 apiVersion: chaos-mesh.org/v1alpha1
 kind: NetworkChaos
 metadata:
-  name: mirador-to-postgres-delay
+  name: iris-to-postgres-delay
   namespace: app
   labels:
-    app.mirador.demo/chaos: network-delay
+    app.iris.demo/chaos: network-delay
 spec:
   action: delay
-  mode: all  # apply to all mirador pods
+  mode: all  # apply to all iris pods
   duration: "1m"
   selector:
     namespaces:
       - app
     labelSelectors:
-      "app.kubernetes.io/name": mirador
+      "app.kubernetes.io/name": iris
       "app.kubernetes.io/component": backend
   delay:
     latency: "200ms"
@@ -72,16 +72,16 @@ spec:
         "app.kubernetes.io/name": postgresql
 
 ---
-# 3. CPU stress — saturate 70 % of one CPU on a random mirador pod.
+# 3. CPU stress — saturate 70 % of one CPU on a random iris pod.
 # Circuit-breaker thresholds in Resilience4j should trip on the /bio
 # endpoint (which does the heaviest work).
 apiVersion: chaos-mesh.org/v1alpha1
 kind: StressChaos
 metadata:
-  name: mirador-cpu-pressure
+  name: iris-cpu-pressure
   namespace: app
   labels:
-    app.mirador.demo/chaos: cpu-stress
+    app.iris.demo/chaos: cpu-stress
 spec:
   mode: one
   duration: "2m"
@@ -89,7 +89,7 @@ spec:
     namespaces:
       - app
     labelSelectors:
-      "app.kubernetes.io/name": mirador
+      "app.kubernetes.io/name": iris
       "app.kubernetes.io/component": backend
   stressors:
     cpu:

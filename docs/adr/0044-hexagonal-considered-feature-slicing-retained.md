@@ -15,7 +15,7 @@
 
 [ADR-0008](0008-feature-sliced-packages.md) chose **feature-sliced
 packages** in April 2026 as the top-level organisation for
-`com.mirador.*`. At 141 Java files with a growing surface (customer
+`org.iris.*`. At 141 Java files with a growing surface (customer
 CRUD + cache, Kafka events, WebSocket/SSE, HTTP integrations, JWT +
 Auth0, observability, resilience), the recurring architectural
 question is whether to migrate to full **Hexagonal / Clean
@@ -29,7 +29,7 @@ the same question doesn't get re-asked every quarter without context.
 ### What feature-slicing gives today
 
 ```
-com.mirador/
+org.iris/
 ├── auth/          SecurityConfig, JwtTokenProvider, AuthController
 ├── customer/      Entity + Repo + Service + Controller + DTOs
 ├── messaging/     KafkaConfig, listeners, publishers, events
@@ -47,7 +47,7 @@ boundaries (see `ArchitectureTest.java`).
 ### What full hexagonal would give
 
 ```
-com.mirador/
+org.iris/
 ├── domain/                   ← zero Spring/JPA/Jackson
 │   ├── customer/   Customer (record), repository port, service
 │   └── ...
@@ -77,9 +77,9 @@ domain from its infrastructure impl.
 ### Sample applied in this ADR
 
 ```
-com.mirador.customer.port.CustomerEventPort          ← interface, no Spring/Kafka
-com.mirador.messaging.KafkaCustomerEventPublisher    ← implements port, @Retry, KafkaTemplate
-com.mirador.customer.CustomerService                 ← depends on port, not impl
+org.iris.customer.port.CustomerEventPort          ← interface, no Spring/Kafka
+org.iris.messaging.KafkaCustomerEventPublisher    ← implements port, @Retry, KafkaTemplate
+org.iris.customer.CustomerService                 ← depends on port, not impl
 ```
 
 CustomerService's outbound-event dependency becomes an interface the
@@ -155,7 +155,7 @@ Extract one port (`CustomerEventPort`) + one adapter
 ArchUnit rule prevents port-layer framework creep, (c) future port
 extractions follow the same shape.
 
-### C) Rename packages to `org.mirador.*`
+### C) Rename packages to `org.iris.*`
 
 **Rejected separately** (not this ADR's scope, but evaluated in the
 same session). 141 .java files + 319 text references across 157
@@ -252,11 +252,11 @@ ADR-0008 default).
   heuristic applied to `@Transactional`.
 - `ADR-0026` — scope limit (app doesn't know about third-party
   tools) — same spirit of shallow coupling.
-- `src/main/java/com/mirador/customer/port/CustomerEventPort.java`
+- `src/main/java/org/iris/customer/port/CustomerEventPort.java`
   — concrete port sample.
-- `src/main/java/com/mirador/messaging/KafkaCustomerEventPublisher.java`
+- `src/main/java/org/iris/messaging/KafkaCustomerEventPublisher.java`
   — concrete adapter sample.
-- `src/test/java/com/mirador/ArchitectureTest.java` — ArchUnit
+- `src/test/java/org/iris/ArchitectureTest.java` — ArchUnit
   rule enforcing port-layer purity.
 - Hexagonal / Ports-and-Adapters, Alistair Cockburn (2005) —
   https://alistair.cockburn.us/hexagonal-architecture/

@@ -6,10 +6,10 @@
 
 Same stack as [`gke-prom/`](../gke-prom/) (the GCP equivalent) :
 
-- Mirador app (Spring Boot + Postgres in-cluster)
+- Iris app (Spring Boot + Postgres in-cluster)
 - LGTM observability bundle (Grafana + Loki + Tempo + Mimir + OTel Collector)
 - kube-prometheus-stack (Prometheus + node-exporter + kube-state-metrics)
-- Mirador ServiceMonitor + alert rules
+- Iris ServiceMonitor + alert rules
 
 Most files are reused from `gke-prom/` via relative-path `resources:` entries — the chart itself is cloud-neutral, only storage + load-balancer binding differ.
 
@@ -30,7 +30,7 @@ bin/cluster/ovh/up.sh
 
 # 2. Deploy this overlay (server-side because chart CRDs > 262 KiB
 #    annotation limit)
-export KUBECONFIG=~/.kube/ovh-mirador.yaml
+export KUBECONFIG=~/.kube/ovh-iris.yaml
 kubectl apply --server-side --force-conflicts \
   -k deploy/kubernetes/overlays/ovh-prom
 

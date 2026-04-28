@@ -1,4 +1,4 @@
-# Mirador Service — Claude Instructions
+# Iris Service — Claude Instructions
 
 ## Git Safety
 
@@ -47,7 +47,7 @@ When a CI job fails, NEVER reach for `allow_failure: true` as the fix. Pick (a) 
 - **Comments explain why**, not what. Write comments that a future Claude session with no conversation history can understand.
 - After significant feature work, **do a code review pass**: unused imports, broad catches, missing Javadoc, test gaps.
 - **Never modify files outside this project** unless explicitly asked.
-- **Reference pipelines/MRs/files as clickable URLs.** When a status update or commit message mentions an MR, pipeline, tag, ADR or audit report, emit it as a markdown link (`[!110](https://gitlab.com/mirador1/mirador-service/-/merge_requests/110)`, `[#564](https://gitlab.com/mirador1/mirador-service/-/pipelines/<id>)`, `[ADR-0037](file:///<repo>/docs/adr/0037-…md)`) so the user can open it in one click. Bare IDs (`!110`, `#564`) are fine in subsequent prose if a clickable form already appeared earlier in the same turn. See `~/.claude/CLAUDE.md` → "Reference pipelines, MRs and config files as clickable URLs" for the full pattern list.
+- **Reference pipelines/MRs/files as clickable URLs.** When a status update or commit message mentions an MR, pipeline, tag, ADR or audit report, emit it as a markdown link (`[!110](https://gitlab.com/iris-7/iris-service/-/merge_requests/110)`, `[#564](https://gitlab.com/iris-7/iris-service/-/pipelines/<id>)`, `[ADR-0037](file:///<repo>/docs/adr/0037-…md)`) so the user can open it in one click. Bare IDs (`!110`, `#564`) are fine in subsequent prose if a clickable form already appeared earlier in the same turn. See `~/.claude/CLAUDE.md` → "Reference pipelines, MRs and config files as clickable URLs" for the full pattern list.
 - **Architectural decisions get an ADR.** Anything that locks in a pattern — new tool, replaced library, contract change — goes in `docs/adr/NNNN-*.md` using the Michael Nygard format. Code style / bug fixes / patch bumps do NOT get an ADR (see `docs/adr/README.md` for the criteria). This prevents the same decisions being relitigated in every new session.
 - **Conventional Commits are mandatory.** Every commit message must start with one of `feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`, optionally followed by a scope in parens, then `: subject` in lowercase. Enforced by `.config/lefthook.yml` commit-msg hook + `config/commitlint.config.mjs`. Enables automatic CHANGELOG + semver bump on main via release-please.
 - **Versions-freshness pass — weekly, or at the start of any session that touches dependencies.** Renovate (`renovate.json`) runs the automated weekly sweep and opens MRs. If you add a new dependency manually, check Maven Central / npm for the latest stable BEFORE pinning — don't paste an old version. For properties already in `pom.xml`, `npm outdated` / `mvn versions:display-property-updates` gives the current lag. Security-sensitive libs (`@auth0/*`, `sonar-scanner`, `findsecbugs-plugin`, `dependency-check-maven`, Spring AI) are always worth checking manually. Archived/deprecated packages must be replaced **the same session they're discovered**.
@@ -57,10 +57,10 @@ When a CI job fails, NEVER reach for `allow_failure: true` as the fix. Pick (a) 
 
 This repo has **2 git submodules** (since 2026-04-26 split) :
 
-- `infra/common/` → [mirador-common](https://gitlab.com/mirador1/mirador-common) — universal cross-repo conventions (release scripts, ADR drift tooling, Conventional Commits CI template, Renovate base). Consumed by all 4 mirador1 repos including UI.
-- `infra/shared/` → [mirador-service-shared](https://gitlab.com/mirador1/mirador-service-shared) — backend infrastructure (clusters, terraform, K8s, OTel collector, postgres+kafka+redis dev stack, observability dashboards, backend ADRs). Consumed by java + python only (NOT ui).
+- `infra/common/` → [iris-common](https://gitlab.com/iris-7/iris-common) — universal cross-repo conventions (release scripts, ADR drift tooling, Conventional Commits CI template, Renovate base). Consumed by all 4 iris-7 repos including UI.
+- `infra/shared/` → [iris-service-shared](https://gitlab.com/iris-7/iris-service-shared) — backend infrastructure (clusters, terraform, K8s, OTel collector, postgres+kafka+redis dev stack, observability dashboards, backend ADRs). Consumed by java + python only (NOT ui).
 
-**Pattern α (flat 2-submodule)** chosen over β (transitive nested) for : independent SHA pinning per consumer (java can pin `common@SHA-X` while python pins `common@SHA-Y`), symmetric path everywhere (`infra/common/bin/...` works in all 4 repos), standard clone (`git submodule update --init`, no `--recursive` needed). Full rationale : [common ADR-0060](https://gitlab.com/mirador1/mirador-common/-/blob/main/docs/adr/0060-flat-vs-transitive-submodule-inheritance.md).
+**Pattern α (flat 2-submodule)** chosen over β (transitive nested) for : independent SHA pinning per consumer (java can pin `common@SHA-X` while python pins `common@SHA-Y`), symmetric path everywhere (`infra/common/bin/...` works in all 4 repos), standard clone (`git submodule update --init`, no `--recursive` needed). Full rationale : [common ADR-0060](https://gitlab.com/iris-7/iris-common/-/blob/main/docs/adr/0060-flat-vs-transitive-submodule-inheritance.md).
 
 **Where to find what** :
 - Universal scripts (pre-sync, changelog, gitlab-release, regen-adr-index) → `infra/common/bin/...`
@@ -72,15 +72,15 @@ This repo has **2 git submodules** (since 2026-04-26 split) :
 
 **Bumping submodule SHAs** : each is independent. To bump common only, `cd infra/common && git pull origin main && cd ../.. && git add infra/common && git commit`. Same for shared.
 
-**Tag prefix for this repo** : `stable-v` (default ; per [common ADR-0061](https://gitlab.com/mirador1/mirador-common/-/blob/main/docs/adr/0061-per-repo-tag-namespace-pattern.md)). Run release scripts as : `infra/common/bin/ship/changelog.sh` (no `--tag-prefix` flag needed).
+**Tag prefix for this repo** : `stable-v` (default ; per [common ADR-0061](https://gitlab.com/iris-7/iris-common/-/blob/main/docs/adr/0061-per-repo-tag-namespace-pattern.md)). Run release scripts as : `infra/common/bin/ship/changelog.sh` (no `--tag-prefix` flag needed).
 
 ## Project overview
 
 Spring Boot 4 + Java 25 backend API with full observability stack.
 
-- **Main package:** `com.mirador`
-- **Entry point:** `src/main/java/com/mirador/MiradorApplication.java`
-- **Tests:** `src/test/java/com/mirador/`
+- **Main package:** `org.iris`
+- **Entry point:** `src/main/java/org/iris/IrisApplication.java`
+- **Tests:** `src/test/java/org/iris/`
 - **Migrations:** `src/main/resources/db/migration/` (Flyway, V1–V7)
 - **Config:** `src/main/resources/application.yml`
 
@@ -131,12 +131,12 @@ they survive a new push mid-run. Don't remove this flag without understanding th
 | Resource | Value |
 |---|---|
 | Project ID | `project-8d6ea68c-33ac-412b-8aa` |
-| Project display name | `Mirador` |
+| Project display name | `Iris` |
 | Project number | `32654862595` |
 | GKE cluster | `mirador-prod` (europe-west1) |
 | Ingress IP | `34.52.233.183` |
-| Domain | `mirador1.duckdns.org` (DuckDNS free — A record → 34.52.233.183) |
-| App URL | https://mirador1.duckdns.org (HTTP until cert-manager wired) |
+| Domain | `iris-7.duckdns.org` (DuckDNS free — A record → 34.52.233.183) |
+| App URL | https://iris-7.duckdns.org (HTTP until cert-manager wired) |
 | GCP Console | https://console.cloud.google.com/home/dashboard?project=project-8d6ea68c-33ac-412b-8aa |
 | WIF Provider | `projects/32654862595/locations/global/workloadIdentityPools/gitlab-pool/providers/gitlab-provider` |
 | CI Service Account | `gitlab-ci-deployer@project-8d6ea68c-33ac-412b-8aa.iam.gserviceaccount.com` |
@@ -156,7 +156,7 @@ Keycloak and LGTM are replaced by managed services in production — no self-hos
 **GitLab CI variables to set:**
 - `GRAFANA_OTLP_ENDPOINT` — e.g. `https://otlp-gateway-prod-eu-west-0.grafana.net/otlp`
 - `GRAFANA_OTLP_TOKEN` — base64(`instanceId:apiKey`)
-- `AUTH0_DOMAIN` — e.g. `mirador.eu.auth0.com`
+- `AUTH0_DOMAIN` — e.g. `iris.eu.auth0.com`
 - `AUTH0_CLIENT_ID` / `AUTH0_CLIENT_SECRET` / `AUTH0_AUDIENCE`
 
 **Grafana Cloud region**: EU (Germany / Frankfurt) — closest to GKE europe-west1 (Belgium).
@@ -172,7 +172,7 @@ Keycloak and LGTM are replaced by managed services in production — no self-hos
 | **8085** | **gcloud auth login** | **Reserved — OAuth callback for Google Cloud CLI. Do NOT assign any service to this port.** |
 | 8086 | Compodoc | Angular API docs (moved from 8085) |
 | 9000 | SonarQube | |
-| 8888 | Keycloak | Migrated 2026-04-26 from 9090 (elgato-mcp host conflict). Realm `mirador-service`, admin/admin |
+| 8888 | Keycloak | Migrated 2026-04-26 from 9090 (elgato-mcp host conflict). Realm `iris-service`, admin/admin |
 
 ## Known gotchas
 
@@ -182,7 +182,7 @@ Keycloak and LGTM are replaced by managed services in production — no self-hos
 - **Spring AI** — version pinned at `1.0.0-M6`. DO NOT upgrade to `1.0.0` GA: the Ollama starter was renamed (`spring-ai-ollama-spring-boot-starter` → `spring-ai-starter-model-ollama`) and the pom would need manual migration. See the comment in `pom.xml`.
 - **Page serialisation** — `Page<T>` is returned as-is (flat JSON: `totalElements`, `totalPages` at root). Do NOT add `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` — it changes the JSON shape to nested (`page.totalElements`) which breaks both integration tests and the Angular `Page<T>` interface in `api.service.ts`. The warning is suppressed via `logback-spring.xml`.
 - **SB3 overlay files** — files under `src/main/java-sb3-compat/` and `src/test/java-sb3-compat/` are compiled only when `-Dsb3` is active. Do not cover them in tests for the default (SB4) profile.
-- **MCP server (ADR-0062)** — the backend ships its own MCP (Model Context Protocol) server via `spring-ai-starter-mcp-server-webmvc`. 14 tools wired in `com.mirador.mcp.McpConfig` (4 domain services + 4 backend-local observability services). NO env vars to set externally — the constraint is the opposite of "needs config" : the jar must run identically with NO infra around it. NO Loki / Mimir / Grafana / GitLab / GitHub HTTP clients allowed in this repo (those are SEPARATE community MCP servers added per-developer via `claude mcp add`). When adding a new tool : annotate the @Service method with `@Tool(name="…", description="…")`, register the service in `McpConfig.miradorToolProvider(...)`, write a unit test in `com.mirador.mcp.<slice>.<>Test`, update the table in README.md "AI integration via MCP" section.
+- **MCP server (ADR-0062)** — the backend ships its own MCP (Model Context Protocol) server via `spring-ai-starter-mcp-server-webmvc`. 14 tools wired in `org.iris.mcp.McpConfig` (4 domain services + 4 backend-local observability services). NO env vars to set externally — the constraint is the opposite of "needs config" : the jar must run identically with NO infra around it. NO Loki / Mimir / Grafana / GitLab / GitHub HTTP clients allowed in this repo (those are SEPARATE community MCP servers added per-developer via `claude mcp add`). When adding a new tool : annotate the @Service method with `@Tool(name="…", description="…")`, register the service in `McpConfig.irisToolProvider(...)`, write a unit test in `org.iris.mcp.<slice>.<>Test`, update the table in README.md "AI integration via MCP" section.
 
 ## Security architecture
 
@@ -214,7 +214,7 @@ Current offenders to address over upcoming sessions:
 
 - `.gitlab-ci.yml` (2 619 lines) — modularise into `ci/includes/*.yml`
   (lint, test, security, k8s, quality, package, native, deploy, release).
-- `src/main/java/com/mirador/observability/QualityReportEndpoint.java`
+- `src/main/java/org/iris/observability/QualityReportEndpoint.java`
   (1 934) — 7 parsers (Surefire, Jacoco, SpotBugs, OWASP, PMD, Checkstyle,
   Pitest) each in their own class; the endpoint becomes a thin aggregator.
 - `bin/dev/stability-check.sh` (1 362) — split into
@@ -238,7 +238,7 @@ is the hard ceiling. See `~/.claude/CLAUDE.md` → "Subdirectory hygiene".
 - Integration tests (`*ITest.java`) use `@SpringBootTest` with Testcontainers or `@DataJpaTest`.
 - Do NOT use `@MockBean` in integration tests where the real bean is available.
 - JaCoCo merged report: unit (`jacoco.exec`) + IT (`jacoco-it.exec`) → `jacoco-merged.exec`. Current minimum: **70 %**.
-- Excluded from coverage (infra wiring only, no business logic): `SecurityConfig`, `KeycloakConfig`, `KafkaConfig`, `WebSocketConfig`, `OpenApiConfig`, `ObservabilityConfig`, `QualityReportEndpoint`, `OtelLogbackInstaller`, `PyroscopeConfig`, `MiradorApplication`.
+- Excluded from coverage (infra wiring only, no business logic): `SecurityConfig`, `KeycloakConfig`, `KafkaConfig`, `WebSocketConfig`, `OpenApiConfig`, `ObservabilityConfig`, `QualityReportEndpoint`, `OtelLogbackInstaller`, `PyroscopeConfig`, `IrisApplication`.
 
 ## Observability
 

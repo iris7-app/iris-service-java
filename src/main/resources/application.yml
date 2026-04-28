@@ -9,7 +9,7 @@
 spring:
   application:
     # Service name propagated to OpenTelemetry traces and Grafana dashboards
-    name: mirador
+    name: iris
 
   autoconfigure:
     # spring-data-rest-hal-explorer is on the classpath for the HAL browser UI,
@@ -102,7 +102,7 @@ spring:
       spec: maximumSize=1000,expireAfterWrite=5m,recordStats  # recordStats: expose hit/miss ratio to Micrometer
     cache-names: customer-by-id
     # mcp-metrics: separately registered as a CaffeineCache bean in
-    # com.mirador.mcp.McpConfig with a tighter 5-second TTL — the global
+    # org.iris.mcp.McpConfig with a tighter 5-second TTL — the global
     # 5-minute spec above is too long for live MeterRegistry samples but
     # right for entity reads. ADR-0062 § Caching for the design rationale.
 
@@ -131,11 +131,11 @@ spring:
           # Content logging (full prompt + completion text) OFF by default
           # for privacy — the GenAI conventions without content are enough
           # for the AI Observability dashboards to work. Enable by setting
-          # MIRADOR_AI_LOG_CONTENT=true env var (local / demo only — do NOT
+          # IRIS_AI_LOG_CONTENT=true env var (local / demo only — do NOT
           # enable in prod unless data-governance has approved sending
           # user prompts to the observability backend). Per ADR-0059 POC.
-          log-prompt: ${MIRADOR_AI_LOG_CONTENT:false}
-          log-completion: ${MIRADOR_AI_LOG_CONTENT:false}
+          log-prompt: ${IRIS_AI_LOG_CONTENT:false}
+          log-completion: ${IRIS_AI_LOG_CONTENT:false}
 
     # MCP server — switch from default SSE transport to STREAMABLE (single
     # HTTP endpoint at /mcp) to align with the MCP 2025-03-26 spec that

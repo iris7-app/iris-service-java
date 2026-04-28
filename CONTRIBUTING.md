@@ -1,6 +1,6 @@
-# Contributing to Mirador
+# Contributing to Iris
 
-First: thank you. Mirador is a portfolio demo project — contributions
+First: thank you. Iris is a portfolio demo project — contributions
 improve the "real-world how-to-operate-this-thing" value for everyone
 who reads it later.
 
@@ -8,10 +8,10 @@ who reads it later.
 
 **GitLab is the canonical source.** Contributions happen there.
 
-- Service: [gitlab.com/mirador1/mirador-service](https://gitlab.com/mirador1/mirador-service)
-- UI: [gitlab.com/mirador1/mirador-ui](https://gitlab.com/mirador1/mirador-ui)
+- Service: [gitlab.com/iris-7/iris-service](https://gitlab.com/iris-7/iris-service)
+- UI: [gitlab.com/iris-7/iris-ui](https://gitlab.com/iris-7/iris-ui)
 
-The GitHub repos (`github.com/mirador1/mirador-*`) are read-only
+The GitHub repos (`github.com/iris-7/iris-*`) are read-only
 mirrors. Issues and PRs opened there will not be reviewed — the
 repo description points here. See
 [`docs/ops/ci-philosophy.md`](docs/ops/ci-philosophy.md) for why.
@@ -20,7 +20,7 @@ repo description points here. See
 
 | Type | How to start |
 |---|---|
-| **Bug report** | Open a [GitLab issue](https://gitlab.com/mirador1/mirador-service/-/issues/new) with the "bug" template. |
+| **Bug report** | Open a [GitLab issue](https://gitlab.com/iris-7/iris-service/-/issues/new) with the "bug" template. |
 | **Security vulnerability** | **Do not open a public issue.** See [`SECURITY.md`](SECURITY.md). |
 | **Documentation fix / clarification** | Open an MR directly. Docs-only MRs are merged fastest. |
 | **New ADR / architectural suggestion** | Open an issue first to discuss the problem + alternatives before writing the ADR. |
@@ -33,12 +33,12 @@ repo description points here. See
 ### 1. Set up
 
 ```bash
-git clone https://gitlab.com/mirador1/mirador-service.git
-cd mirador-service
-bin/dev/mirador-doctor   # one-command health check — must be all green
+git clone https://gitlab.com/iris-7/iris-service.git
+cd iris-service
+bin/dev/iris-doctor   # one-command health check — must be all green
 ```
 
-If any check fails, follow the advice in the output. `bin/mirador-
+If any check fails, follow the advice in the output. `bin/iris-
 doctor --no-cost` skips the GCP checks if you're offline.
 
 ### 2. Branch + commit

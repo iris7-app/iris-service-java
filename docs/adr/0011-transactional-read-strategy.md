@@ -37,7 +37,7 @@ We use **the smallest possible `@Transactional` surface**:
 3. **Method-level `@Transactional`** (read/write) only on the handful of
    operations that span **multiple** repository calls and need
    atomicity — currently the refresh-token CRUD in
-   `src/main/java/com/mirador/auth/JwtTokenProvider.java`.
+   `src/main/java/org/iris/auth/JwtTokenProvider.java`.
 4. Simple read paths rely on the default per-repository-method
    transaction Spring Data JPA provides out of the box.
 
@@ -101,7 +101,7 @@ this codebase is allergic to.
 
 ## References
 
-- `src/main/java/com/mirador/auth/JwtTokenProvider.java` — the only
+- `src/main/java/org/iris/auth/JwtTokenProvider.java` — the only
   class today that uses `@Transactional`, on four write methods.
 - `src/main/resources/application.yml` — `spring.jpa.open-in-view: false`
   (the inverse of this ADR's "but not OIV" reminder).

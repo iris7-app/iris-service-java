@@ -1,6 +1,6 @@
-# Technology glossary — mirador-service
+# Technology glossary — iris-service
 
-This file is a reference catalogue of every technology the backend (`mirador-service`) actually uses,
+This file is a reference catalogue of every technology the backend (`iris-service`) actually uses,
 plus a handful of well-known alternatives we intentionally rejected. Each entry is structured with
 three fields so it can be skimmed quickly:
 
@@ -38,7 +38,7 @@ deliberately not adopted. They exist in the glossary so the next
 person (or the next Claude session) does not waste time re-evaluating
 them.
 
-Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/blob/main/docs/technologies.md>.
+Sibling catalogue for the Angular UI: <https://gitlab.com/iris-7/iris-ui/-/blob/main/docs/technologies.md>.
 
 ## Table of contents
 
@@ -71,7 +71,7 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 
 ### ☕ [Java 25](https://www.oracle.com/java/technologies/javase/25-relnote-issues.html)
 - **What it is**: The current long-term (LTS) release of the Java platform (GA September 2025).
-- **Usage here**: `<java.version>25</java.version>` in `pom.xml`; the default build profile targets class-file major version 69. Virtual threads, ScopedValue, pattern matching with guards (`case X e when ...`) and record patterns are used in `com.mirador.*`.
+- **Usage here**: `<java.version>25</java.version>` in `pom.xml`; the default build profile targets class-file major version 69. Virtual threads, ScopedValue, pattern matching with guards (`case X e when ...`) and record patterns are used in `org.iris.*`.
 - **Why it's pertinent**: Virtual threads let the app serve thousands of concurrent HTTP + Kafka consumers with a small thread pool — a perfect fit for a Spring Boot service that spends most of its time waiting on DB, Kafka, Redis and HTTP. Running on LTS avoids the feature-release treadmill.
 
 ### ☕ [Java 21](https://www.oracle.com/java/technologies/javase/21-relnote-issues.html) (compat)
@@ -119,7 +119,7 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 
 ### 🧩 [Lombok](https://projectlombok.org/)
 - **What it is**: Annotation processor that generates boilerplate (getters, setters, builders, constructors) at compile time.
-- **Usage here**: `provided` scope dependency and explicit `annotationProcessorPaths` entry in `maven-compiler-plugin`. Used on DTOs and entities in `com.mirador.customer`, `com.mirador.auth`, etc.
+- **Usage here**: `provided` scope dependency and explicit `annotationProcessorPaths` entry in `maven-compiler-plugin`. Used on DTOs and entities in `org.iris.customer`, `org.iris.auth`, etc.
 - **Why it's pertinent**: Eliminates ~30 % of boilerplate without adding runtime footprint. The explicit processor-path entry is required on Java 25 (implicit discovery was tightened).
 
 ### 📦 [Maven Central](https://central.sonatype.com/)
@@ -133,7 +133,7 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 
 ### 🌱 [Spring Boot 4](https://spring.io/projects/spring-boot)
 - **What it is**: Opinionated Spring-based application framework (GA late 2025, current major).
-- **Usage here**: Parent POM `spring-boot-starter-parent:4.0.5`. Default profile; everything under `com.mirador.*` assumes SB4 APIs.
+- **Usage here**: Parent POM `spring-boot-starter-parent:4.0.5`. Default profile; everything under `org.iris.*` assumes SB4 APIs.
 - **Why it's pertinent**: 4 concrete deltas vs Spring Boot 3 that motivated the upgrade in this repo:
   - **Java 25 `@RestController` works without compiler flags** (SB3 needs `--enable-preview` for some pattern-matching cases, SB4 doesn't).
   - **Unified `spring-boot-starter-opentelemetry`** — replaces the SB3 trio (`micrometer-tracing-bridge-otel` + `opentelemetry-exporter-otlp` + `opentelemetry-spring-boot-starter`) with a single starter. Cuts ~30 lines from `pom.xml` and removes 3 transitive-version mismatches that previously had to be pinned manually.
@@ -148,12 +148,12 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 
 ### 🌱 [Spring Framework 7](https://spring.io/projects/spring-framework)
 - **What it is**: Core Spring container (DI, AOP, MVC, transactions). Bundled by SB4.
-- **Usage here**: Every `@Component`, `@Service`, `@Configuration`, `@Controller`, `@Transactional` in `com.mirador.*`.
+- **Usage here**: Every `@Component`, `@Service`, `@Configuration`, `@Controller`, `@Transactional` in `org.iris.*`.
 - **Why it's pertinent**: It is Spring Boot. No alternative is realistic for a Java-centric team.
 
 ### 🌱 [Spring MVC](https://docs.spring.io/spring-framework/reference/web/webmvc.html)
 - **What it is**: Servlet-based HTTP controller framework.
-- **Usage here**: REST controllers under `com.mirador.customer`, `com.mirador.auth`, `com.mirador.api`. Pulled in via `spring-boot-starter-web`.
+- **Usage here**: REST controllers under `org.iris.customer`, `org.iris.auth`, `org.iris.api`. Pulled in via `spring-boot-starter-web`.
 - **Why it's pertinent — vs Spring WebFlux (the rejected alternative)**: WebFlux requires reactive types end-to-end (`Mono<T>` / `Flux<T>` in every controller, repository, filter). Mixing the two paradigms in one app produces context-loss bugs that are nearly impossible to debug — a `Mono` consumed twice silently emits nothing, and the stack trace points 8 lambdas deep. Spring MVC + virtual threads (SB4 wires `Executors.newVirtualThreadPerTaskExecutor()` by default since 4.0) gives the SAME concurrency benefit as WebFlux for I/O-bound workloads (DB / Kafka / Redis / HTTP — i.e. our entire workload) without forcing the reactive paradigm on `@RestController` code. Net: identical throughput on this project's workload, ~70 % less code complexity.
 - **Pairs with**: [Java 25](#-java-25-lts) (virtual threads make the MVC-vs-WebFlux choice irrelevant for I/O), [Embedded Tomcat 11](#-embedded-tomcat-11) (the servlet container behind it), [Spring Security](#-spring-security-7) (filter chain runs first), [springdoc-openapi](#-springdoc-openapi) (introspects MVC controllers to build /v3/api-docs).
 
@@ -164,7 +164,7 @@ Sibling catalogue for the Angular UI: <https://gitlab.com/mirador1/mirador-ui/-/
 
 ### 🌱 [Spring Data JPA](https://spring.io/projects/spring-data-jpa)
 - **What it is**: Repository abstraction over JPA with derived-query method names.
-- **Usage here**: `CustomerRepository` and friends under `com.mirador.customer`. Pulled via `spring-boot-starter-data-jpa`.
+- **Usage here**: `CustomerRepository` and friends under `org.iris.customer`. Pulled via `spring-boot-starter-data-jpa`.
 - **Why it's pertinent**: Cuts repository boilerplate to one interface line per entity. Pairs naturally with Hibernate + HikariCP + Flyway.
 
 ### 🗄️ [Hibernate ORM](https://hibernate.org/orm/)
@@ -191,12 +191,12 @@ to get the full picture._
 
 ### 🔔 [Spring WebSocket / STOMP](https://docs.spring.io/spring-framework/reference/web/websocket.html)
 - **What it is**: Bidirectional messaging over WebSocket with the STOMP sub-protocol.
-- **Usage here**: `spring-boot-starter-websocket`; real-time notification endpoint wired in `com.mirador.messaging.WebSocketConfig`. Frontend consumes it via SockJS.
+- **Usage here**: `spring-boot-starter-websocket`; real-time notification endpoint wired in `org.iris.messaging.WebSocketConfig`. Frontend consumes it via SockJS.
 - **Why it's pertinent**: STOMP gives publish/subscribe semantics over a single TCP connection; simpler than SSE for bi-directional use cases.
 
 ### 🔐 [Spring Security 7](https://spring.io/projects/spring-security)
 - **What it is**: Authentication and authorization framework for Spring.
-- **Usage here**: `spring-boot-starter-security` + `spring-boot-starter-oauth2-resource-server`; JWT + OIDC configured in `com.mirador.auth.SecurityConfig`.
+- **Usage here**: `spring-boot-starter-security` + `spring-boot-starter-oauth2-resource-server`; JWT + OIDC configured in `org.iris.auth.SecurityConfig`.
 - **Why it's pertinent**: Handles method-level authorization (`@PreAuthorize`), JWT resource-server validation, CORS, CSRF policy, and the filter chain. Rewriting this is how applications get CVEs.
 
 ### 🌱 [Spring HATEOAS + HAL Explorer](https://spring.io/projects/spring-hateoas)
@@ -206,12 +206,12 @@ to get the full picture._
 
 ### 🌱 [Spring Boot Actuator](https://docs.spring.io/spring-boot/reference/actuator/index.html)
 - **What it is**: Production-ready operational endpoints (`/actuator/health`, `/actuator/prometheus`, `/actuator/info`, etc.).
-- **Usage here**: `spring-boot-starter-actuator` + custom endpoint `com.mirador.observability.QualityReportEndpoint` exposed at `/actuator/quality`.
+- **Usage here**: `spring-boot-starter-actuator` + custom endpoint `org.iris.observability.QualityReportEndpoint` exposed at `/actuator/quality`.
 - **Why it's pertinent**: Kubernetes liveness/readiness probes, Prometheus scraping, info banners — all consume actuator endpoints. Custom endpoints let us expose build-time quality artefacts (SpotBugs XML, JaCoCo CSV) without a separate service.
 
 ### 🌱 [Spring Bean Validation (Jakarta Validation)](https://jakarta.ee/specifications/bean-validation/)
 - **What it is**: Declarative validation via `@NotBlank`, `@Email`, `@Valid`, backed by Hibernate Validator.
-- **Usage here**: `spring-boot-starter-validation`; DTOs in `com.mirador.customer` and request bodies in controllers.
+- **Usage here**: `spring-boot-starter-validation`; DTOs in `org.iris.customer` and request bodies in controllers.
 - **Why it's pertinent**: Validation lives next to the field it protects (the DTO), not in the controller. Failures become 400s automatically via Spring MVC.
 
 ### 🌱 [Spring AOT / AutoConfiguration](https://docs.spring.io/spring-boot/reference/packaging/aot.html)
@@ -235,7 +235,7 @@ to get the full picture._
 
 ### 🗄️ [JDBC / JPA / Jakarta Persistence](https://jakarta.ee/specifications/persistence/)
 - **What it is**: Standard Java DB APIs — raw JDBC and the higher-level JPA specification (Jakarta since Spring 6).
-- **Usage here**: JPA via Spring Data, raw JDBC via `JdbcTemplate` in `com.mirador.resilience.ShedLockConfig`.
+- **Usage here**: JPA via Spring Data, raw JDBC via `JdbcTemplate` in `org.iris.resilience.ShedLockConfig`.
 - **Why it's pertinent**: JPA for entity CRUD, JDBC for occasional surgical queries (ShedLock, health checks) — choosing the right tool per call.
 
 ### ☁️ [Cloud SQL (GCP)](https://cloud.google.com/sql)
@@ -256,7 +256,7 @@ to get the full picture._
 - **What it is**: Redis 7 — in-memory key-value store with rich data types (LIST, HASH, SET, SORTED SET, STREAMS). Spring Data Redis is the Spring abstraction; Lettuce is the non-blocking netty-based driver bundled by default.
 - **Usage here**:
   - **Server**: `redis:7` in Compose; in Kubernetes a Deployment in `deploy/kubernetes/base/stateful/redis.yaml`. App connects via `SPRING_DATA_REDIS_HOST=redis`.
-  - **Client**: `spring-boot-starter-data-redis` + `StringRedisTemplate` in `com.mirador.customer.RecentCustomerBuffer` (LPUSH + LTRIM + LRANGE ring of last-10 customers), JWT blacklist (`com.mirador.auth.JwtTokenProvider`), idempotency keys, rate-limit buckets.
+  - **Client**: `spring-boot-starter-data-redis` + `StringRedisTemplate` in `org.iris.customer.RecentCustomerBuffer` (LPUSH + LTRIM + LRANGE ring of last-10 customers), JWT blacklist (`org.iris.auth.JwtTokenProvider`), idempotency keys, rate-limit buckets.
 - **Why it's pertinent**: Sub-ms latency, cross-pod state, and the right data types for our use cases (ring buffer via LIST, distinct keys via SET). Lettuce is safe to share across virtual threads — no per-call thread blocking. Cross-pod scope is what makes Redis the right answer for "logout token X across all replicas" — Caffeine (in-JVM) cannot.
 - **Pairs with**: [Caffeine](#️-caffeine-in-jvm-cache--spring-cache-abstraction) (decision matrix: in-JVM-loss-OK vs cross-replica-coordinated), [Bucket4j](#-bucket4j) (rate-limit buckets stored here when running >1 replica), [JWT strategy](#-spring-security-7) (blacklist for revoked access tokens), [Memorystore for Redis](#-memorystore-for-redis) (managed GCP equivalent).
 
@@ -292,7 +292,7 @@ to get the full picture._
 - **What it is**: Apache Kafka — distributed log / event-streaming platform; KRaft mode replaces ZooKeeper with an internal Raft quorum. Spring Kafka wraps the Apache Java client with listener containers, `KafkaTemplate`, and request-reply patterns.
 - **Usage here**:
   - **Broker**: `apache/kafka:4.0.0` in Compose, single-broker/controller KRaft mode. In Kubernetes a StatefulSet in `deploy/kubernetes/base/stateful/kafka.yaml`. Topics auto-created on first publish.
-  - **Client**: `spring-kafka` dependency; producers / consumers / `@KafkaListener` annotations live in `com.mirador.messaging` (`KafkaConfig`, listener classes). Used for fire-and-forget audit events AND request-reply enrichment with built-in correlation + timeout.
+  - **Client**: `spring-kafka` dependency; producers / consumers / `@KafkaListener` annotations live in `org.iris.messaging` (`KafkaConfig`, listener classes). Used for fire-and-forget audit events AND request-reply enrichment with built-in correlation + timeout.
 - **Why it's pertinent**: Async decoupling, replay, and consumer groups. KRaft eliminates the ZooKeeper operational tax — half the moving parts for small clusters. Spring Kafka removes the boilerplate of hand-rolling `KafkaConsumer` polling loops and integrates `@KafkaListener` with Micrometer observations out of the box.
 
 ### 📨 [Kafka UI (Provectus)](https://github.com/provectus/kafka-ui)
@@ -335,7 +335,7 @@ to get the full picture._
 
 ### 🔐 [JWT (JSON Web Token)](https://jwt.io/)
 - **What it is**: Signed JSON claims, transmitted as `Authorization: Bearer <token>`.
-- **Usage here**: Primary auth mechanism — validated by `JwtTokenProvider` (`com.mirador.auth`). Also accepted via Spring Security OAuth2 Resource Server for Keycloak/Auth0 tokens.
+- **Usage here**: Primary auth mechanism — validated by `JwtTokenProvider` (`org.iris.auth`). Also accepted via Spring Security OAuth2 Resource Server for Keycloak/Auth0 tokens.
 - **Why it's pertinent**: Stateless auth means any pod can validate any request without shared session state — essential for horizontal scaling.
 - **Pairs with**: [JJWT](#-jjwt-iojsonwebtoken) (the Java library that signs and validates them), [JWKS](#-jwks-json-web-key-set) (public-key set used for RS256 validation), [Spring Security OAuth2 Resource Server](#-spring-security-oauth2-resource-server) (the validating filter), [Redis 7](#-redis-7-server--spring-data-redis--lettuce-client) (blacklist for revoked access tokens).
 
@@ -349,7 +349,7 @@ to get the full picture._
 - **What it is**: Leading Java JWT library by Les Hazlewood.
 - **Usage here**: Three-artifact split — `jjwt-api` (compile), `jjwt-impl` (runtime), `jjwt-jackson` (runtime) at version `0.12.6`.
 - **Why it's pertinent**: The three-JAR split keeps the compile-time API small and prevents leaking `Impl` classes into consumer code. Used by `JwtTokenProvider`.
-- **Pairs with**: [JWT](#-jwt-json-web-token) (what it produces / parses), used by `JwtTokenProvider` in `com.mirador.auth` for the built-in HS256 path only — the RS256 / JWKS path goes through Spring Security's `nimbus-jose-jwt` instead.
+- **Pairs with**: [JWT](#-jwt-json-web-token) (what it produces / parses), used by `JwtTokenProvider` in `org.iris.auth` for the built-in HS256 path only — the RS256 / JWKS path goes through Spring Security's `nimbus-jose-jwt` instead.
 
 ### 🔐 [Spring Security OAuth2 Resource Server](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/index.html)
 - **What it is**: Spring Security module that validates JWT bearer tokens against a JWKS endpoint.
@@ -392,7 +392,7 @@ to get the full picture._
 
 ### 🛟 [Resilience4j](https://resilience4j.readme.io/)
 - **What it is**: Fault-tolerance library providing `@CircuitBreaker`, `@Retry`, `@RateLimiter`, `@TimeLimiter`, `@Bulkhead`.
-- **Usage here**: `io.github.resilience4j:resilience4j-spring-boot3:2.3.0`. Applied to outbound HTTP in `com.mirador.integration` and `com.mirador.resilience`.
+- **Usage here**: `io.github.resilience4j:resilience4j-spring-boot3:2.3.0`. Applied to outbound HTTP in `org.iris.integration` and `org.iris.resilience`.
 - **Why it's pertinent**: Dependency-free (no Hystrix-style archaius), Spring-Boot-native, and composable via annotations. Hystrix is end-of-life.
 
 ### 🛟 [Bucket4j](https://bucket4j.com/)
@@ -402,7 +402,7 @@ to get the full picture._
 
 ### ⏰ [ShedLock](https://github.com/lukas-krecan/ShedLock)
 - **What it is**: Distributed lock over a shared data store, used to de-duplicate scheduled jobs in a cluster.
-- **Usage here**: Two artefacts — `shedlock-spring` (annotation + AOP) and `shedlock-provider-jdbc-template` (JDBC backend). Backing table created by `V2__create_shedlock_table.sql`. Wired in `com.mirador.resilience.ShedLockConfig`.
+- **Usage here**: Two artefacts — `shedlock-spring` (annotation + AOP) and `shedlock-provider-jdbc-template` (JDBC backend). Backing table created by `V2__create_shedlock_table.sql`. Wired in `org.iris.resilience.ShedLockConfig`.
 - **Why it's pertinent**: Without this, a `@Scheduled` task running on 3 pods would fire 3× per tick.
 
 ### 🛟 [Retry and circuit-breaker patterns](https://martinfowler.com/bliki/CircuitBreaker.html)
@@ -416,7 +416,7 @@ to get the full picture._
 
 ### 📡 [Micrometer](https://micrometer.io/)
 - **What it is**: Vendor-neutral metrics facade for the JVM (like SLF4J for metrics).
-- **Usage here**: Bundled via `spring-boot-starter-actuator`; custom meters in `com.mirador.observability`.
+- **Usage here**: Bundled via `spring-boot-starter-actuator`; custom meters in `org.iris.observability`.
 - **Why it's pertinent**: Switching the metrics backend (Prometheus, Datadog, CloudWatch) is a config change, not a code rewrite.
 
 ### 📡 [Micrometer Prometheus registry](https://docs.micrometer.io/micrometer/reference/implementations/prometheus.html)
@@ -441,7 +441,7 @@ to get the full picture._
 
 ### 📡 [OpenTelemetry Logback appender](https://github.com/open-telemetry/opentelemetry-java-instrumentation/tree/main/instrumentation/logback)
 - **What it is**: Logback appender that emits log events as OTLP records.
-- **Usage here**: `io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.16.0-alpha`; installed by `com.mirador.observability.OtelLogbackInstaller` at runtime.
+- **Usage here**: `io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.16.0-alpha`; installed by `org.iris.observability.OtelLogbackInstaller` at runtime.
 - **Why it's pertinent**: Logs flow through the same OTLP pipeline as traces, so `trace_id` correlation works end-to-end in Grafana.
 
 ### 📡 [LGTM stack (Grafana Labs)](https://github.com/grafana/docker-otel-lgtm)
@@ -476,7 +476,7 @@ to get the full picture._
 
 ### 📡 [Pyroscope](https://grafana.com/oss/pyroscope/)
 - **What it is**: Continuous CPU + memory profiler (part of Grafana stack).
-- **Usage here**: `io.pyroscope:agent:2.1.2` embedded SDK; pushes JFR profiles every 10 s. Wired in `com.mirador.observability.PyroscopeConfig`.
+- **Usage here**: `io.pyroscope:agent:2.1.2` embedded SDK; pushes JFR profiles every 10 s. Wired in `org.iris.observability.PyroscopeConfig`.
 - **Why it's pertinent**: Production profiling without a JVM `-javaagent` flag — good for finding hot methods and allocation sites we'd otherwise never spot.
 
 ### ☕ [JFR (Java Flight Recorder)](https://docs.oracle.com/en/java/javase/21/jfapi/flight-recorder-api-programmers-guide.html)
@@ -490,7 +490,7 @@ to get the full picture._
 
 ### 🤖 [Spring AI](https://spring.io/projects/spring-ai)
 - **What it is**: Spring's abstraction for LLM providers (`ChatClient`, `EmbeddingClient`).
-- **Usage here**: `spring-ai-starter-model-ollama:1.1.4` (GA). Used to generate customer bios in `com.mirador.customer.BioService`.
+- **Usage here**: `spring-ai-starter-model-ollama:1.1.4` (GA). Used to generate customer bios in `org.iris.customer.BioService`.
 - **Why it's pertinent**: Lets us swap Ollama for OpenAI/Anthropic/Bedrock by config. The empty compat-shim classes under `src/main/java/org/springframework/boot/autoconfigure/` are still required — even 1.1.4 GA references the Spring Boot 3 `RestClientAutoConfiguration` / `WebClientAutoConfiguration` packages in `@AutoConfiguration(after=...)`, resolved at annotation-processing time.
 
 ### 🤖 [Ollama](https://ollama.com/)
@@ -593,7 +593,7 @@ to get the full picture._
 
 ### 🧹 [SonarCloud](https://sonarcloud.io/)
 - **What it is**: SaaS Sonar — static analysis dashboard (free for public repos).
-- **Usage here**: `sonar-maven-plugin:5.1.0.4751`. Org `mirador1`, project key `mirador1_mirador-service`. Reads merged JaCoCo XML from both unit + IT. Exclusions defined in `pom.xml` `<sonar.exclusions>`.
+- **Usage here**: `sonar-maven-plugin:5.1.0.4751`. Org `iris-7`, project key `iris-7_iris-service`. Reads merged JaCoCo XML from both unit + IT. Exclusions defined in `pom.xml` `<sonar.exclusions>`.
 - **Why it's pertinent**: Free tier gives us Quality Gate, security hotspots, and tech-debt tracking without self-hosting SonarQube.
 
 ### 🧹 [SonarQube Community (self-hosted)](https://www.sonarsource.com/products/sonarqube/)
@@ -760,7 +760,7 @@ to get the full picture._
 
 ### 🌿 [Git](https://git-scm.com/)
 - **What it is**: Distributed version control.
-- **Usage here**: Repo at `gitlab.com/mirador1/mirador-service`. Permanent `dev` branch, auto-merge to `main` on green pipeline.
+- **Usage here**: Repo at `gitlab.com/iris-7/iris-service`. Permanent `dev` branch, auto-merge to `main` on green pipeline.
 - **Why it's pertinent**: Fundamental. The `dev` branch pattern is documented in `CLAUDE.md` to prevent accidental deletion.
 
 ### 🪝 [lefthook](https://lefthook.dev/)
@@ -1107,7 +1107,7 @@ docker-build  ─►  IMAGE pushed to registry
 
 ### ☸️ [Kubernetes rollout](https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/)
 - **What it is**: Deployment strategy (RollingUpdate by default).
-- **Usage here**: `kubectl rollout status deployment/mirador -n app --timeout=360s` in `.kubectl-apply`. 6 min is deliberate — JVM warmup + Flyway + image pull on cold nodes exceed the default 180 s.
+- **Usage here**: `kubectl rollout status deployment/iris -n app --timeout=360s` in `.kubectl-apply`. 6 min is deliberate — JVM warmup + Flyway + image pull on cold nodes exceed the default 180 s.
 - **Why it's pertinent**: Wrong timeout causes CI-false-positive failures that leave a half-rolled deployment.
 
 ---
@@ -1165,7 +1165,7 @@ docker-build  ─►  IMAGE pushed to registry
 
 ### 🔐 [GCP Secret Manager](https://cloud.google.com/secret-manager)
 - **What it is**: GCP's managed secret storage.
-- **Usage here**: Cloud Run deploy reads `DB_PASSWORD` via `--set-secrets "DB_PASSWORD=mirador-db-password:latest"`.
+- **Usage here**: Cloud Run deploy reads `DB_PASSWORD` via `--set-secrets "DB_PASSWORD=iris-db-password:latest"`.
 - **Why it's pertinent**: Avoids K8s-secret-style base64-then-copy patterns.
 
 ### ☁️ [AWS](https://aws.amazon.com/)
@@ -1226,7 +1226,7 @@ docker-build  ─►  IMAGE pushed to registry
 
 ## Cross-reference
 
-The Angular frontend has its own glossary covering TypeScript/Angular-specific tech: <https://gitlab.com/mirador1/mirador-ui/-/blob/main/docs/technologies.md>.
+The Angular frontend has its own glossary covering TypeScript/Angular-specific tech: <https://gitlab.com/iris-7/iris-ui/-/blob/main/docs/technologies.md>.
 
 Architecture-level decisions (Kustomize over Helm, buildx over Kaniko, Semgrep over Qodana, etc.) are recorded in `docs/adr/`. Those ADRs capture the one-off discussion; this glossary captures the steady-state picture.
 

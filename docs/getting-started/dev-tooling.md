@@ -31,8 +31,8 @@ glab auth login                               # one-shot token setup
 - **How it connects**: reads `~/.kube/config` on launch, lists every
   context, colour-codes status. No plugin needed.
 - **Setup for this project**:
-  - `kind-mirador-local` appears automatically after
-    `kind create cluster --name mirador-local --config deploy/kubernetes/kind-config.yaml`.
+  - `kind-iris-local` appears automatically after
+    `kind create cluster --name iris-local --config deploy/kubernetes/kind-config.yaml`.
   - `gke_…mirador-prod` appears automatically after `bin/cluster/connect-prod.sh`
     (or a manual `gcloud container clusters get-credentials`).
 - **What it's good at**: pod logs / exec / events, CRD browsing (Argo
@@ -106,8 +106,8 @@ CLI from the integrated terminal; Kubernetes → use OpenLens in parallel.
 
 ## GitLab integration
 
-The project lives at <https://gitlab.com/mirador1/mirador-service> +
-<https://gitlab.com/mirador1/mirador-ui>. Two auth paths coexist.
+The project lives at <https://gitlab.com/iris-7/iris-service> +
+<https://gitlab.com/iris-7/iris-ui>. Two auth paths coexist.
 
 ### `glab` CLI
 
@@ -141,7 +141,7 @@ Use SSH for pushes (no token expiration, works everywhere):
 ```bash
 ssh-keygen -t ed25519 -C "benoit.besson@gmail.com"
 cat ~/.ssh/id_ed25519.pub | pbcopy             # paste into GitLab → SSH Keys
-git remote set-url origin git@gitlab.com:mirador1/mirador-service.git
+git remote set-url origin git@gitlab.com:iris-7/iris-service.git
 ```
 
 ## Environment connection matrix
@@ -151,7 +151,7 @@ Three environments, three port decades (compose = upstream, kind = +10000, prod 
 | Environment    | Admin plane (kubeconfig)                        | App services (port-forward)     |
 |----------------|-------------------------------------------------|----------------------------------|
 | **compose**    | n/a                                             | `./run.sh all` — upstream ports  |
-| **kind**       | `kubectl config use-context kind-mirador-local` | `bin/cluster/port-forward/kind.sh --daemon` — 1xxxx |
+| **kind**       | `kubectl config use-context kind-iris-local` | `bin/cluster/port-forward/kind.sh --daemon` — 1xxxx |
 | **GKE prod**   | `bin/cluster/connect-prod.sh`                           | `bin/cluster/port-forward/prod.sh --daemon` — 2xxxx |
 
 ### Concretely
@@ -161,7 +161,7 @@ Three environments, three port decades (compose = upstream, kind = +10000, prod 
 ./run.sh all                       # infra containers, ports 8080/3000/…
 
 # kind (local K8s mirror)
-kind create cluster --name mirador-local --config deploy/kubernetes/kind-config.yaml
+kind create cluster --name iris-local --config deploy/kubernetes/kind-config.yaml
 kubectl apply -k deploy/kubernetes/overlays/local
 bin/cluster/port-forward/kind.sh --daemon            # tunnels on 1xxxx (18080, 13000, 14242, …)
 bin/cluster/pgweb/kind-up.sh               # optional: pgweb on 8082 for the UI's Database page
@@ -184,11 +184,11 @@ pod / image in …" buttons. Tracked as a UI-repo task.
 
 | Tool             | URI template                                                | Example                                               |
 |------------------|-------------------------------------------------------------|-------------------------------------------------------|
-| **VS Code**      | `vscode://file/<absolute-path>:<line>`                      | `vscode://file//Users/you/dev/mirador-service/pom.xml:245` |
-| **IntelliJ IDEA**| `idea://open?file=<abs-path>&line=<n>`                      | `idea://open?file=/Users/you/dev/mirador-service/pom.xml&line=245` |
+| **VS Code**      | `vscode://file/<absolute-path>:<line>`                      | `vscode://file//Users/you/dev/iris-service/pom.xml:245` |
+| **IntelliJ IDEA**| `idea://open?file=<abs-path>&line=<n>`                      | `idea://open?file=/Users/you/dev/iris-service/pom.xml&line=245` |
 | **OpenLens**     | `lens://app/catalog`                                        | opens OpenLens at the cluster catalog                 |
-| **Docker Desktop** | `docker-desktop://dashboard/container/<id>`               | `docker-desktop://dashboard/container/mirador-db`     |
-| **GitLab**       | https URL                                                   | `https://gitlab.com/mirador1/mirador-service/-/blob/main/pom.xml#L245` |
+| **Docker Desktop** | `docker-desktop://dashboard/container/<id>`               | `docker-desktop://dashboard/container/iris-db`     |
+| **GitLab**       | https URL                                                   | `https://gitlab.com/iris-7/iris-service/-/blob/main/pom.xml#L245` |
 
 The Angular UI's "Architecture" + "Database" + "Quality" pages already
 have placeholders for such links — wiring them up uses nothing beyond a

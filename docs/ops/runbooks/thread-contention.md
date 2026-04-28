@@ -1,4 +1,4 @@
-# Alert: `MiradorThreadContention`
+# Alert: `IrisThreadContention`
 
 Fired when > 30 % of JVM threads are in BLOCKED state for ≥ 5 min. Classic
 "something is locked" signal. Warning-tier — high BLOCKED rates don't
@@ -9,7 +9,7 @@ immediately fail the app but predict a latency cliff.
 ```bash
 # 1. Current thread-state breakdown:
 curl -s 'http://localhost:9090/api/v1/query' --data-urlencode 'query=
-  sum by (state) (jvm_threads_states_threads{job=~"mirador.*"})
+  sum by (state) (jvm_threads_states_threads{job=~"iris.*"})
 ' | jq '.data.result[] | {state: .metric.state, count: .value[1]}'
 
 # 2. Thread dump via actuator:
@@ -42,7 +42,7 @@ The `lockName` tells you WHAT they're waiting on — usually a
 ```bash
 # Pyroscope — narrow to the lock profile type for the last 15 min.
 # URL: <grafana>/explore then select Pyroscope → profile_type="mutex"
-#      → application="mirador"
+#      → application="iris"
 
 # JFR (Java Flight Recorder) for a 60-s snapshot via actuator:
 # Only works if management.endpoint.jfr.enabled=true AND -XX:StartFlightRecording

@@ -1,4 +1,4 @@
-# docs/api/smoke.hurl — Mirador API golden-path smoke test (Hurl).
+# docs/api/smoke.hurl — Iris API golden-path smoke test (Hurl).
 #
 # What this file is:
 #   A plain-text HTTP script that exercises the main API flow end-to-end:

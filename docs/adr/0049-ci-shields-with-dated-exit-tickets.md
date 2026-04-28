@@ -2,13 +2,13 @@
 
 - **Status**: Accepted
 - **Date**: 2026-04-22
-- **Deciders**: Mirador maintainers
+- **Deciders**: Iris maintainers
 - **Related**: [ADR-0041](0041-ci-hygiene-honest-green-discipline.md) (CI
   hygiene — scope-out > shield), `~/.claude/CLAUDE.md` → "Pipelines stay green"
 
 ## Context
 
-Mirador's CI rule (ADR-0041) is "scope-out, not shield" — when a job can't
+Iris's CI rule (ADR-0041) is "scope-out, not shield" — when a job can't
 reliably pass under current conditions, prefer narrowing the trigger
 (`rules.if`, `changes:`) over `allow_failure: true`. But there are real
 cases where scope-out doesn't work:

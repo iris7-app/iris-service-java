@@ -32,7 +32,7 @@ build-jar:
 # Path-filtered — runs only when the manifests or their direct deps change.
 # Most MRs skip it entirely, so the added latency is <1 min/week in aggregate.
 #
-# The mirador backend pod is deliberately NOT in the Ready-wait list: its
+# The iris backend pod is deliberately NOT in the Ready-wait list: its
 # image is built amd64-only via buildx, and the macbook-local runner is
 # arm64 kind (exec format error on load). GKE remains the source of truth
 # for the app pod itself; this job validates the cluster wiring around it.

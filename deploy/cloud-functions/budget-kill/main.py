@@ -4,7 +4,7 @@ monthly budget hits 100% of its cap.
 
 Triggered by Pub/Sub. The GCP billing budget (configured in
 docs/ops/cost-control.md) is wired to publish a notification message to
-the `mirador-budget-kill` topic on every threshold crossing. This
+the `iris-budget-kill` topic on every threshold crossing. This
 function subscribes, filters on the 100% threshold, and deletes the
 ephemeral GKE cluster so the bill stops growing.
 
@@ -51,7 +51,7 @@ def budget_kill(event, context):  # noqa: ARG001 — Cloud Functions signature
     `event["data"]` is a base64-encoded JSON payload from the Billing
     notification. Shape (as of 2026):
     {
-      "budgetDisplayName": "Mirador €10 alert",
+      "budgetDisplayName": "Iris €10 alert",
       "alertThresholdExceeded": 1.0,
       "costAmount": 10.47,
       "costIntervalStart": "2026-04-01T00:00:00Z",

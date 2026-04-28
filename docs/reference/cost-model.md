@@ -1,6 +1,6 @@
 # Cost model — what each piece actually costs
 
-An explicit price list for every moving part of the Mirador stack.
+An explicit price list for every moving part of the Iris stack.
 Updated when a new component lands or when GCP/providers change their
 pricing. The ADR-0022 target is ≤€2/month idle; this document is how
 we keep it honest.
@@ -29,7 +29,7 @@ decimals or to 1 significant figure for small amounts.
 | GCS bucket `*-tf-state` | 182 B | <€0.01 | tf state + lock, single-region, 1 object |
 | Artifact Registry images | ~500 MB | ~€0.05 | PD-backed repo storage in europe-west1 |
 | Secret Manager | 5 active secrets | €0 | free tier = 6 active secrets/month |
-| Pub/Sub topic `mirador-budget-kill` | 1 topic, 0 msg | €0 | billed per-message; no message = no cost |
+| Pub/Sub topic `iris-budget-kill` | 1 topic, 0 msg | €0 | billed per-message; no message = no cost |
 | Cloud Function `budget-kill` | 0 invocations | €0 | gen2 scale-to-zero, billed per invocation + vCPU-s |
 | IAM bindings | — | €0 | always free |
 | DNS zones (DuckDNS external) | — | €0 | external free service |
@@ -103,7 +103,7 @@ demo volume is small; Grafana Cloud wins once we have real users.
 
 ## What doesn't appear here
 
-- **Human time.** The script `bin/dev/mirador-doctor` + runbooks exist
+- **Human time.** The script `bin/dev/iris-doctor` + runbooks exist
   specifically to make operator time cheap, but they're not a GCP
   line item.
 - **Email / notifications.** GCP budget alerts' default email is free.

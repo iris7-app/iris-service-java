@@ -17,8 +17,8 @@ section_ci() {
     local name=$(basename "$repo")
     local project=""
     case "$name" in
-      mirador-service) project="mirador1%2Fmirador-service" ;;
-      mirador-ui)      project="mirador1%2Fmirador-ui" ;;
+      iris-service) project="iris-7%2Firis-service" ;;
+      iris-ui)      project="iris-7%2Firis-ui" ;;
     esac
     # Latest main pipeline. Don't trust raw `status: failed` because GitLab
     # marks the whole pipeline failed when ANY job fails, even one shielded

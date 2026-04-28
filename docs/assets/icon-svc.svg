@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- mirador-service (Java/Spring Boot 4) — GREEN variant per Spring Boot brand
-       (#6DB33F).  Watchtower silhouette mirrors the mirador-ui logo for
+  <!-- iris-service (Java/Spring Boot 4) — GREEN variant per Spring Boot brand
+       (#6DB33F).  Watchtower silhouette mirrors the iris-ui logo for
        visual sibling identity ; only the colour scheme differs to flag
        repo at-a-glance in the GitLab group sidebar. -->
   <rect width="32" height="32" rx="7" fill="#6DB33F"/>

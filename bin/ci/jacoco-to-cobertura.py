@@ -105,7 +105,7 @@ def convert(jacoco_path: Path, cobertura_path: Path) -> None:
             cls_line_missed, cls_line_covered = _counter(jcls, "LINE")
             cls_branch_missed, cls_branch_covered = _counter(jcls, "BRANCH")
             # GitLab matches `filename` to changed paths in the MR diff —
-            # use the package-relative path (e.g. `com/mirador/Foo.java`)
+            # use the package-relative path (e.g. `org/iris/Foo.java`)
             # so it joins the `src/main/java` <source> root cleanly.
             filename_rel = f"{jpkg.get('name')}/{cls_sourcefile}" if cls_sourcefile else cls_name
             cls_el = ET.SubElement(

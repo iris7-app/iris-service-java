@@ -8,7 +8,7 @@ OpenLens stores per-cluster preferences in a host-local file:
 
 That file is gitignored (host-specific IDs, paths, lastSeen timestamps).
 This directory keeps the **golden reference** of what the
-`kind-mirador-local` cluster's `preferences` block MUST contain so the
+`kind-iris-local` cluster's `preferences` block MUST contain so the
 Metrics tab works.
 
 ## Files

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ macOS launchd unit for bin/nightly-smoke.sh.
+  ~
+  ~ Install:
+  ~   cp bin/launchd/org.iris.nightly-smoke.plist ~/Library/LaunchAgents/
+  ~   launchctl load ~/Library/LaunchAgents/org.iris.nightly-smoke.plist
+  ~
+  ~ Verify it loaded:
+  ~   launchctl list | grep iris
+  ~
+  ~ Uninstall:
+  ~   launchctl unload ~/Library/LaunchAgents/org.iris.nightly-smoke.plist
+  ~   rm ~/Library/LaunchAgents/org.iris.nightly-smoke.plist
+  ~
+  ~ Edit the WorkingDirectory + Program paths if your repo lives elsewhere.
+  ~ stdout / stderr land in /tmp/org.iris.nightly-smoke.{out,err}.log.
+  -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>org.iris.nightly-smoke</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/benoitbesson/dev/workspace-modern/iris-service</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-l</string>
+        <string>-c</string>
+        <string>./bin/nightly-smoke.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/org.iris.nightly-smoke.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/org.iris.nightly-smoke.err.log</string>
+</dict>
+</plist>

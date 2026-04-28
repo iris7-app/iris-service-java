@@ -5,7 +5,7 @@
 
 ## Context
 
-Mirador runs on **Java 25 (bytecode v69) + Spring Boot 4.0.5 GA +
+Iris runs on **Java 25 (bytecode v69) + Spring Boot 4.0.5 GA +
 Spring Framework 7**. At the time of writing, the typical "safe"
 Spring Boot stack is Java 21 LTS + Spring Boot 3.x. Choosing the
 bleeding edge has concrete costs that accumulated during this
@@ -24,13 +24,13 @@ project:
   2.18.1-alpha because later -alpha versions assume OTel API 1.58+
   while SB4's BOM pins 1.55 (sign-off comment in `pom.xml`).
 
-Despite the cost, this choice is deliberate — Mirador's purpose is to
+Despite the cost, this choice is deliberate — Iris's purpose is to
 **demonstrate** modern platform/JVM practices, and sitting two majors
 behind the industry trajectory would miss the point.
 
 ## Decision
 
-**Mirador tracks the Java GA + Spring Boot GA lines within one major
+**Iris tracks the Java GA + Spring Boot GA lines within one major
 release of latest**, even when that means carrying short-lived
 transitive-dep pins and shim classes.
 
@@ -64,7 +64,7 @@ Concrete commitments the stack leans on:
   Boot 4.
 
 **Quarkus + GraalVM native**:
-- Different ecosystem; would pull Mirador away from the Spring world.
+- Different ecosystem; would pull Iris away from the Spring world.
 - **Against**: the GraalVM angle is already covered by the
   `native-build` schedule in `.gitlab-ci.yml`, which produces a
   native image of the SB4 app. Switching ecosystem would erase the

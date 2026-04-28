@@ -12,7 +12,7 @@ single ADR because they share the same motivation (discoverability):
 ### 1. Missing community-standard files
 
 GitHub shows a "Community Standards" checklist on every public repo.
-Until now, Mirador's checklist was mostly red: no `SECURITY.md`, no
+Until now, Iris's checklist was mostly red: no `SECURITY.md`, no
 `CONTRIBUTING.md`, no issue templates, no PR template. Each missing
 file:
 
@@ -43,7 +43,7 @@ Add at the repo root:
   controls, hall of fame placeholder. Tracks the GitHub/GitLab
   expected format.
 - `CONTRIBUTING.md` — where to contribute (GitLab canonical, GitHub
-  read-only mirror), workflow (`bin/dev/mirador-doctor` → branch →
+  read-only mirror), workflow (`bin/dev/iris-doctor` → branch →
   `bin/ship/ship.sh`), Conventional Commits rule, code conventions per
   repo, ADR discipline, review policy, what gets declined.
 
@@ -58,9 +58,9 @@ Add per-platform templates:
   contributors that PRs against the mirror are not reviewed (per
   `docs/ops/ci-philosophy.md` Rule 2)
 
-Same files exist in **both** repos (`mirador-service` and
-`mirador-ui`). Paths that differ (Maven vs npm) are adapted; paths
-that are shared (ship.sh, mirador-doctor, ADR rules) stay identical.
+Same files exist in **both** repos (`iris-service` and
+`iris-ui`). Paths that differ (Maven vs npm) are adapted; paths
+that are shared (ship.sh, iris-doctor, ADR rules) stay identical.
 
 ### Hierarchical ADR index
 
