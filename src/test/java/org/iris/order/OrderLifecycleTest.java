@@ -39,6 +39,38 @@ class OrderLifecycleTest {
     }
 
     @Test
+    void onPersist_defaultsStatusToPendingWhenNull() throws Exception {
+        // Pinned : the controller's POST handler sets status=PENDING
+        // explicitly, but a direct repository.save() (e.g. from a test
+        // fixture or a future bulk-import path) might not. The hook
+        // owns the "no-status-on-insert means PENDING" contract.
+        Order o = new Order(null, 1L, null, BigDecimal.ZERO, null, null);
+        invokeHook(o, "onPersist");
+        assertThat(o.getStatus()).isEqualTo(OrderStatus.PENDING);
+    }
+
+    @Test
+    void onPersist_preservesExistingStatus() throws Exception {
+        Order o = new Order(null, 1L, OrderStatus.CONFIRMED, BigDecimal.ZERO, null, null);
+        invokeHook(o, "onPersist");
+        assertThat(o.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+    }
+
+    @Test
+    void onPersist_defaultsTotalAmountToZeroWhenNull() throws Exception {
+        Order o = new Order(null, 1L, OrderStatus.PENDING, null, null, null);
+        invokeHook(o, "onPersist");
+        assertThat(o.getTotalAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void onPersist_preservesExistingTotalAmount() throws Exception {
+        Order o = new Order(null, 1L, OrderStatus.PENDING, new BigDecimal("42.42"), null, null);
+        invokeHook(o, "onPersist");
+        assertThat(o.getTotalAmount()).isEqualByComparingTo("42.42");
+    }
+
+    @Test
     void onUpdate_alwaysBumpsUpdatedAt() throws Exception {
         Instant old = Instant.parse("2020-01-01T00:00:00Z");
         Order o = newOrder(old);
