@@ -32,5 +32,5 @@ everything up without extra configuration.
 - `pom.xml` — the `<resource>` block (implicit via Spring Boot) and the
   `maven-resources-plugin` executions that copy CI reports into
   `META-INF/build-reports/`.
-- `com.mirador.observability.QualityReportEndpoint` — reads files from
+- `org.iris.observability.QualityReportEndpoint` — reads files from
   `META-INF/build-reports/` to build the `/actuator/quality` payload.

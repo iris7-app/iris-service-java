@@ -2,7 +2,7 @@
 
 - **Status**: Accepted
 - **Date**: 2026-04-23
-- **Deciders**: Mirador maintainers
+- **Deciders**: Iris maintainers
 - **Related**:
   [`~/.claude/CLAUDE.md`](../../CLAUDE.md) → "File length hygiene" + "1
   widget / 1 panel = 1 file",

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
 # bin/ci/migrate-to-github-org.sh — move GitHub mirrors from `Beennnn/*`
-# to an organization (default `mirador1`) and rewrite every URL in
+# to an organization (default `iris-7`) and rewrite every URL in
 # both repos so the mirror keeps working.
 #
-# Why: the GitLab namespace is `gitlab.com/mirador1/*`. Mirroring to
+# Why: the GitLab namespace is `gitlab.com/iris-7/*`. Mirroring to
 # `github.com/Beennnn/*` is a personal-account artefact. Using
-# `github.com/mirador1/*` on both platforms makes links symmetric,
+# `github.com/iris-7/*` on both platforms makes links symmetric,
 # scales to multiple repos without polluting a personal account, and
 # is what recruiters would expect when they see a project-scoped
 # namespace.
@@ -18,8 +18,8 @@
 #      the org.
 #
 # What this script does:
-#   1. Transfer Beennnn/mirador-service → <ORG>/mirador-service
-#   2. Transfer Beennnn/mirador-ui      → <ORG>/mirador-ui
+#   1. Transfer Beennnn/iris-service → <ORG>/iris-service
+#   2. Transfer Beennnn/iris-ui      → <ORG>/iris-ui
 #   3. Wait for GitHub to finalise the redirect.
 #   4. Rewrite every hard-coded Beennnn/ URL in both repos:
 #        - README.md (badge URLs)
@@ -39,14 +39,14 @@
 #     hosts the repo.
 #
 # Usage:
-#   bin/ci/migrate-to-github-org.sh                    # default org = mirador1
+#   bin/ci/migrate-to-github-org.sh                    # default org = iris-7
 #   bin/ci/migrate-to-github-org.sh mynewname          # override org name
 #   bin/ci/migrate-to-github-org.sh --rewrite-only     # skip transfer, just update URLs
 # =============================================================================
 
 set -euo pipefail
 
-NEW_ORG="${1:-mirador1}"
+NEW_ORG="${1:-iris-7}"
 OLD_OWNER="${OLD_OWNER:-Beennnn}"
 REWRITE_ONLY=0
 for arg in "$@"; do
@@ -54,10 +54,10 @@ for arg in "$@"; do
 done
 
 SERVICE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-UI_DIR="${UI_DIR:-$SERVICE_DIR/../../js/mirador-ui}"
+UI_DIR="${UI_DIR:-$SERVICE_DIR/../../js/iris-ui}"
 
 if [[ ! -d "$UI_DIR" ]]; then
-  echo "❌  UI dir not found at $UI_DIR — set UI_DIR=/path/to/mirador-ui"
+  echo "❌  UI dir not found at $UI_DIR — set UI_DIR=/path/to/iris-ui"
   exit 1
 fi
 
@@ -67,7 +67,7 @@ ok()   { printf "  \033[32m✓\033[0m %s\n" "$1"; }
 # ── 1. Transfer (skipped with --rewrite-only) ──────────────────────────────
 if [[ "$REWRITE_ONLY" == "0" ]]; then
   step "1/3 Transfer GitHub repos to $NEW_ORG"
-  for repo in mirador-service mirador-ui; do
+  for repo in iris-service iris-ui; do
     existing_target=$(gh api "repos/$NEW_ORG/$repo" --jq '.full_name' 2>/dev/null || echo "")
     if [[ "$existing_target" == "$NEW_ORG/$repo" ]]; then
       ok "$NEW_ORG/$repo already exists — skipping transfer"
@@ -82,7 +82,7 @@ if [[ "$REWRITE_ONLY" == "0" ]]; then
   # Transfers are synchronous in the API but the redirect takes a few
   # seconds to propagate. 10 s is safe; 30 s if flaky.
   for i in 1 2 3 4 5 6; do
-    if gh api "repos/$NEW_ORG/mirador-service" --jq '.full_name' >/dev/null 2>&1; then
+    if gh api "repos/$NEW_ORG/iris-service" --jq '.full_name' >/dev/null 2>&1; then
       ok "redirect live after ${i}×5s"
       break
     fi
@@ -107,7 +107,7 @@ rewrite_in() {
     ! -path "./target/*" \
     ! -path "./dist/*" \
     -print0 \
-    | xargs -0 perl -i -pe "s{github\.com/${OLD_OWNER}/mirador-(service|ui)}{github.com/${NEW_ORG}/mirador-\$1}g; s{\"${OLD_OWNER}/mirador-(service|ui)\"}{\"${NEW_ORG}/mirador-\$1\"}g;"
+    | xargs -0 perl -i -pe "s{github\.com/${OLD_OWNER}/iris-(service|ui)}{github.com/${NEW_ORG}/iris-\$1}g; s{\"${OLD_OWNER}/iris-(service|ui)\"}{\"${NEW_ORG}/iris-\$1\"}g;"
   ok "rewritten $(basename "$dir")"
 }
 

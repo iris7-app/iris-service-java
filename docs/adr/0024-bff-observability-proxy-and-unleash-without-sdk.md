@@ -49,9 +49,9 @@ per UI render.
    back to Unleash.
    **Note (superseded by ADR-0026)**: this whole `FeatureFlagController`
    was subsequently removed. The UI now calls `unleash-proxy` directly.
-   The single remaining flag in use is `mirador.bio.enabled` (kill-switch
+   The single remaining flag in use is `iris.bio.enabled` (kill-switch
    for the LLM-backed /bio endpoint); the initially-planned
-   `mirador.ui.ops-mode` was dropped — the project has a single user
+   `iris.ui.ops-mode` was dropped — the project has a single user
    (developer), always operator, so a customer-persona gate had no
    real effect.
 
@@ -106,7 +106,7 @@ per UI render.
   30-s-stale flag is better than a crashed UI page.
 <!-- Superseded by ADR-0026: the UI gates features via unleash-proxy
      (client-side), not a Spring Boot BFF. ops-mode gate was dropped;
-     only mirador.bio.enabled kill-switch remains. -->
+     only iris.bio.enabled kill-switch remains. -->
 
 ## Revisit this when
 

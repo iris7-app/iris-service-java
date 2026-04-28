@@ -60,10 +60,10 @@ Concretely:
 
 OpenSearch would undeniably give us richer full-text, Kibana-style
 aggregations, vector/kNN and ML-based anomaly detection. But for
-Mirador today:
+Iris today:
 
 - **Cost.** OpenSearch is ~3× the baseline RAM of Loki and adds a
-  JVM cluster to operate. Mirador is a demo stack that has to stay
+  JVM cluster to operate. Iris is a demo stack that has to stay
   runnable on a single MacBook.
 - **Duplication.** Logs would live in Loki *and* OpenSearch, doubling
   storage and making retention decisions ambiguous.
@@ -149,7 +149,7 @@ choose. Worth revisiting once blooms are in place.
 ### Neutral
 
 - Storage cost grows slightly — one bloom per chunk per series.
-  Size capped at 128 MB / stream by the Loki default. For Mirador's
+  Size capped at 128 MB / stream by the Loki default. For Iris's
   volumes that's a rounding error.
 
 ## References

@@ -12,5 +12,5 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     read -r
     cd deploy/terraform/gcp
     PROJECT=$(grep project_id terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
-    terraform init -backend-config="bucket=${PROJECT}-tf-state" -backend-config="prefix=mirador/gcp" -input=false
+    terraform init -backend-config="bucket=${PROJECT}-tf-state" -backend-config="prefix=iris/gcp" -input=false
     terraform destroy

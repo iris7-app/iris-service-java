@@ -1,6 +1,6 @@
 # Raise the Docker Desktop VM memory cap (macOS)
 
-**Why this is needed**: Mirador's CI uses kind (Kubernetes-in-Docker) for
+**Why this is needed**: Iris's CI uses kind (Kubernetes-in-Docker) for
 `test:k8s-apply` + `test:k8s-apply-prom`. Each kind cluster takes ~700 MB
 RSS; running them serially with chaos-mesh + kube-prometheus-stack CRDs
 loaded means peak ~2.5 GB. With Maven, integration tests, and the dev
@@ -27,7 +27,7 @@ validation by Docker Desktop itself.
 5. Optional but recommended:
    - **CPU** : ≥ 4 cores (default 4 is OK)
    - **Swap** : ≥ 2 GB (default 1 GB occasionally tight when JVMs warm up)
-   - **Disk image size** : ≥ 100 GB (Mirador's build cache + 156 images
+   - **Disk image size** : ≥ 100 GB (Iris's build cache + 156 images
      during a busy session can hit 80 GB)
 6. Click **Apply & restart** (bottom right). Docker Desktop restarts in
    ~30 seconds; running containers are stopped + restarted in their
@@ -38,7 +38,7 @@ validation by Docker Desktop itself.
 After verification, retire the shields with:
 
 ```bash
-cd /Users/benoitbesson/dev/workspace-modern/mirador-service
+cd /Users/benoitbesson/dev/workspace-modern/iris-service
 # Remove `allow_failure: true` + the 8-line ticket comment block from
 # both `test:k8s-apply` and `test:k8s-apply-prom` jobs in .gitlab-ci.yml
 $EDITOR .gitlab-ci.yml

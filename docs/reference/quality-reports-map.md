@@ -1,6 +1,6 @@
 # Where each quality report lives — Maven Site vs SonarCloud
 
-Mirador produces a lot of quality / security artefacts from CI and
+Iris produces a lot of quality / security artefacts from CI and
 from local `mvn` runs. Readers periodically ask "wait, isn't that
 already in Sonar?" — this map answers that.
 

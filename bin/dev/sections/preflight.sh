@@ -132,7 +132,7 @@ section_env_drift() {
 section_manual_health() {
   echo "▸ Manual job health (last run on svc main)…"
   local pid
-  pid=$( (cd "$SVC_DIR" && glab api 'projects/mirador1%2Fmirador-service/pipelines?ref=main&per_page=1' 2>/dev/null) \
+  pid=$( (cd "$SVC_DIR" && glab api 'projects/iris-7%2Firis-service/pipelines?ref=main&per_page=1' 2>/dev/null) \
     | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['id'])" 2>/dev/null || echo "")
   if [[ -z "$pid" ]]; then
     finding info "manual-health: couldn't fetch latest svc main pipeline"
@@ -140,7 +140,7 @@ section_manual_health() {
   fi
   # Manual jobs we care about + their last-run status.
   local report
-  report=$( (cd "$SVC_DIR" && glab api "projects/mirador1%2Fmirador-service/pipelines/$pid/jobs?per_page=50" 2>/dev/null) \
+  report=$( (cd "$SVC_DIR" && glab api "projects/iris-7%2Firis-service/pipelines/$pid/jobs?per_page=50" 2>/dev/null) \
     | python3 -c "
 import json, sys
 jobs = json.load(sys.stdin)

@@ -22,7 +22,7 @@
 # What stays unchanged from local/:
 #   • lgtm pod (Grafana + Loki + Tempo + Mimir + OTel Collector)
 #   • OTLP push from app pods → lgtm Collector → Mimir/Tempo/Loki
-#   • Mirador's own dashboards, alerts, and the kubeletstats receiver
+#   • Iris's own dashboards, alerts, and the kubeletstats receiver
 #     (extra cost is tiny — 30s scrape interval on each)
 #
 # When to use this overlay vs `local/`:
@@ -51,13 +51,13 @@ resources:
   # bootstrap pattern: CRDs → CRs.
   - kube-prom-stack-crds.yaml
   - kube-prom-stack-rendered.yaml
-  # ServiceMonitor: Prometheus picks up Mirador's /actuator/prometheus.
+  # ServiceMonitor: Prometheus picks up Iris's /actuator/prometheus.
   # Required label `release: prometheus-stack` so the operator's selector
   # matches. See file header for the silent-ignore trap.
-  - mirador-servicemonitor.yaml
-  # Mirador alert + recording rules (Phase 3 O2). Only included here
+  - iris-servicemonitor.yaml
+  # Iris alert + recording rules (Phase 3 O2). Only included here
   # and in gke-prom/ — plain local/ lacks the PrometheusRule CRD.
-  # Rule file: base/observability-prom/mirador-alerts.yaml.
+  # Rule file: base/observability-prom/iris-alerts.yaml.
   - ../../base/observability-prom
   # Re-use the local/ overlay's plain Secrets (ESO has no path to GCP
   # Secret Manager from a kind cluster). Kustomize forbids resource
@@ -95,14 +95,14 @@ patches:
       apiVersion: external-secrets.io/v1
       kind: ExternalSecret
       metadata:
-        name: mirador-secrets
+        name: iris-secrets
         namespace: app
   - patch: |-
       $patch: delete
       apiVersion: external-secrets.io/v1
       kind: ExternalSecret
       metadata:
-        name: mirador-secrets
+        name: iris-secrets
         namespace: infra
   - patch: |-
       $patch: delete

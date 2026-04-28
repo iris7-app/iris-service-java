@@ -1,5 +1,5 @@
 # =============================================================================
-# Terraform — Azure infrastructure for mirador (reference implementation)
+# Terraform — Azure infrastructure for iris (reference implementation)
 #
 # Status: REFERENCE / STAGE 1 — not applied against a subscription.
 # Canonical target is GCP (see deploy/terraform/gcp/). This module exists
@@ -109,7 +109,7 @@ provider "azurerm" {
 # Role        : Resource Group — the Azure "container" for every child
 #               resource (networking, cluster, logs).
 # Why         : Azure requires every resource to live in a Resource Group.
-#               Creating one dedicated to mirador makes cleanup trivial
+#               Creating one dedicated to iris makes cleanup trivial
 #               (`az group delete` drops everything) and keeps RBAC
 #               scoping tight. Location defaults to "westeurope"
 #               (Netherlands) for EU data-sovereignty parity with the
@@ -127,7 +127,7 @@ resource "azurerm_resource_group" "main" {
   location = var.location
 
   tags = {
-    project = "mirador"
+    project = "iris"
     env     = "reference"
     managed = "terraform"
   }
@@ -156,7 +156,7 @@ resource "azurerm_virtual_network" "main" {
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
 
-  tags = { project = "mirador" }
+  tags = { project = "iris" }
 }
 
 resource "azurerm_subnet" "aks" {
@@ -190,7 +190,7 @@ resource "azurerm_log_analytics_workspace" "main" {
   sku                 = "PerGB2018"
   retention_in_days   = 30
 
-  tags = { project = "mirador" }
+  tags = { project = "iris" }
 }
 
 # =============================================================================
@@ -253,7 +253,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     # default lets HPA scale up without adding nodes too aggressively.
     max_pods = 30
 
-    tags = { project = "mirador" }
+    tags = { project = "iris" }
   }
 
   # System-assigned managed identity — Azure creates it with the
@@ -274,5 +274,5 @@ resource "azurerm_kubernetes_cluster" "main" {
     log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
   }
 
-  tags = { project = "mirador" }
+  tags = { project = "iris" }
 }

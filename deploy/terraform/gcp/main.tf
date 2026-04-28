@@ -1,5 +1,5 @@
 # =============================================================================
-# Terraform — GCP infrastructure for mirador (ephemeral demo cluster)
+# Terraform — GCP infrastructure for iris (ephemeral demo cluster)
 #
 # IaC posture after ADR-0013 + ADR-0021 + ADR-0022 (ephemeral cluster):
 #

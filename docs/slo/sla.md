@@ -1,4 +1,4 @@
-# Mirador Service — SLA (Service Level Agreement)
+# Iris Service — SLA (Service Level Agreement)
 
 > ⚠️ **Portfolio-demo SLA**. This is not a real customer-facing contract —
 > it's a documented commitment to demonstrate the production-grade discipline
@@ -20,7 +20,7 @@ single Kubernetes pod restart.
 ## How we measure
 
 - **Recording rules** : `sloth generate` produces 6-window rules (5m → 3d)
-  for each SLO at evaluation time. See `mirador-slo.yaml` in the shared
+  for each SLO at evaluation time. See `iris-slo.yaml` in the shared
   submodule's `deploy/kubernetes/observability-prom/`.
 - **Source metrics** : Spring Boot Actuator → Micrometer → Prometheus
   (`http_server_requests_seconds_count` + `_bucket`).

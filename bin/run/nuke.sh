@@ -8,7 +8,7 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
 
     ensure_docker
     echo "Full cleanup — removing containers, volumes, and build artifacts..."
-    pgrep -f 'MiradorApplication' | xargs kill 2>/dev/null || true
+    pgrep -f 'IrisApplication' | xargs kill 2>/dev/null || true
     pgrep -f 'spring-boot:run' | xargs kill 2>/dev/null || true
     docker compose down -v
     docker compose -f deploy/compose/observability.yml down -v

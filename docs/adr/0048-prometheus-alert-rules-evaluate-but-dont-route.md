@@ -1,13 +1,13 @@
-# ADR-0048: Mirador alert rules evaluate in Prometheus but don't route via Alertmanager
+# ADR-0048: Iris alert rules evaluate in Prometheus but don't route via Alertmanager
 
 - **Status**: Amended 2026-04-23 — Alertmanager flipped ON with a null-receiver to demo the routing pipeline end-to-end. See § Amendment 2026-04-23 at bottom. Original intent (no external paging receiver) stands for production posture.
 - **Date**: 2026-04-21 (amended 2026-04-23)
-- **Deciders**: Mirador maintainers
+- **Deciders**: Iris maintainers
 - **Related**: [ADR-0014](0014-single-replica-for-demo.md) (single-replica demo), [ADR-0039](0039-two-observability-deployment-modes.md) (two observability modes)
 
 ## Context
 
-Phase 3 O2 introduces [`PrometheusRule`](../../deploy/kubernetes/base/observability-prom/mirador-alerts.yaml)
+Phase 3 O2 introduces [`PrometheusRule`](../../deploy/kubernetes/base/observability-prom/iris-alerts.yaml)
 resources with 7 alert rules (HTTP RED, latency, JVM resource pressure,
 Kafka lag) plus supporting recording rules. The natural next step in a
 production deployment would be enabling Alertmanager + configuring
@@ -49,13 +49,13 @@ useful the day Alertmanager flips on:
 | `warning` | Next-business-day triage | Team channel, batched review |
 | `info` | Trend / awareness only | Dashboard only, no notification |
 
-All rules carry `team: platform` + `service: mirador-backend` labels.
+All rules carry `team: platform` + `service: iris-backend` labels.
 Annotations include `summary` (pager-line), `description` (incident
 triage body), and `runbook_url` pointing at a per-alert runbook stub
 under `docs/ops/runbooks/`.
 
-Naming convention: `Mirador<SubjectVerb>` e.g. `MiradorBackendDown`,
-`MiradorHighErrorRate`. The `Mirador` prefix disambiguates from
+Naming convention: `Iris<SubjectVerb>` e.g. `IrisBackendDown`,
+`IrisHighErrorRate`. The `Iris` prefix disambiguates from
 kube-prometheus-stack's bundled rules (defaultRules is off but future
 upgrades might re-enable selectively).
 
@@ -83,13 +83,13 @@ upgrades might re-enable selectively).
   future Alertmanager flip trivial: set `alertmanager.enabled: true` +
   configure one receiver with a route matching `severity=~"critical|warning"`.
 - Recording rules give dashboards + alerts a single shared source of
-  truth (e.g. `mirador:http_error_ratio:5m`) — no PromQL copy-paste
+  truth (e.g. `iris:http_error_ratio:5m`) — no PromQL copy-paste
   drift between panels and alert expressions.
 
 ### Negative
 
 - Alerts **don't notify anyone**. A silent failure can fire
-  `MiradorBackendDown` for hours with no human noticing. Acceptable
+  `IrisBackendDown` for hours with no human noticing. Acceptable
   only in a demo — explicitly called out in every runbook's "When to
   escalate" section.
 - Severity labels don't carry meaning today; they're aspirational.
@@ -131,7 +131,7 @@ subdir, only referenced from prom overlays) avoids that trap.
 
 ## References
 
-- `deploy/kubernetes/base/observability-prom/mirador-alerts.yaml` — the rules
+- `deploy/kubernetes/base/observability-prom/iris-alerts.yaml` — the rules
 - `docs/ops/runbooks/` — 6 alert-specific runbooks
 - [ADR-0014](0014-single-replica-for-demo.md) — originating no-Alertmanager decision
 - [ADR-0039](0039-two-observability-deployment-modes.md) — overlay split (local / local-prom / gke-prom)

@@ -45,11 +45,11 @@ fi
 
 # Fetch the live DB password from the cluster Secret (synced there by ESO
 # from GSM — ADR-0016). Env var name matches what docker-compose.yml expects.
-PGWEB_DB_PASSWORD=$(kubectl get secret mirador-secrets -n app \
+PGWEB_DB_PASSWORD=$(kubectl get secret iris-secrets -n app \
     -o jsonpath='{.data.DB_PASSWORD}' 2>/dev/null | base64 -d)
 
 if [ -z "$PGWEB_DB_PASSWORD" ]; then
-  echo "❌  Could not read DB_PASSWORD from Secret mirador-secrets in namespace app." >&2
+  echo "❌  Could not read DB_PASSWORD from Secret iris-secrets in namespace app." >&2
   echo "    ESO may not have synced yet, or the Secret name changed." >&2
   exit 1
 fi

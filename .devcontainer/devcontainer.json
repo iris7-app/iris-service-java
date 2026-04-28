@@ -1,6 +1,6 @@
 {
   "//": [
-    "Mirador backend dev container — zero-install onboarding + Codespaces-ready.",
+    "Iris backend dev container — zero-install onboarding + Codespaces-ready.",
     "",
     "Provides every tool a fresh contributor needs to build + run tests + spin",
     "the full compose stack locally, via a single `code --folder-uri` or the",
@@ -24,7 +24,7 @@
     "signed-commits follow-up') will require adding an allowed_signers file",
     "generator to this container."
   ],
-  "name": "Mirador backend (Java 25 + Maven + Docker)",
+  "name": "Iris backend (Java 25 + Maven + Docker)",
   "image": "mcr.microsoft.com/devcontainers/java:1-25-bookworm",
 
   "//features": "Add tools this image doesn't ship with. Each feature is installed in a dedicated layer for cache-friendly rebuilds.",
@@ -88,8 +88,8 @@
     8085
   ],
   "portsAttributes": {
-    "8080": { "label": "Spring Boot (mirador)" },
-    "4200": { "label": "Angular UI (mirador-ui, sibling repo)" },
+    "8080": { "label": "Spring Boot (iris)" },
+    "4200": { "label": "Angular UI (iris-ui, sibling repo)" },
     "3000": { "label": "Grafana (LGTM compose)" },
     "9000": { "label": "SonarQube local" },
     "8084": { "label": "Maven site" },
@@ -101,7 +101,7 @@
 
   "//mounts": "Persist Maven + npm caches across container rebuilds — saves ~2 min on each re-open.",
   "mounts": [
-    "source=mirador-maven-cache,target=/home/vscode/.m2,type=volume",
-    "source=mirador-node-cache,target=/home/vscode/.npm,type=volume"
+    "source=iris-maven-cache,target=/home/vscode/.m2,type=volume",
+    "source=iris-node-cache,target=/home/vscode/.npm,type=volume"
   ]
 }

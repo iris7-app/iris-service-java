@@ -20,7 +20,7 @@ ignore:
   #     not in `mcp-core:1.1.2`. Verified empirically on MR !226 pipeline
   #     #2480962474 — Spring Boot fails to start with NoSuchMethodError.
   #   - Bumping Spring AI itself to 2.0.0-M4 (which natively ships mcp 1.1.0)
-  #     would force a breaking-API migration of `com.mirador.mcp.McpConfig`
+  #     would force a breaking-API migration of `org.iris.mcp.McpConfig`
   #     (`MethodToolCallbackProvider.builder().toolObjects(...)` may be
   #     renamed) for a value-add that is purely "patch a transitive CVE".
   #

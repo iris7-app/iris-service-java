@@ -10,7 +10,7 @@
 # (Argo CD, ESO + friends all fit on one ~2 GB node).
 #
 # Usage:
-#   kind create cluster --name mirador-local --config deploy/kubernetes/kind-config.yaml
+#   kind create cluster --name iris-local --config deploy/kubernetes/kind-config.yaml
 # Or via the helper script:
 #   ./run.sh k8s-local
 # =============================================================================

@@ -96,7 +96,7 @@ prometheus:
     # "select ALL ServiceMonitor / PodMonitor / etc. in the cluster, not
     # only the ones with the chart's own labels". Without this the
     # Prometheus would scrape nothing because no objects match the empty
-    # selector defaults. Mirador's app `ServiceMonitor` (added in a future
+    # selector defaults. Iris's app `ServiceMonitor` (added in a future
     # commit) and any third-party operator-installed ServiceMonitor will
     # be picked up automatically.
     serviceMonitorSelectorNilUsesHelmValues: false

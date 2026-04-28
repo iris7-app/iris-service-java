@@ -45,7 +45,7 @@ resources:
   # exists; delete the CR to stop.
   - chaos
   # Unleash feature-flag service — Postgres + API + seed SQL. Holds
-  # kill-switches like mirador.bio.enabled (hide the Bio tab when Ollama
+  # kill-switches like iris.bio.enabled (hide the Bio tab when Ollama
   # is down). ADR referenced in the unleash/unleash.yaml header.
   - unleash
 

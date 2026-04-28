@@ -1,6 +1,6 @@
 # Environments & runtime flows
 
-Mirador runs against **three** environments. The Angular UI bundle is the
+Iris runs against **three** environments. The Angular UI bundle is the
 same in all three — only the `EnvService`'s computed URLs change.
 
 - **Local** — everything on the developer's laptop via Docker Compose.
@@ -37,7 +37,7 @@ it does not proxy or query third-party tools
 │  │                                                            │ │
 │  │  ┌──────────┐  :8080 ◀── /api/*  /actuator/*               │ │
 │  │  │ app      │  (Spring Boot 4)                             │ │
-│  │  │ mirador  │──┐                                           │ │
+│  │  │ iris  │──┐                                           │ │
 │  │  └──────────┘  │ JDBC          ┌──────────────┐            │ │
 │  │                ├─────────────▶ │ db            │ :5432     │ │
 │  │                │               │ PostgreSQL    │           │ │
@@ -69,7 +69,7 @@ it does not proxy or query third-party tools
 │  │  │       :3100 (Loki) ◀── CORS proxy ◀── UI             │  │ │
 │  │  │       :3200 (Tempo) ◀── Grafana datasource proxy     │  │ │
 │  │  │       :9009 (Mimir)                                  │  │ │
-│  │  │       :4317/4318 (OTLP) ◀── OTel push from mirador   │  │ │
+│  │  │       :4317/4318 (OTLP) ◀── OTel push from iris   │  │ │
 │  │  │  pyroscope :4040 ◀── UI iframe / links               │  │ │
 │  │  └──────────────────────────────────────────────────────┘  │ │
 │  └────────────────────────────────────────────────────────────┘ │
@@ -127,13 +127,13 @@ host firewall.
 │                                                                           │
 │  namespace: app                         namespace: infra                   │
 │  ┌──────────────────┐                   ┌─────────────────────┐            │
-│  │ mirador Deployment│  JDBC            │ postgresql:5432     │            │
+│  │ iris Deployment│  JDBC            │ postgresql:5432     │            │
 │  │   :8080          │  ──────────────▶ │ StatefulSet         │            │
 │  │   HPA 1-5        │                   └─────────────────────┘            │
 │  │   OTLP push      │  Kafka            ┌─────────────────────┐            │
 │  │                  │  ──────────────▶ │ kafka:9092          │            │
 │  │  Reads secrets   │  Lettuce          ┌─────────────────────┐            │
-│  │  from mirador-   │  ──────────────▶ │ redis:6379          │            │
+│  │  from iris-   │  ──────────────▶ │ redis:6379          │            │
 │  │  secrets         │                   ┌─────────────────────┐            │
 │  │  (ESO → GSM)     │                   │ keycloak:8080       │            │
 │  └────────┬─────────┘                   ┌─────────────────────┐            │
@@ -178,7 +178,7 @@ Kind and Prod use the same call shapes — only the port changes (+10000 vs +200
 | **Pipelines** | `:3333/gitlab/*` (local docker-api.mjs proxy) | idem | idem |
 | **Chaos dashboard** | — (not in compose) | `<iframe src=":12333">` | `<iframe src=":22333">` |
 | **Feature flags** (UI admin link) | — | `<a href=":14242">` | `<a href=":24242">` |
-| **Feature flags** (browser reads flags) | — | `GET :14243/proxy?appName=mirador-ui` | `GET :24243/proxy?appName=mirador-ui` |
+| **Feature flags** (browser reads flags) | — | `GET :14243/proxy?appName=iris-ui` | `GET :24243/proxy?appName=iris-ui` |
 | **Activity / Audit** | `/audit` on `:8080` | `/audit` on `:18080` | `/audit` on `:28080` |
 | **Quality** | `/actuator/quality :8080` + `sonar:9000` + `maven-site:8084` + `compodoc:8085` | `/actuator/quality :18080` only | `/actuator/quality :28080` only |
 

@@ -27,7 +27,7 @@ version resolver.
 
 ## Decision
 
-**Mirador uses the `X-API-Version` request header + Spring Framework 7
+**Iris uses the `X-API-Version` request header + Spring Framework 7
 native versioning**, configured in `application.yml`:
 
 ```yaml
@@ -58,7 +58,7 @@ just sends `X-API-Version: 2.0`.
   it duplicated route declarations (every endpoint gets two copies of
   its annotations, @Operation summaries, PreAuthorize, etc.). The
   header approach keeps one method per logical operation.
-- **Accept-header content negotiation** (`Accept: application/vnd.mirador.v2+json`):
+- **Accept-header content negotiation** (`Accept: application/vnd.iris.v2+json`):
   RESTful-er in theory. Rejected because it's harder to explain to
   demo viewers who aren't steeped in media-type versioning folklore,
   and Spring 7's native support uses a plain header.
@@ -94,8 +94,8 @@ Negative:
 
 - Spring Framework 7 API versioning:
   <https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-requestmapping.html#mvc-ann-requestmapping-version>
-- `com.mirador.customer.CustomerController` — v1/v2 handlers.
-- `src/test/java/com/mirador/customer/CustomerRestClientITest.java` —
+- `org.iris.customer.CustomerController` — v1/v2 handlers.
+- `src/test/java/org/iris/customer/CustomerRestClientITest.java` —
   integration tests exercising both versions via `RestTestClient.header(...)`.
 - ADR-0017 — the Spring Framework 7 decision that made this pattern
   available.

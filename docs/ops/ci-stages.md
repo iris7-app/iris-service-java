@@ -50,7 +50,7 @@ the top of `.gitlab-ci.yml`.
 
 | Job | What it does | Trigger |
 |---|---|---|
-| `pages` | Publishes the `public/` static site to `https://mirador1.gitlab.io/mirador-service/` (ADR-0022 landing page) | main branch |
+| `pages` | Publishes the `public/` static site to `https://iris-7.gitlab.io/iris-service/` (ADR-0022 landing page) | main branch |
 
 ### `lint` — Static checks (no compilation)
 
@@ -125,7 +125,7 @@ the top of `.gitlab-ci.yml`.
 | Job | What it does | Trigger |
 |---|---|---|
 | `generate-reports` | `mvn site` produces the full Maven Site (Javadoc, project info, JaCoCo, SpotBugs HTML, …) and uploads as 30-day artefact. Skipped by default — opt in via `REPORT_PIPELINE=true` in the CI variables. | manual / scheduled with var |
-| `mutation-test` | `mvn pitest:mutationCoverage` — PIT mutates bytecode (swap `>` for `>=`, return null, …) and re-runs the test suite to measure TEST QUALITY (not just line coverage). 70 % mutation-score gate on `com.mirador.*`. ~15 min. Excludes `keycloak-heavy` group (ADR-0034). | manual / scheduled (REPORT_PIPELINE=true) |
+| `mutation-test` | `mvn pitest:mutationCoverage` — PIT mutates bytecode (swap `>` for `>=`, return null, …) and re-runs the test suite to measure TEST QUALITY (not just line coverage). 70 % mutation-score gate on `org.iris.*`. ~15 min. Excludes `keycloak-heavy` group (ADR-0034). | manual / scheduled (REPORT_PIPELINE=true) |
 
 ### `infra` — Terraform
 

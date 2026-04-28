@@ -1,5 +1,5 @@
 # =============================================================================
-# Terraform — GCP infrastructure for mirador
+# Terraform — GCP infrastructure for iris
 #
 # Resources provisioned:
 #   - VPC + subnet (private cluster network)
@@ -49,7 +49,7 @@ provider "google" {
 # =============================================================================
 
 resource "google_compute_network" "vpc" {
-  name                    = "mirador-vpc"
+  name                    = "iris-vpc"
   auto_create_subnetworks = false
 
   # Deleting a VPC with dependent resources fails. Terraform handles this by
@@ -57,7 +57,7 @@ resource "google_compute_network" "vpc" {
 }
 
 resource "google_compute_subnetwork" "subnet" {
-  name          = "mirador-subnet"
+  name          = "iris-subnet"
   network       = google_compute_network.vpc.id
   region        = var.region
   ip_cidr_range = "10.0.0.0/20"
@@ -78,7 +78,7 @@ resource "google_compute_subnetwork" "subnet" {
 # Private service access peering — required for Cloud SQL and Memorystore
 # to be reachable from GKE pods via private IP.
 resource "google_compute_global_address" "private_ip_range" {
-  name          = "mirador-private-ip"
+  name          = "iris-private-ip"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
@@ -101,13 +101,13 @@ resource "google_service_networking_connection" "private_vpc_connection" {
 # Without this, pods fail to pull images with ImagePullBackOff.
 # =============================================================================
 resource "google_compute_router" "nat_router" {
-  name    = "mirador-nat-router"
+  name    = "iris-nat-router"
   region  = var.region
   network = google_compute_network.vpc.id
 }
 
 resource "google_compute_router_nat" "nat" {
-  name                               = "mirador-nat"
+  name                               = "iris-nat"
   router                             = google_compute_router.nat_router.name
   region                             = var.region
   nat_ip_allocate_option             = "AUTO_ONLY"
@@ -171,7 +171,7 @@ resource "google_container_cluster" "autopilot" {
 # =============================================================================
 
 resource "google_sql_database_instance" "postgres" {
-  name             = "mirador-db"
+  name             = "iris-db"
   database_version = "POSTGRES_17"
   region           = var.region
 
@@ -215,7 +215,7 @@ resource "google_sql_database_instance" "postgres" {
   depends_on = [google_service_networking_connection.private_vpc_connection]
 }
 
-resource "google_sql_database" "mirador" {
+resource "google_sql_database" "iris" {
   name     = var.db_name
   instance = google_sql_database_instance.postgres.name
 }
@@ -232,8 +232,8 @@ resource "google_sql_user" "app_user" {
 
 # GCP service account used by the Cloud SQL Auth Proxy sidecar
 resource "google_service_account" "sql_proxy" {
-  account_id   = "mirador-sql-proxy"
-  display_name = "Mirador Cloud SQL Auth Proxy"
+  account_id   = "iris-sql-proxy"
+  display_name = "Iris Cloud SQL Auth Proxy"
 }
 
 resource "google_project_iam_member" "sql_proxy_role" {
@@ -242,12 +242,12 @@ resource "google_project_iam_member" "sql_proxy_role" {
   member  = "serviceAccount:${google_service_account.sql_proxy.email}"
 }
 
-# Bind the Kubernetes service account (app/mirador-backend) to the GCP SA
+# Bind the Kubernetes service account (app/iris-backend) to the GCP SA
 # so pods using that KSA automatically get Cloud SQL Client permissions.
 resource "google_service_account_iam_member" "workload_identity_binding" {
   service_account_id = google_service_account.sql_proxy.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project_id}.svc.id.goog[app/mirador-backend]"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[app/iris-backend]"
 
   depends_on = [google_container_cluster.autopilot]
 }
@@ -257,12 +257,12 @@ resource "google_service_account_iam_member" "workload_identity_binding" {
 # =============================================================================
 
 resource "google_redis_instance" "cache" {
-  name           = "mirador-redis"
+  name           = "iris-redis"
   tier           = var.redis_tier
   memory_size_gb = var.redis_memory_size_gb
   region         = var.region
   redis_version  = "REDIS_7_2"
-  display_name   = "Mirador Redis Cache"
+  display_name   = "Iris Redis Cache"
 
   # Connect via private services access so pods reach Redis via VPC private IP
   authorized_network = google_compute_network.vpc.id

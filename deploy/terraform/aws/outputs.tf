@@ -42,11 +42,11 @@ output "ecs_cluster_name" {
 # Why         : Needed alongside cluster name for `aws ecs update-service`.
 # Cost        : n/a (string).
 # Gotchas     : n/a.
-# Related     : main.tf → aws_ecs_service.mirador.
+# Related     : main.tf → aws_ecs_service.iris.
 # =============================================================================
 output "ecs_service_name" {
   description = "ECS service name"
-  value       = aws_ecs_service.mirador.name
+  value       = aws_ecs_service.iris.name
 }
 
 # =============================================================================

@@ -6,13 +6,13 @@
 ## Context
 
 Three independent resilience concerns sit in
-`com.mirador.resilience`:
+`org.iris.resilience`:
 
 1. **Outbound call protection** — Ollama LLM inference + JSONPlaceholder
    HTTP API. Both are slow/unreliable in the demo.
 2. **Inbound rate limiting** — prevent one client from starving the
    service on shared infrastructure (public demo at
-   `mirador1.duckdns.org`).
+   `iris-7.duckdns.org`).
 3. **Idempotency** — a common real-world POST/PUT problem (client
    retries, double-submit). The service should compute the effect
    once.
@@ -81,7 +81,7 @@ Chose "build it" over:
 - **Spring Retry**: simpler API but no circuit breaker. We already
   pull in Resilience4J for CB, so adding Spring Retry would double up.
 - **Spring Cloud Gateway rate-limit**: service-to-service pattern;
-  Mirador isn't behind an explicit gateway in the demo. Rejected for
+  Iris isn't behind an explicit gateway in the demo. Rejected for
   now, documented as a future option if an ingress gateway lands.
 
 ## Consequences
@@ -108,8 +108,8 @@ Negative:
 
 ## References
 
-- `com.mirador.resilience.package-info` — high-level overview.
-- `com.mirador.resilience.IdempotencyFilter` — the custom code.
+- `org.iris.resilience.package-info` — high-level overview.
+- `org.iris.resilience.IdempotencyFilter` — the custom code.
 - `application.yml` → `resilience4j.*`, `app.rate-limit.*`
 - ADR-0018 — JWT strategy (LoginAttemptService is a fourth
   resilience pattern: brute-force protection, close cousin of rate

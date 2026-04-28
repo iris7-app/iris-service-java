@@ -1,6 +1,6 @@
-# Alert: `MiradorHighLatencyP95`
+# Alert: `IrisHighLatencyP95`
 
-Fired when `mirador:http_request_duration:p95_5m > 1` for ≥ 10 min — the
+Fired when `iris:http_request_duration:p95_5m > 1` for ≥ 10 min — the
 95th-percentile request takes more than 1 second. Warning-tier (not a
 pager): most high-latency episodes resolve themselves as traffic shifts.
 
@@ -13,7 +13,7 @@ a global average — find the hot URI first.
 # Top 5 slowest URIs right now:
 curl -s 'http://localhost:9090/api/v1/query' --data-urlencode 'query=
   topk(5, histogram_quantile(0.95, sum by (le, uri) (
-    rate(http_server_requests_seconds_bucket{job=~"mirador.*"}[5m])
+    rate(http_server_requests_seconds_bucket{job=~"iris.*"}[5m])
   )))
 ' | jq '.data.result[] | {uri: .metric.uri, p95: .value[1]}'
 ```
@@ -38,7 +38,7 @@ curl -s 'http://localhost:9090/api/v1/query' --data-urlencode 'query=
 
 ```bash
 # Trace a slow request (via Tempo Search in Grafana Explore, or TraceQL):
-# {service.name="mirador" && duration>2s}
+# {service.name="iris" && duration>2s}
 
 # If the slow URI is a DB-backed one:
 kubectl -n infra exec -it postgresql-0 -- psql -U demo -d customer-service \
@@ -46,7 +46,7 @@ kubectl -n infra exec -it postgresql-0 -- psql -U demo -d customer-service \
       ORDER BY mean_exec_time DESC LIMIT 10;"
 
 # Virtual-thread carrier thread contention?
-# Pyroscope → lock profile on "mirador" → look for elevated BLOCKED time.
+# Pyroscope → lock profile on "iris" → look for elevated BLOCKED time.
 ```
 
 ## Fix that worked last time
@@ -59,8 +59,8 @@ kubectl -n infra exec -it postgresql-0 -- psql -U demo -d customer-service \
 ## When to escalate
 
 - p95 > 5 s sustained for 20 min → capacity issue, not a single-query
-  bug. Consider scaling `deployment/mirador` or raising DB connection
+  bug. Consider scaling `deployment/iris` or raising DB connection
   pool.
 - Latency spike correlates with node CPU > 90 % on the pod's node →
   move the workload off a cohabited node in GKE Autopilot (won't
-  happen for Mirador since Autopilot owns packing).
+  happen for Iris since Autopilot owns packing).

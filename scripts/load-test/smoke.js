@@ -12,7 +12,7 @@
 // fail the job so the team investigates).
 //
 // Run locally:
-//   K8S_HOST=mirador1.duckdns.org k6 run scripts/load-test/smoke.js
+//   K8S_HOST=iris-7.duckdns.org k6 run scripts/load-test/smoke.js
 //   K8S_HOST=localhost:8080 K8S_SCHEME=http k6 run scripts/load-test/smoke.js
 //
 // In CI, K8S_HOST is set by the deploy:gke job's environment, and the
@@ -25,9 +25,9 @@ import { check, sleep } from 'k6';
 
 // K8S_SCHEME lets CI hit the plaintext backend running inside the job's
 // own docker-compose network (no cert, no reverse proxy). Default stays
-// `https` so production usage (mirador1.duckdns.org) is unchanged.
+// `https` so production usage (iris-7.duckdns.org) is unchanged.
 const SCHEME = __ENV.K8S_SCHEME || 'https';
-const BASE = `${SCHEME}://${__ENV.K8S_HOST || 'mirador1.duckdns.org'}`;
+const BASE = `${SCHEME}://${__ENV.K8S_HOST || 'iris-7.duckdns.org'}`;
 
 export const options = {
   scenarios: {

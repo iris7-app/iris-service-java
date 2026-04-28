@@ -133,7 +133,7 @@ default:
   # Exception: docker-build, terraform-apply, deploy:* override this to false
   # so expensive or side-effect-producing jobs survive a new push mid-run.
   # All jobs route to macbook-local (= the group-level runner serving
-  # mirador1 — java, ui, python, shared). Updated 2026-04-25 after main
+  # iris-7 — java, ui, python, shared). Updated 2026-04-25 after main
   # pipelines started failing with `ci_quota_exceeded` on SaaS shared
   # runners. Per global CLAUDE.md "Use local runners, never rely on
   # GitLab SaaS quota". Same fix applied to UI on the same day.

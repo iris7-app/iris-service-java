@@ -7,7 +7,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 source "$REPO_ROOT/bin/run/_preamble.sh"
 
     echo "Stopping everything..."
-    pgrep -f 'MiradorApplication' | xargs kill 2>/dev/null || true
+    pgrep -f 'IrisApplication' | xargs kill 2>/dev/null || true
     pgrep -f 'spring-boot:run' | xargs kill 2>/dev/null || true
     docker compose down
     docker compose -f deploy/compose/observability.yml down

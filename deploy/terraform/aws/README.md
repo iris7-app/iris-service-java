@@ -39,14 +39,14 @@ does not. This is a deliberate stage-1 simplification.
 | Resource                                      | Purpose                                                           | Approx. cost (eu-west-3, always-on) |
 | --------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------- |
 | `aws_ecs_cluster.main`                        | Logical ECS cluster (no control-plane fee)                        | €0                                  |
-| `aws_cloudwatch_log_group.mirador`            | Task stdout/stderr, 7-day retention                               | ~€0.20/mo                           |
+| `aws_cloudwatch_log_group.iris`            | Task stdout/stderr, 7-day retention                               | ~€0.20/mo                           |
 | `aws_iam_role.ecs_task_execution` + policy    | ECR pull + CloudWatch write                                        | €0                                  |
 | `aws_security_group.alb` + `.tasks`           | ALB → task ingress (port 8080 only)                               | €0                                  |
 | `aws_lb.main` (Application Load Balancer)     | Public HTTP entry point                                            | ~€16/mo fixed + LCU-hour            |
-| `aws_lb_target_group.mirador`                 | Health-checked pool behind the ALB                                 | €0                                  |
+| `aws_lb_target_group.iris`                 | Health-checked pool behind the ALB                                 | €0                                  |
 | `aws_lb_listener.http`                        | Port 80 → target group                                             | €0                                  |
-| `aws_ecs_task_definition.mirador`             | 0.5 vCPU / 1 GB Fargate task definition                           | per-task: ~€18/mo                   |
-| `aws_ecs_service.mirador`                     | Keeps 1 task running, wires it to ALB                              | €0                                  |
+| `aws_ecs_task_definition.iris`             | 0.5 vCPU / 1 GB Fargate task definition                           | per-task: ~€18/mo                   |
+| `aws_ecs_service.iris`                     | Keeps 1 task running, wires it to ALB                              | €0                                  |
 | **Total always-on**                           |                                                                    | **~€34/mo**                         |
 | **Total ephemeral (~8h/mo)**                  |                                                                    | **~€0.40/mo**                       |
 
@@ -65,8 +65,8 @@ does not. This is a deliberate stage-1 simplification.
 
 1. **Credentials** — `aws configure` or OIDC WIF from CI (not wired here yet).
 2. **Container image published** — `docker push` to either:
-   - Your own ECR: `aws ecr create-repository --repository-name mirador --region eu-west-3`
-     then push to `<account>.dkr.ecr.eu-west-3.amazonaws.com/mirador:stable`.
+   - Your own ECR: `aws ecr create-repository --repository-name iris --region eu-west-3`
+     then push to `<account>.dkr.ecr.eu-west-3.amazonaws.org/iris:stable`.
    - GitLab Registry (public) — no AWS-side setup needed.
 3. **Default VPC must exist** — some AWS org policies delete it.
    `aws ec2 describe-vpcs --filters Name=isDefault,Values=true` to check.

@@ -9,26 +9,26 @@
 #
 #   terraform {
 #     backend "azurerm" {
-#       resource_group_name  = "mirador-tfstate"
-#       storage_account_name = "miradortfstate"
+#       resource_group_name  = "iris-tfstate"
+#       storage_account_name = "iristfstate"
 #       container_name       = "tfstate"
-#       key                  = "mirador.azure.tfstate"
+#       key                  = "iris.azure.tfstate"
 #       # Uses AAD auth by default — set ARM_USE_AZUREAD=true in CI.
 #     }
 #   }
 #
 # Prerequisites for remote state (chicken-and-egg, create manually once):
-#   az group create --name mirador-tfstate --location westeurope
+#   az group create --name iris-tfstate --location westeurope
 #   az storage account create \
-#     --name miradortfstate \
-#     --resource-group mirador-tfstate \
+#     --name iristfstate \
+#     --resource-group iris-tfstate \
 #     --location westeurope \
 #     --sku Standard_LRS \
 #     --encryption-services blob \
 #     --min-tls-version TLS1_2
 #   az storage container create \
 #     --name tfstate \
-#     --account-name miradortfstate
+#     --account-name iristfstate
 #
 # Blob Storage in Azure gives us:
 #   - Versioning (opt-in, add `--enable-versioning true` to the account).

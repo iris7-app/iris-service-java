@@ -27,7 +27,7 @@ coupled to:
 The audit at
 [docs/audit/clean-code-architecture-2026-04-22.md](../audit/clean-code-architecture-2026-04-22.md)
 explicitly flagged the endpoint as an outlier; the 2026-04-22 Phase B-1
-split extracted the parsers into `com.mirador.observability.quality
+split extracted the parsers into `org.iris.observability.quality
 .{parsers,providers}` but kept the runtime coupling. The user called
 this out: "QualityReportEndpoint ne respecte pas le principe que le
 backend ne devrait pas être lié avec les outils d'infrastructure".
@@ -47,11 +47,11 @@ out of the runtime path.
 - `sonar` section — hits the SonarCloud REST API from the prod JVM.
   Removed. UI dashboard replaces the Sonar panel with a **link** to
   the public SonarCloud project page
-  ([sonarcloud.io/project/overview?id=Mirador_mirador-service](https://sonarcloud.io/project/overview?id=Mirador_mirador-service)).
+  ([sonarcloud.io/project/overview?id=Iris_iris-service](https://sonarcloud.io/project/overview?id=Iris_iris-service)).
   Users who want the numbers see the single source of truth.
 - `pipeline` section — hits the GitLab REST API. Removed. UI
   dashboard replaces it with a link to the GitLab pipelines page
-  (`https://gitlab.com/mirador1/mirador-service/-/pipelines`).
+  (`https://gitlab.com/iris-7/iris-service/-/pipelines`).
 - `@Value` entries `sonar.host.url`, `sonar.projectKey`,
   `sonar.token`, `gitlab.host.url`, `gitlab.project.id`,
   `gitlab.api.token` removed — the prod JVM no longer needs these
@@ -172,7 +172,7 @@ runtime health). External services link to themselves.
 
 ### Phase Q-2 (follow-up, scheduled as a TASKS.md item)
 
-1. Create `com.mirador.observability.quality.QualityReportGenerator`
+1. Create `org.iris.observability.quality.QualityReportGenerator`
    with `public static void main(String[] args)`.
 2. Remove `@Component` from the 7 parsers + the 2 file-based
    providers (deps, licenses). They become pure POJOs invoked
@@ -209,5 +209,5 @@ this one.
   — parent scope decision
 - [Clean Code + Clean Architecture audit 2026-04-22](../audit/clean-code-architecture-2026-04-22.md)
   — originally flagged the infrastructure-tool coupling
-- [Phase B-1 commits (MR !135)](https://gitlab.com/mirador1/mirador-service/-/merge_requests/135)
+- [Phase B-1 commits (MR !135)](https://gitlab.com/iris-7/iris-service/-/merge_requests/135)
   — earlier split that this ADR builds on

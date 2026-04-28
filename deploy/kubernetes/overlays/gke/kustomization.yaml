@@ -26,7 +26,7 @@ patches:
   - path: configmap-gke-patch.yaml
     target:
       kind: ConfigMap
-      name: mirador-config
+      name: iris-config
   # image-tags-patch.yaml removed: base/backend/deployment.yaml now pins
   # `:main` directly (no more ${IMAGE_TAG} envsubst placeholders), so the
   # patch was a no-op duplicate.

@@ -241,9 +241,9 @@ green pipeline.
   `terraform-plan` + `terraform-apply` rules + `needs:optional`
   wiring (Rule 1), main-branch workflow allowlist (Rule 2).
 - Pipelines that revealed the pattern:
-  [#570](https://gitlab.com/mirador1/mirador-service/-/pipelines/2467312321)
+  [#570](https://gitlab.com/iris-7/iris-service/-/pipelines/2467312321)
   (sonar fail masked by shield);
-  [#592](https://gitlab.com/mirador1/mirador-service/-/pipelines/2467721661)
+  [#592](https://gitlab.com/iris-7/iris-service/-/pipelines/2467721661)
   (0-job creation fail, `needs` not `optional`).
 - `~/.claude/CLAUDE.md` → "Pipelines stay green" (enforcing rule for
   this ADR) + "Tag every green stability checkpoint, never tag on

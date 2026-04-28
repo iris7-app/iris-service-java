@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/dev/healthcheck-all.sh — one-glance status of every Mirador local service.
+# bin/dev/healthcheck-all.sh — one-glance status of every Iris local service.
 #
 # Why this script exists: the project spawns ~12 containers + 2 host
 # processes (Spring app + Angular dev server). Diagnosing "why is the
@@ -29,8 +29,8 @@ MODE="${1:-human}"
 # - probe-command: stdout match against expected-substring → UP
 # - required=1 → DOWN counts toward exit code 1
 SERVICES=(
-  "Postgres (mirador app db)|docker exec postgres-demo pg_isready -U demo|accepting connections|1"
-  "Kafka (mirador events)|docker exec kafka-demo kafka-topics.sh --bootstrap-server localhost:9092 --list|.|1"
+  "Postgres (iris app db)|docker exec postgres-demo pg_isready -U demo|accepting connections|1"
+  "Kafka (iris events)|docker exec kafka-demo kafka-topics.sh --bootstrap-server localhost:9092 --list|.|1"
   "Redis (cache + idempotency)|docker exec redis-demo redis-cli ping|PONG|1"
   "Spring Boot backend (:8080)|curl -sSf -m 3 http://localhost:8080/actuator/health|UP|1"
   "Angular UI (:4200)|curl -sSf -m 3 http://localhost:4200|<!doctype html|0"
@@ -40,7 +40,7 @@ SERVICES=(
   "Kafka UI (:9080)|curl -sSf -m 3 http://localhost:9080|.|0"
   "Redis Commander (:8082)|curl -sSf -m 3 http://localhost:8082|.|0"
   "Swagger UI (:8080/swagger-ui)|curl -sSf -m 3 http://localhost:8080/swagger-ui/index.html|swagger|0"
-  "kind cluster (control plane)|docker ps --filter name=mirador-local-control-plane --format {{.Status}}|Up|0"
+  "kind cluster (control plane)|docker ps --filter name=iris-local-control-plane --format {{.Status}}|Up|0"
 )
 
 probe() {
@@ -78,7 +78,7 @@ if [[ "$MODE" == "--watch" ]]; then
 fi
 
 # Human-readable table
-echo -e "${BOLD}Mirador local stack health $(date +%H:%M:%S)${NC}"
+echo -e "${BOLD}Iris local stack health $(date +%H:%M:%S)${NC}"
 echo "  ─────────────────────────────────────────────────────────"
 for entry in "${SERVICES[@]}"; do
   IFS='|' read -r label cmd expected required <<< "$entry"

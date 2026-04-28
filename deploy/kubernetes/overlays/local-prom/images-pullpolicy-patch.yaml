@@ -14,12 +14,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mirador
+  name: iris
   namespace: app
 spec:
   template:
     spec:
       containers:
-        - name: mirador
+        - name: iris
           imagePullPolicy: Never
 # customer-ui patch removed with ADR-0025 — no UI Deployment in any cluster.

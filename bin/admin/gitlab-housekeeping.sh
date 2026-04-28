@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bin/admin/gitlab-housekeeping.sh — desactivate sidebar features Mirador
+# bin/admin/gitlab-housekeeping.sh — desactivate sidebar features Iris
 # doesn't use (UI clutter cleanup).
 #
 # What this disables (idempotent — re-runnable safely):
@@ -30,8 +30,8 @@
 #   bin/admin/gitlab-housekeeping.sh --status  # show current state only
 #
 # Repos affectés (les 2):
-#   mirador1/mirador-service  (svc, GitLab + GitHub mirror)
-#   mirador1/mirador-ui       (UI, GitLab + GitHub mirror)
+#   iris-7/iris-service  (svc, GitLab + GitHub mirror)
+#   iris-7/iris-ui       (UI, GitLab + GitHub mirror)
 #
 # Related:
 #   - Cleanup theme cohérent — voir CLAUDE.md notes from 2026-04-22
@@ -50,8 +50,8 @@ case "${1:-}" in
   *)           echo "Unknown option: $1"; exit 1 ;;
 esac
 
-GITLAB_REPOS=("mirador1/mirador-service" "mirador1/mirador-ui")
-GITHUB_REPOS=("mirador1/mirador-service" "mirador1/mirador-ui")
+GITLAB_REPOS=("iris-7/iris-service" "iris-7/iris-ui")
+GITHUB_REPOS=("iris-7/iris-service" "iris-7/iris-ui")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. STATUS — show current state (always run)

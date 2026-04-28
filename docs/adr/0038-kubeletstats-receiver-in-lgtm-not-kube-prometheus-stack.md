@@ -9,11 +9,11 @@
 
 The `grafana/otel-lgtm` pod (1 container running Grafana + Loki + Tempo
 + Mimir + an OTel Collector) is wired for **OTLP push** from application
-code. Mirador backend pods emit traces/logs/metrics via OTLP → Collector
+code. Iris backend pods emit traces/logs/metrics via OTLP → Collector
 fans them out to Loki/Tempo/Mimir.
 
 This means Mimir (lgtm's embedded Prometheus backend) receives ONLY what
-Mirador pushes — there's no scraping of kubelet or the K8s API. Two
+Iris pushes — there's no scraping of kubelet or the K8s API. Two
 concrete symptoms on 2026-04-20:
 
 1. **OpenLens** "Metrics" tab displayed `Metrics are not available due

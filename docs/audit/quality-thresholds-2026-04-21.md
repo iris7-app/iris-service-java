@@ -1,4 +1,4 @@
-# Quality-tool thresholds — industry baseline vs Mirador current state
+# Quality-tool thresholds — industry baseline vs Iris current state
 
 **Generated**: 2026-04-21 · **Scope**: both repos (svc Java + UI TypeScript)
 · **Phase**: A (audit + baseline), precedes Phase B (fix outliers) + Phase C
@@ -25,7 +25,7 @@ Current ruleset enables **design + bestpractices + errorprone + multithreading
 — 7 of 8 PMD Java categories. Size-related rules all sit under `design`
 and are enabled by default (no exclusions in the current ruleset).
 
-| Rule | PMD default | Industry baseline | Proposed for Mirador | Rationale |
+| Rule | PMD default | Industry baseline | Proposed for Iris | Rationale |
 |---|---:|---:|---:|---|
 | `NcssCount` (class) | 1500 | 500-1000 | **750** | God-class detection; 1500 is PMD's "very large" floor — too permissive. 750 catches the 1934-line `QualityReportEndpoint` |
 | `NcssCount` (method) | 60 | 40-60 | **50** | Industry middle; matches Sonar `java:S138` default (100 lines ≈ 50 NCSS) |
@@ -72,7 +72,7 @@ Current config: `@typescript-eslint/recommended` + `angular-eslint` +
 `max-lines-per-function`, `complexity`, `max-params`, `max-depth` are
 all off by default and not re-enabled.
 
-| Rule | ESLint default | Industry baseline | Proposed for Mirador | Rationale |
+| Rule | ESLint default | Industry baseline | Proposed for Iris | Rationale |
 |---|---:|---:|---:|---|
 | `max-lines` | off | 300-500 | **400** (warn) | Per-file ceiling; aligns with Angular cookbook "small components" |
 | `max-lines-per-function` | off | 50-100 | **80** (warn) | Per-function ceiling |

@@ -26,8 +26,8 @@
 #   kubectl apply -f deploy/argocd/application.yaml
 #
 # Inspect sync state:
-#   argocd app get mirador
-#   kubectl describe application mirador -n argocd
+#   argocd app get iris
+#   kubectl describe application iris -n argocd
 #
 # This file is tracked in git so the configuration itself is GitOps-managed:
 # editing `targetRevision`, `path`, or sync-policy is a commit here.
@@ -35,7 +35,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mirador
+  name: iris
   namespace: argocd
   # Finalizer keeps the Argo CD Application around until Argo cleans up
   # the managed resources (prevents orphaned Deployments on accidental
@@ -48,7 +48,7 @@ spec:
   project: default
 
   source:
-    repoURL: https://gitlab.com/mirador1/mirador-service.git
+    repoURL: https://gitlab.com/iris-7/iris-service.git
     # `main` is the GitOps source of truth. Never point this at `dev` —
     # every commit on dev would reach production.
     targetRevision: main

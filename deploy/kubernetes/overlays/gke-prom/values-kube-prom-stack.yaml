@@ -117,7 +117,7 @@ alertmanager:
       #   - name: 'slack-demo'
       #     slack_configs:
       #       - api_url: 'https://hooks.slack.com/services/XXX/YYY/ZZZ'
-      #         channel: '#mirador-alerts'
+      #         channel: '#iris-alerts'
       - name: 'null'
     inhibit_rules: []
 
@@ -194,7 +194,7 @@ prometheus:
     # "select ALL ServiceMonitor / PodMonitor / etc. in the cluster, not
     # only the ones with the chart's own labels". Without this the
     # Prometheus would scrape nothing because no objects match the empty
-    # selector defaults. Mirador's app `ServiceMonitor` (mirador-
+    # selector defaults. Iris's app `ServiceMonitor` (iris-
     # servicemonitor.yaml in this overlay) and any third-party operator-
     # installed ServiceMonitor will be picked up automatically. Same value
     # as local-prom — kept here so a reviewer can diff cleanly.

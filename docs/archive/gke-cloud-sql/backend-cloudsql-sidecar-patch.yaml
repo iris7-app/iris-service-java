@@ -2,37 +2,37 @@
 # Backend deployment patch — add Cloud SQL Auth Proxy sidecar (GKE)
 #
 # What this patch changes:
-#   • serviceAccountName: mirador-backend (Workload Identity → Cloud SQL IAM)
+#   • serviceAccountName: iris-backend (Workload Identity → Cloud SQL IAM)
 #   • Adds a `cloud-sql-proxy` sidecar container listening on 127.0.0.1:5432
 #   • Replaces the ConfigMap envFrom to use the GKE-specific override
-#     (mirador-config-gke-overrides: DB_HOST=127.0.0.1)
+#     (iris-config-gke-overrides: DB_HOST=127.0.0.1)
 #
 # The sidecar opens a Workload-Identity-authenticated tunnel to Cloud SQL.
 # Spring Boot talks to localhost:5432; the proxy forwards encrypted to GCP.
 # No DB password rotation needed — IAM handles auth transparently.
 #
 # ${CLOUD_SQL_INSTANCE} is substituted by envsubst in the CI deploy job.
-# Format: PROJECT:REGION:INSTANCE  (e.g. my-proj:europe-west1:mirador-db)
+# Format: PROJECT:REGION:INSTANCE  (e.g. my-proj:europe-west1:iris-db)
 # =============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mirador
+  name: iris
   namespace: app
 spec:
   template:
     spec:
-      serviceAccountName: mirador-backend
+      serviceAccountName: iris-backend
       containers:
         # Strategic merge uses container name as the merge key. The backend
         # container keeps everything from the base — we only override
         # envFrom to point at the GKE override ConfigMap.
-        - name: mirador
+        - name: iris
           envFrom:
             - configMapRef:
-                name: mirador-config
+                name: iris-config
             - configMapRef:
-                name: mirador-config-gke-overrides
+                name: iris-config-gke-overrides
         # New container appended to the base list.
         - name: cloud-sql-proxy
           # Pinned — never use :latest. Bump deliberately in a separate commit.

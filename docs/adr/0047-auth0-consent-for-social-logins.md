@@ -3,24 +3,24 @@
 - Status: Accepted
 - Date: 2026-04-21
 - Deciders: @benoit.besson
-- Related: `docs/how-to/auth0-tenant-setup.md` (mirador-ui repo),
+- Related: `docs/how-to/auth0-tenant-setup.md` (iris-ui repo),
   ADR-0018 (JWT strategy), ADR-0044 (hexagonal-lite)
 
 ## Context
 
 Our Auth0 tenant is configured to match Auth0's published conditions
-for **skipping the "Authorize Mirador" consent screen**:
+for **skipping the "Authorize Iris" consent screen**:
 
 1. The Auth0 Application is **first-party** (default for apps created
    in our own tenant, and the toggle is grayed-out because changing
    ownership would break the connection). ✅
-2. The Auth0 API `https://mirador-api` has **Access Settings → "Allow
+2. The Auth0 API `https://iris-api` has **Access Settings → "Allow
    Skipping User Consent"** toggled ON. ✅
 3. The `/authorize` request includes an `audience` parameter matching
    the API identifier. ✅
 4. The flow uses PKCE with `response_type=code`. ✅
 
-And yet: **every first login still shows the "Authorize Mirador" consent
+And yet: **every first login still shows the "Authorize Iris" consent
 screen**. Observed in this session for the user
 `google-oauth2|102974457466870759534` (benoit.besson@gmail.com signed in
 through the Google Social Connection).
@@ -60,7 +60,7 @@ Rationale:
 - Upgrading to Enterprise purely to flip social connections to
   first-party is disproportionate (~€240/user/month).
 - The consent screen itself is branded with the Auth0 Application
-  name ("Mirador") and lists the requested scopes — it's a
+  name ("Iris") and lists the requested scopes — it's a
   security-positive UX, not a bug.
 
 ### What stays wired
@@ -101,7 +101,7 @@ it). So the pain is strictly a first-login cost.
 
 Current state. Consent is a one-time UX artifact per user. Never
 blocks, never confuses — the Auth0 page clearly says "Authorize
-Mirador to access your dev-ksxj46zlkhk2gcvo account".
+Iris to access your dev-ksxj46zlkhk2gcvo account".
 
 ## Consequences
 
@@ -115,7 +115,7 @@ Mirador to access your dev-ksxj46zlkhk2gcvo account".
 
 ### Negative
 
-- First-time portfolio recruiter sees a "Authorize Mirador to access
+- First-time portfolio recruiter sees a "Authorize Iris to access
   your account" prompt that a naive user might bounce on. Partially
   mitigated by the existing README + demo script making it clear
   this is an Auth0 demo, not an attack.
@@ -144,10 +144,10 @@ Mirador to access your dev-ksxj46zlkhk2gcvo account".
 - [Auth0 — User consent and third-party applications](https://auth0.com/docs/get-started/applications/confidential-and-public-applications/user-consent-and-third-party-applications)
 - [Auth0 — Connection types](https://auth0.com/docs/authenticate/identity-providers/social-identity-providers)
 - [`docs/api/auth0-current-tenant-state.md`](../api/auth0-current-tenant-state.md)
-  — live snapshot of the Mirador dev tenant (domain, client ID,
+  — live snapshot of the Iris dev tenant (domain, client ID,
   audience, roles, Post-Login Action wiring, disaster recovery).
 - [`docs/api/auth0-action-roles.js`](../api/auth0-action-roles.js) —
-  the Post-Login Action that injects `https://mirador-api/roles` into
+  the Post-Login Action that injects `https://iris-api/roles` into
   the access token (works regardless of consent flow).
-- mirador-ui [`docs/how-to/auth0-tenant-setup.md`](https://gitlab.com/mirador1/mirador-ui/-/blob/main/docs/how-to/auth0-tenant-setup.md)
+- iris-ui [`docs/how-to/auth0-tenant-setup.md`](https://gitlab.com/iris-7/iris-ui/-/blob/main/docs/how-to/auth0-tenant-setup.md)
   — generic end-to-end setup guide for creating a fresh tenant.

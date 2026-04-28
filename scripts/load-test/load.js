@@ -1,5 +1,5 @@
 // =============================================================================
-// k6 LOAD test — nightly sustained traffic against the Mirador backend.
+// k6 LOAD test — nightly sustained traffic against the Iris backend.
 //
 // Smoke test (smoke.js) answers "can it respond at all?" with 30 s / 3 RPS.
 // This LOAD test answers "does it hold up under a demo-realistic workload?"
@@ -12,7 +12,7 @@
 // Profile:
 //   Stage 1 — ramp 0 → 50 VUs over 1 min (warm-up, JIT + caches populate)
 //   Stage 2 — hold 50 VUs for 3 min (steady-state; alerts would fire here
-//             under a real regression — see mirador-alerts.yaml)
+//             under a real regression — see iris-alerts.yaml)
 //   Stage 3 — ramp 50 → 0 over 30 s (graceful cool-down, let backlogs drain)
 //
 // Scheduled: nightly via GitLab schedules (`LOAD_TEST_SCHEDULE` variable
@@ -21,7 +21,7 @@
 // fast-fail read-only case already).
 //
 // Pass criteria (tuned for GKE Autopilot, single replica, no HPA):
-//   - p95 latency < 2 s   (same cohort as MiradorHighLatencyP95 alert)
+//   - p95 latency < 2 s   (same cohort as IrisHighLatencyP95 alert)
 //   - p99 latency < 5 s   (tail detection — JVM GC pauses show here)
 //   - <2 % 5xx            (slightly above the smoke threshold — we expect
 //                          some 429 Too Many Requests under sustained load
@@ -38,7 +38,7 @@ import { SharedArray } from 'k6/data';
 import { randomString } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 
 const SCHEME = __ENV.K8S_SCHEME || 'https';
-const BASE = `${SCHEME}://${__ENV.K8S_HOST || 'mirador1.duckdns.org'}`;
+const BASE = `${SCHEME}://${__ENV.K8S_HOST || 'iris-7.duckdns.org'}`;
 
 // Shared across VUs to avoid each VU creating its own large array.
 // Pre-computed so the workload shape doesn't drift between runs.

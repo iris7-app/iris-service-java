@@ -1,0 +1,14 @@
+# GitLab Agent for Kubernetes (GKA) — Iris demo cluster.
+#
+# Registered at /-/clusters → "Iris Demo". The agent runs in the
+# cluster as a Helm release; this file declares what it can do from
+# GitLab's side (CI job authorization, secrets access, observability).
+#
+# Minimal config for now: just allow pipelines from this project to
+# reach the cluster via the Agent connection. No GitOps sync yet —
+# add `gitops.manifest_projects` when we want pull-based deploys.
+
+ci_access:
+  projects:
+    - id: iris-7/iris-service
+    - id: iris-7/iris-ui

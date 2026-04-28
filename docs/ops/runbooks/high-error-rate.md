@@ -1,18 +1,18 @@
-# Alert: `MiradorHighErrorRate`
+# Alert: `IrisHighErrorRate`
 
-Fired when `mirador:http_error_ratio:5m > 0.05` for ≥ 5 min — more than 1
+Fired when `iris:http_error_ratio:5m > 0.05` for ≥ 5 min — more than 1
 request in 20 is returning 5xx. Source rule:
-`base/observability-prom/mirador-alerts.yaml`.
+`base/observability-prom/iris-alerts.yaml`.
 
 ## Quick triage (60 seconds)
 
 ```bash
 # 1. Which endpoint is the hotspot? Break down by URI on the RED dashboard:
-#    Grafana → Mirador RED → "Error rate by URI" panel
+#    Grafana → Iris RED → "Error rate by URI" panel
 #    OR direct PromQL in Prom UI:
 #
 #    topk(5, sum by (uri) (rate(
-#      http_server_requests_seconds_count{status=~"5..",job=~"mirador.*"}[5m]
+#      http_server_requests_seconds_count{status=~"5..",job=~"iris.*"}[5m]
 #    )))
 
 # 2. Is a downstream dep down? Check actuator health:
@@ -39,19 +39,19 @@ curl -sS http://localhost:8080/actuator/health | jq '.components'
 # Where is the error concentrated?
 curl -s http://localhost:9090/api/v1/query?query='
   topk(5, sum by (uri, status) (rate(
-    http_server_requests_seconds_count{status=~"5..",job=~"mirador.*"}[5m]
+    http_server_requests_seconds_count{status=~"5..",job=~"iris.*"}[5m]
   )))
 ' | jq .
 
 # Deploy history (GKE)
-kubectl -n app rollout history deployment/mirador
-kubectl -n app rollout status deployment/mirador
+kubectl -n app rollout history deployment/iris
+kubectl -n app rollout status deployment/iris
 
 # Circuit breaker state
 curl -s http://localhost:8080/actuator/circuitbreakers | jq .
 
 # Recent errors in Loki (fronted via Grafana Explore):
-#   {app="mirador"} |~ "ERROR" | json | __error__=""
+#   {app="iris"} |~ "ERROR" | json | __error__=""
 ```
 
 ## Fix that worked last time
@@ -65,6 +65,6 @@ curl -s http://localhost:8080/actuator/circuitbreakers | jq .
 ## When to escalate
 
 - Error rate > 50 % → immediate rollback:
-  `kubectl -n app rollout undo deployment/mirador`
+  `kubectl -n app rollout undo deployment/iris`
 - Errors persist after rollback → infra issue, not app. Check the
   GCP status dashboard + `kubectl get events -A` for node-level problems.

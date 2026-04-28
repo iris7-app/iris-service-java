@@ -15,9 +15,9 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>mirador</artifactId>
+    <artifactId>iris</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>mirador</name>
+    <name>iris</name>
     <description>Spring Boot 4 reference application — observability, security, messaging, resilience</description>
 
     <properties>
@@ -83,7 +83,7 @@
         -->
         <tomcat.version>11.0.21</tomcat.version>
         <!--
-          Fabric8 Kubernetes client — used by the `com.mirador.chaos` feature
+          Fabric8 Kubernetes client — used by the `org.iris.chaos` feature
           slice (ADR-0044 port-style decoupling between "which failure to
           inject" and "how to inject it"). The client creates Chaos Mesh
           custom resources (PodChaos / NetworkChaos / StressChaos) in the
@@ -200,9 +200,9 @@
             bootstrap classes and observability infrastructure that have no business logic.
         -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <sonar.organization>mirador1</sonar.organization>
-        <sonar.projectKey>mirador1_mirador-service</sonar.projectKey>
-        <sonar.projectName>Mirador Service</sonar.projectName>
+        <sonar.organization>iris-7</sonar.organization>
+        <sonar.projectKey>iris-7_iris-service</sonar.projectKey>
+        <sonar.projectName>Iris Service</sonar.projectName>
         <sonar.coverage.jacoco.xmlReportPaths>
             ${project.reporting.outputDirectory}/jacoco/jacoco.xml,
             ${project.reporting.outputDirectory}/jacoco-it/jacoco.xml
@@ -249,7 +249,7 @@
             **/ShedLockConfig.java,**/ObservabilityConfig.java,
             **/QualityReportEndpoint.java,**/TestReportInfoContributor.java,
             **/OtelLogbackInstaller.java,**/PyroscopeConfig.java,
-            **/MiradorApplication.java
+            **/IrisApplication.java
         </sonar.coverage.exclusions>
     </properties>
 
@@ -414,12 +414,12 @@
         </dependency>
 
         <!--
-          Fabric8 Kubernetes client — the ChaosController (com.mirador.chaos)
+          Fabric8 Kubernetes client — the ChaosController (org.iris.chaos)
           uses it to create Chaos Mesh CRs (PodChaos / NetworkChaos /
           StressChaos) on demand from the UI chaos page. Off-cluster the
           bean still instantiates; the HTTP call fails at runtime with a
           clear 503 if no kubeconfig is present (see ChaosController
-          exception handling). RBAC for the `mirador-backend` ServiceAccount
+          exception handling). RBAC for the `iris-backend` ServiceAccount
           is under deploy/kubernetes/base/backend/rbac.yaml.
         -->
         <dependency>
@@ -572,7 +572,7 @@
           methods as Model Context Protocol tools at /sse + /mcp/message.
           Per ADR-0062, the server registers an explicit allowlist of services
           (Order/Product/Customer/Chaos/Logs/Metrics/Grafana/Actuator/OpenApi)
-          via MethodToolCallbackProvider — see com.mirador.mcp.McpConfig.
+          via MethodToolCallbackProvider — see org.iris.mcp.McpConfig.
           The starter pulls in mcp-spring-webmvc + spring-ai-mcp + the MCP SDK
           0.17.0 ; transport is HTTP/SSE so the same Spring Security filter
           chain applies to LLM callers as to REST callers.
@@ -586,7 +586,7 @@
         <!--
           ONNX Runtime — Microsoft's Java bindings for cross-language ML
           inference. Loads `.onnx` artefacts produced by the Python
-          training pipeline (mirador-service-python `mirador_service.ml.train_churn`)
+          training pipeline (iris-service-python `iris_service.ml.train_churn`)
           and runs predictions in-process — NO sidecar service. Per shared
           ADR-0060 §"Decision". Ships ~30 MB bundled native libs ; the JAR
           stays usable on every runtime arch we deploy to.
@@ -880,7 +880,7 @@
                              PyroscopeAgent.start() call that's hard to test without
                              mockStatic + pulls the real agent jar.
                         -->
-                        <exclude>com/mirador/observability/PyroscopeConfig.class</exclude>
+                        <exclude>org/iris/observability/PyroscopeConfig.class</exclude>
                         <!--
                           3. Observability/tooling infrastructure — now INCLUDED in
                              coverage as of 2026-04-23. Tests shipped this session :
@@ -906,7 +906,7 @@
                         <!--
                           4. Application bootstrap
                         -->
-                        <exclude>com/mirador/MiradorApplication.class</exclude>
+                        <exclude>org/iris/IrisApplication.class</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -966,7 +966,7 @@
                     </execution>
                     <!-- Coverage gate: two-tier per shared ADR-0059.
                          - global BUNDLE >= 70% (infrastructure/config excluded)
-                         - new e-commerce packages com.mirador.{order,product}.* >= 40%
+                         - new e-commerce packages org.iris.{order,product}.* >= 40%
                            regression gate ; the property tests + cascade integration tests
                            cover pure-domain methods (canTransitionTo, computeTotal) at
                            100%, but CRUD controllers + repositories are still ~50%.
@@ -991,8 +991,8 @@
                                 <!--
                                   Per-package CLIMB GATE on the new e-commerce packages.
                                   CI measures (post merge of cascade ITest 2026-04-26) :
-                                    com.mirador.order   = 32% (entity + property tests)
-                                    com.mirador.product = 3%  (entity only — no controller/repo tests yet)
+                                    org.iris.order   = 32% (entity + property tests)
+                                    org.iris.product = 3%  (entity only — no controller/repo tests yet)
                                   Threshold deliberately set just under each measured value to
                                   act as a regression gate WITHOUT requiring tests we haven't
                                   written yet. CLIMB PLAN documented inline :
@@ -1003,7 +1003,7 @@
                                 <rule>
                                     <element>PACKAGE</element>
                                     <includes>
-                                        <include>com.mirador.order</include>
+                                        <include>org.iris.order</include>
                                     </includes>
                                     <limits>
                                         <limit>
@@ -1019,7 +1019,7 @@
                                      repo tests, then enable :
                                      <rule>
                                          <element>PACKAGE</element>
-                                         <includes><include>com.mirador.product</include></includes>
+                                         <includes><include>org.iris.product</include></includes>
                                          <limits><limit>
                                              <counter>INSTRUCTION</counter>
                                              <value>COVEREDRATIO</value>
@@ -1334,10 +1334,10 @@
             <configuration>
                 <skip>true</skip>
                 <targetClasses>
-                    <param>com.mirador.*</param>
+                    <param>org.iris.*</param>
                 </targetClasses>
                 <targetTests>
-                    <param>com.mirador.*</param>
+                    <param>org.iris.*</param>
                 </targetTests>
                 <!--
                   Exclude compatibility shim classes that only exist on specific Java/SB versions.
@@ -1345,10 +1345,10 @@
                   as "no coverage" mutations rather than meaningful quality gaps.
                 -->
                 <excludedClasses>
-                    <param>com.mirador.compat.*</param>
-                    <param>com.mirador.*.sb3.*</param>
-                    <param>com.mirador.*.java17.*</param>
-                    <param>com.mirador.*.java21.*</param>
+                    <param>org.iris.compat.*</param>
+                    <param>org.iris.*.sb3.*</param>
+                    <param>org.iris.*.java17.*</param>
+                    <param>org.iris.*.java21.*</param>
                 </excludedClasses>
                 <outputFormats>
                     <outputFormat>XML</outputFormat>
@@ -1734,7 +1734,7 @@
                     <phase>prepare-package</phase>
                     <goals><goal>java</goal></goals>
                     <configuration>
-                        <mainClass>com.mirador.observability.quality.QualityReportGenerator</mainClass>
+                        <mainClass>org.iris.observability.quality.QualityReportGenerator</mainClass>
                         <!-- Use the project classpath only, not plugin deps. -->
                         <includePluginDependencies>false</includePluginDependencies>
                         <!-- Let CLI exceptions propagate so the build fails on I/O errors. -->
@@ -2185,13 +2185,13 @@
                                         <!-- Test sources (exclude SB4-only RestTestClient test).
                                              Path was stale (com/example/customerservice/) from a
                                              pre-rename of the project — actual location is
-                                             com/mirador/customer/. Fixed 2026-04-24 svc 1.0.52
+                                             org/iris/customer/. Fixed 2026-04-24 svc 1.0.52
                                              wave : without the correct path the file copied to
                                              merged-sources and broke SB3 test-compile because
                                              RestTestClient is Spring Framework 7 (SB4-only). -->
                                         <copy todir="${project.build.directory}/merged-sources/test">
                                             <fileset dir="src/test/java">
-                                                <exclude name="com/mirador/customer/CustomerRestClientITest.java"/>
+                                                <exclude name="org/iris/customer/CustomerRestClientITest.java"/>
                                             </fileset>
                                         </copy>
                                         <!-- pre-java25 test overlay : replaces ScopedValue (J25 preview)

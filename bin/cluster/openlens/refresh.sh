@@ -4,7 +4,7 @@
 # bin/cluster/openlens/refresh.sh — refresh ~/.kube/config + restart OpenLens.
 #
 # OpenLens reads `~/.kube/config` at each "Connect" click. It already has
-# both Mirador clusters registered in its local store (see
+# both Iris clusters registered in its local store (see
 # ~/Library/Application Support/OpenLens/lens-cluster-store.json), but:
 #
 #  • kind cluster — if `kind export kubeconfig --internal` was last run
@@ -29,9 +29,9 @@
 
 set -u  # -e is NOT set; GKE-down is expected, kind-down is recoverable.
 
-KIND_CLUSTER="${KIND_CLUSTER:-mirador-local}"
+KIND_CLUSTER="${KIND_CLUSTER:-iris-local}"
 # GKE coordinates. Sourced from gcloud config so this script is
-# portable across Mirador workstations.
+# portable across Iris workstations.
 GKE_PROJECT="${GKE_PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
 GKE_CLUSTER="${GKE_CLUSTER:-mirador-prod}"
 GKE_REGION="${GKE_REGION:-europe-west1}"

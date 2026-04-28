@@ -1,0 +1,81 @@
+package org.iris.observability;
+
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.DescribeClusterOptions;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Custom health indicator that verifies Kafka broker reachability.
+ *
+ * <p>Opens a short-lived {@link AdminClient} connection and calls
+ * {@code describeCluster()} with a 3-second timeout. This verifies:
+ * <ul>
+ *   <li>At least one broker is reachable at the configured bootstrap servers.</li>
+ *   <li>The cluster ID is returned (proves the broker is fully operational).</li>
+ * </ul>
+ *
+ * <p>Appears at {@code /actuator/health} as the {@code kafka} component.
+ *
+ * <h3>Diagnostic scenario</h3>
+ * <p>{@code docker compose stop kafka} → poll {@code GET /actuator/health/readiness}
+ * to see the Kafka component transition from UP to DOWN.
+ */
+@Component("kafka")
+public class KafkaHealthIndicator implements HealthIndicator {
+
+    private static final String DETAIL_BOOTSTRAP = "bootstrapServers";
+
+    private final String bootstrapServers;
+
+    public KafkaHealthIndicator(
+            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers) {
+        this.bootstrapServers = bootstrapServers;
+    }
+
+    /**
+     * Connects to the Kafka cluster and returns UP with the cluster ID, or DOWN with the exception.
+     *
+     * @implNote A new {@link AdminClient} is created and closed on every invocation.
+     *           This is deliberate: a persistent AdminClient would hide transient connection
+     *           failures (a recovered client might still report UP for a broker that went DOWN
+     *           and came back). The overhead of re-connecting is acceptable for a health probe
+     *           that runs at most once every 10 seconds.
+     * @apiNote The 3-second timeout in {@code REQUEST_TIMEOUT_MS_CONFIG} applies per Kafka
+     *          request. The outer {@code get(5, TimeUnit.SECONDS)} provides a safety net so
+     *          the readiness probe never hangs indefinitely if the broker is completely unreachable.
+     */
+    @Override
+    public Health health() {
+        try (AdminClient client = AdminClient.create(
+                Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
+                       AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, 3_000,
+                       AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 3_000))) {
+            var options = new DescribeClusterOptions().timeoutMs(3_000);
+            String clusterId = client.describeCluster(options)
+                    .clusterId()
+                    .get(5, TimeUnit.SECONDS);
+            return Health.up()
+                    .withDetail("clusterId", clusterId)
+                    .withDetail(DETAIL_BOOTSTRAP, bootstrapServers)
+                    .build();
+        } catch (InterruptedException ex) {
+            // Preserve the interrupt status so callers above us can react —
+            // Sonar S2142: never swallow an InterruptedException silently.
+            Thread.currentThread().interrupt();
+            return Health.down(ex)
+                    .withDetail(DETAIL_BOOTSTRAP, bootstrapServers)
+                    .build();
+        } catch (Exception ex) {
+            return Health.down(ex)
+                    .withDetail(DETAIL_BOOTSTRAP, bootstrapServers)
+                    .build();
+        }
+    }
+}

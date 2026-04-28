@@ -2,7 +2,7 @@
 
 GitLab's managed OTLP ingest endpoint, beta as of 2026-04. Mirror sink
 of the local LGTM stack — every trace / metric / log emitted by
-`mirador-service` lands in **both** local Grafana AND GitLab's group
+`iris-service` lands in **both** local Grafana AND GitLab's group
 Observability tab, so reviewers don't need to clone + boot Docker
 just to see telemetry.
 
@@ -20,10 +20,10 @@ to verify, how to opt-out, how to extend.
 | Endpoint | `https://130289716.otel.gitlab-o11y.com:14318` (HTTPS, OTLP HTTP) |
 | Endpoint (gRPC) | `https://130289716.otel.gitlab-o11y.com:14317` |
 | Auth | None during beta (group-id in subdomain = identifier) |
-| Group | [mirador1](https://gitlab.com/groups/mirador1) (group-id `130289716`) |
+| Group | [iris-7](https://gitlab.com/groups/iris-7) (group-id `130289716`) |
 | Cost | Free during beta |
 | Activated | 2026-04-23 |
-| What pushes | `mirador-service` OTel Collector only (UI + Python NOT wired yet) |
+| What pushes | `iris-service` OTel Collector only (UI + Python NOT wired yet) |
 | What ingests | Traces + Metrics + Logs (all 3 OTel signals) |
 | Where to view | Group sidebar → Observability |
 
@@ -33,7 +33,7 @@ to verify, how to opt-out, how to extend.
 
 ```
                                 ┌── otlphttp/{traces,metrics,logs}        ──► LGTM local (Grafana :3000)
-mirador-service Spring Boot ──► OTel Collector (port 4317/4318)
+iris-service Spring Boot ──► OTel Collector (port 4317/4318)
                                 └── otlphttp/{traces,metrics,logs}-gitlab ──► https://130289716.otel.gitlab-o11y.com:14318
 ```
 
@@ -46,18 +46,18 @@ Observability is one extra exporter block per signal.
 
 ### Currently emitting
 
-- ✅ **`mirador-service`** (Java/Spring Boot) — wired via
+- ✅ **`iris-service`** (Java/Spring Boot) — wired via
   [`infra/observability/otelcol-override.yaml`](../../infra/observability/otelcol-override.yaml).
   All 3 signals (traces / metrics / logs) dual-exported.
 
 ### NOT emitting yet (future opt-in)
 
-- ❌ **`mirador-ui`** (Angular) — has its own OTel Web SDK
-  ([UI ADR-0009](file:///Users/benoitbesson/dev/js/mirador-ui/docs/adr/0009-browser-telemetry-via-otlp.md))
+- ❌ **`iris-ui`** (Angular) — has its own OTel Web SDK
+  ([UI ADR-0009](file:///Users/benoitbesson/dev/js/iris-ui/docs/adr/0009-browser-telemetry-via-otlp.md))
   but ships only to local Collector currently. To dual-export to
   GitLab : add `OTEL_EXPORTER_OTLP_ENDPOINT_GITLAB` env var + a 2nd
   exporter in the SDK init. (No ADR yet ; would mirror this doc.)
-- ❌ **`mirador-service-python`** (Python/FastAPI) — uses
+- ❌ **`iris-service-python`** (Python/FastAPI) — uses
   `opentelemetry-exporter-otlp-proto-http` pointing at local
   `http://localhost:4318`. Same extension pattern as the UI : add a 2nd
   exporter pointing at the GitLab endpoint.
@@ -81,7 +81,7 @@ exporters:
 ```
 
 The `${env:GITLAB_OBSERVABILITY_ENDPOINT:-…}` syntax means : use the env
-var if set, fall back to the mirador1 default. Forks override via
+var if set, fall back to the iris-7 default. Forks override via
 `.env` :
 
 ```sh
@@ -97,13 +97,13 @@ GitLab API : `GET /groups/<your-group-path>` returns `id`).
 
 ## How to view the data
 
-Group sidebar (https://gitlab.com/groups/mirador1/-/observability) :
+Group sidebar (https://gitlab.com/groups/iris-7/-/observability) :
 
 | Signal | URL | UI feature parity vs Grafana |
 |---|---|---|
-| Tracing | https://gitlab.com/groups/mirador1/-/observability/tracing | Span list + trace waterfall ; richer than basic Tempo, less than Grafana ExploreLogs2Metrics |
-| Metrics | https://gitlab.com/groups/mirador1/-/observability/metrics | Time-series view ; PromQL-like query syntax |
-| Logs | https://gitlab.com/groups/mirador1/-/observability/logs | Loki-style filtering + correlation to spans |
+| Tracing | https://gitlab.com/groups/iris-7/-/observability/tracing | Span list + trace waterfall ; richer than basic Tempo, less than Grafana ExploreLogs2Metrics |
+| Metrics | https://gitlab.com/groups/iris-7/-/observability/metrics | Time-series view ; PromQL-like query syntax |
+| Logs | https://gitlab.com/groups/iris-7/-/observability/logs | Loki-style filtering + correlation to spans |
 
 GitLab's Observability UI is **maturing fast** but still less polished
 than Grafana for trace deep-dive. Use cases :
@@ -146,7 +146,7 @@ curl http://localhost:8080/customers            # generate a request
 curl http://localhost:8080/customers/3/enrich   # generate a Kafka span
 ```
 
-Open https://gitlab.com/groups/mirador1/-/observability/tracing — within
+Open https://gitlab.com/groups/iris-7/-/observability/tracing — within
 ~30s a span named `GET /customers` should appear. If not, check
 `docker logs <otel-collector-container>` for export errors.
 
@@ -217,4 +217,4 @@ the auth + the cost per signal.
 - [`infra/observability/otelcol-override.yaml`](../../infra/observability/otelcol-override.yaml) — the actual config
 - [docs/architecture/observability.md](../architecture/observability.md) — overall observability story
 - GitLab Observability docs : https://docs.gitlab.com/ee/operations/tracing.html
-- mirador1 group setup page : https://gitlab.com/groups/mirador1/-/observability/setup
+- iris-7 group setup page : https://gitlab.com/groups/iris-7/-/observability/setup

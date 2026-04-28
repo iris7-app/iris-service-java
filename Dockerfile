@@ -73,11 +73,11 @@ WORKDIR /app
 # the image manifest and are visible via `docker inspect` and GitLab's
 # "Container Registry" tab without pulling the image. Concrete values
 # (revision, created) are injected by the CI --label flags at build time.
-LABEL org.opencontainers.image.title="mirador-service" \
-      org.opencontainers.image.description="Mirador Spring Boot 4 / Java 25 backend" \
-      org.opencontainers.image.source="https://gitlab.com/mirador1/mirador-service" \
+LABEL org.opencontainers.image.title="iris-service" \
+      org.opencontainers.image.description="Iris Spring Boot 4 / Java 25 backend" \
+      org.opencontainers.image.source="https://gitlab.com/iris-7/iris-service" \
       org.opencontainers.image.licenses="Proprietary" \
-      org.opencontainers.image.vendor="mirador1" \
+      org.opencontainers.image.vendor="iris-7" \
       org.opencontainers.image.base.name="eclipse-temurin:25-jre"
 
 # Security: run as a dedicated non-root system user.

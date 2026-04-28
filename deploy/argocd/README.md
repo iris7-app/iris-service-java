@@ -22,7 +22,7 @@ the cutover.
    doesn't race Argo CD on reconciliation.
 4. **Rename** this file's `targetRevision: main` to any branch you
    want Argo CD to track (production should stay on `main`).
-5. **Verify** with `argocd app get mirador` and the Argo CD UI.
+5. **Verify** with `argocd app get iris` and the Argo CD UI.
 
 ## Rollback
 

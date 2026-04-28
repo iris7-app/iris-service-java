@@ -8,11 +8,11 @@
 ## Context
 
 Up to this ADR, the GKE Autopilot demo cluster exposed several HTTPS
-endpoints behind `mirador1.duckdns.org` and sub-hosts:
+endpoints behind `iris-7.duckdns.org` and sub-hosts:
 
-- `mirador1.duckdns.org` — Angular UI + backend API
-- `grafana.mirador1.duckdns.org` — LGTM (Grafana)
-- `argocd.mirador1.duckdns.org` — Argo CD UI
+- `iris-7.duckdns.org` — Angular UI + backend API
+- `grafana.iris-7.duckdns.org` — LGTM (Grafana)
+- `argocd.iris-7.duckdns.org` — Argo CD UI
 
 Each came with a Let's Encrypt certificate issued by cert-manager, an
 Ingress in the `app` / `infra` / `argocd` namespaces, a DuckDNS entry
@@ -131,7 +131,7 @@ which tunnel is active):
   one `kubectl` subprocess per service. Memory is negligible (~5 MB
   each) but the process list is noisier. `pf-stop.sh` is a hard
   requirement for clean teardown.
-- **Frontend image pipeline becomes vestigial.** The mirador-ui repo's
+- **Frontend image pipeline becomes vestigial.** The iris-ui repo's
   `docker build + push to GitLab Registry` job stays for now (future
   option to re-enable an Ingress if one is ever needed) but is no
   longer deployed anywhere. Flagged as a cleanup follow-up.
@@ -161,7 +161,7 @@ which tunnel is active):
 - **Update**: `public/index.html` (landing points at clone + tunnel
   flow), `README.md` (swap public URLs for tunnel ports).
 
-## UI-side follow-up (mirador-ui repo)
+## UI-side follow-up (iris-ui repo)
 
 The EnvService has a dropdown in the topbar with three entries:
 

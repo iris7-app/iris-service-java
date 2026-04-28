@@ -15,7 +15,7 @@
 #   2. wait up to 3 min for Spring health to flip to UP
 #   3. bin/dev/healthcheck-all.sh   — verify every container probe
 #   4. bin/audit-lighthouse.sh  — capture today's Lighthouse score
-#      (UI repo, optional, only if mirador-ui sibling exists)
+#      (UI repo, optional, only if iris-ui sibling exists)
 #   5. ./run.sh stop            — leave the laptop clean
 #
 # Output: appends a one-line summary to docs/audit/nightly-smoke.log
@@ -23,8 +23,8 @@
 # spot a slow-drift trend ("Lighthouse perf dropped 12 pts in 3 weeks").
 #
 # Schedule (macOS launchd, runs at 03:00 local):
-#   cp bin/launchd/com.mirador.nightly-smoke.plist ~/Library/LaunchAgents/
-#   launchctl load ~/Library/LaunchAgents/com.mirador.nightly-smoke.plist
+#   cp bin/launchd/org.iris.nightly-smoke.plist ~/Library/LaunchAgents/
+#   launchctl load ~/Library/LaunchAgents/org.iris.nightly-smoke.plist
 # (the plist file is shipped under bin/launchd/ for reference)
 # =============================================================================
 
@@ -71,10 +71,10 @@ if [[ "$status" == "PASS" ]]; then
 fi
 
 # Optional: run Lighthouse if the UI sibling repo exists + npm script available.
-if [[ -d "../../js/mirador-ui" && "$status" == "PASS" ]]; then
+if [[ -d "../../js/iris-ui" && "$status" == "PASS" ]]; then
   log "▸ Lighthouse audit (UI :4200) — optional, skipping if UI not up…"
   if curl -sSf -m 3 http://localhost:4200 >/dev/null 2>&1; then
-    (cd ../../js/mirador-ui && bin/audit-lighthouse.sh > /tmp/nightly-smoke-lh.log 2>&1) || \
+    (cd ../../js/iris-ui && bin/audit-lighthouse.sh > /tmp/nightly-smoke-lh.log 2>&1) || \
       notes="${notes}; lighthouse failed (non-blocking)"
   else
     notes="${notes}; UI :4200 not up, lighthouse skipped"

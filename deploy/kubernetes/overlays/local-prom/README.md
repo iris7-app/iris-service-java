@@ -27,7 +27,7 @@ for the full decision narrative.
 | Pod count (kind, 1 node) | ~10 | ~14 |
 | Steady-state RAM | ~1.5 GiB | ~1.7 GiB (measured: +226 MiB) |
 | OpenLens "Metrics" tab | Aliased OTel data (works since ADR-0038) | Native ksm/node-exporter data |
-| Grafana dashboards (Mirador's own) | Loki + Tempo + Mimir + Pyroscope | Same + 5th datasource (kube-prom Prometheus) |
+| Grafana dashboards (Iris's own) | Loki + Tempo + Mimir + Pyroscope | Same + 5th datasource (kube-prom Prometheus) |
 | OTLP push from app | lgtm Collector | lgtm Collector (unchanged) |
 | Grafana count | 1 (lgtm's) | 1 (lgtm's — chart's Grafana is disabled) |
 | Prometheus count | 1 (lgtm's Mimir) | 2 (Mimir + chart's Prometheus, distinct UIDs) |
@@ -94,10 +94,10 @@ Verify lgtm features still work:
 
 ```bash
 # Loki — should return some app log lines
-curl -s 'http://localhost:3100/loki/api/v1/query?query=%7Bservice_name%3D%22mirador%22%7D' | jq '.data.result | length'
+curl -s 'http://localhost:3100/loki/api/v1/query?query=%7Bservice_name%3D%22iris%22%7D' | jq '.data.result | length'
 
 # Tempo — list recent traces
-curl -s 'http://localhost:3200/api/search?tags=service.name%3Dmirador' | jq '.traces | length'
+curl -s 'http://localhost:3200/api/search?tags=service.name%3Diris' | jq '.traces | length'
 
 # Pyroscope — list profiles
 curl -s 'http://localhost:4040/api/apps' | jq 'length'

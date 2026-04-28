@@ -29,8 +29,8 @@ out of the repo. Fix the local signing first.
 
 ## Option A — GitHub web UI (recommended for first-time setup)
 
-1. Open: <https://github.com/mirador1/mirador-service/settings/branches>
-   (or `mirador-ui` for the UI repo).
+1. Open: <https://github.com/iris-7/iris-service/settings/branches>
+   (or `iris-ui` for the UI repo).
 2. Find the **Branch protection rules** section. There should be an
    existing rule for `main` (created during stable-v1.0.5 hardening).
 3. Click **Edit** next to the `main` rule.
@@ -48,18 +48,18 @@ If you have `gh` authenticated with admin scope on the repo:
 
 ```bash
 # svc
-gh api repos/mirador1/mirador-service/branches/main/protection/required_signatures \
+gh api repos/iris-7/iris-service/branches/main/protection/required_signatures \
   --method POST
 
 # UI
-gh api repos/mirador1/mirador-ui/branches/main/protection/required_signatures \
+gh api repos/iris-7/iris-ui/branches/main/protection/required_signatures \
   --method POST
 ```
 
 Verify with:
 
 ```bash
-gh api repos/mirador1/mirador-service/branches/main/protection/required_signatures \
+gh api repos/iris-7/iris-service/branches/main/protection/required_signatures \
   | jq .enabled
 # → true
 ```
@@ -70,7 +70,7 @@ Two ways to disable, fast:
 
 ```bash
 # API (immediate)
-gh api repos/mirador1/mirador-service/branches/main/protection/required_signatures \
+gh api repos/iris-7/iris-service/branches/main/protection/required_signatures \
   --method DELETE
 
 # Or UI: Settings → Branches → Edit main rule → uncheck "Require signed commits"

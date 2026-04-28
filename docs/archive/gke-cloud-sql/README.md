@@ -27,13 +27,13 @@ Reach for Cloud SQL when one of these becomes true:
 
 1. Uncomment the Cloud SQL resources in Terraform:
    ```
-   deploy/terraform/gcp/main.tf  →  google_sql_database_instance "mirador"
+   deploy/terraform/gcp/main.tf  →  google_sql_database_instance "iris"
    ```
    and add back `TF_VAR_db_password` / `TF_VAR_db_tier` in GitLab CI vars.
 
 2. Run `terraform apply`, note the connection string:
    ```
-   gcloud sql instances describe mirador-db \
+   gcloud sql instances describe iris-db \
      --format='value(connectionName)'
    ```
    and set the `CLOUD_SQL_INSTANCE` GitLab CI variable.
@@ -48,9 +48,9 @@ Reach for Cloud SQL when one of these becomes true:
 
    patches:
      - path: ingress-tls-patch.yaml
-       target: { kind: Ingress, name: mirador-ingress }
+       target: { kind: Ingress, name: iris-ingress }
      - path: backend-cloudsql-sidecar-patch.yaml
-       target: { kind: Deployment, name: mirador }
+       target: { kind: Deployment, name: iris }
    ```
 
 4. Delete the in-cluster `postgresql` StatefulSet and its PVC:
@@ -63,4 +63,4 @@ Reach for Cloud SQL when one of these becomes true:
    `127.0.0.1:5432` (the sidecar's local address).
 
 The architecture supports both postures with the exact same
-`mirador-backend` Deployment spec — only the overlay fragments change.
+`iris-backend` Deployment spec — only the overlay fragments change.

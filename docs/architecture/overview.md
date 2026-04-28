@@ -116,17 +116,17 @@
 ① – ③  same filter pipeline (ADMIN role required — SecurityConfig /chaos/**)
 ④ ChaosController           — parse slug, call ChaosService.trigger(POD_KILL)
 ⑤ ChaosService              — build GenericKubernetesResource (PodChaos CR)
-   ⑤a name = "mirador-pod-kill-<ms-epoch>"   (collision-free on rapid clicks)
+   ⑤a name = "iris-pod-kill-<ms-epoch>"   (collision-free on rapid clicks)
    ⑤b metadata.namespace = "app"
-   ⑤c spec = { action: pod-kill, mode: one, duration: 30s, selector: {...mirador...} }
+   ⑤c spec = { action: pod-kill, mode: one, duration: 30s, selector: {...iris...} }
 ⑥ Fabric8 KubernetesClient  — POST /apis/chaos-mesh.org/v1alpha1/namespaces/app/podchaos
                                with the CR as JSON body
-⑦ K8s API server            — RBAC check against mirador-backend ServiceAccount
-                               (Role "mirador-backend-chaos" grants create/get/list/delete
+⑦ K8s API server            — RBAC check against iris-backend ServiceAccount
+                               (Role "iris-backend-chaos" grants create/get/list/delete
                                 on chaos-mesh.org/podchaos in `app` namespace only)
-⑧ Chaos Mesh controller     — watches the new CR, picks a random mirador pod,
+⑧ Chaos Mesh controller     — watches the new CR, picks a random iris pod,
                                sends SIGKILL via its kubelet shim
-⑨ → HTTP 200 {"experiment":"pod-kill", "customResourceName":"mirador-pod-kill-...",
+⑨ → HTTP 200 {"experiment":"pod-kill", "customResourceName":"iris-pod-kill-...",
                "kind":"PodChaos", "duration":"30s", "status":"triggered"}
    (30s later) Chaos Mesh deletes the CR — nothing for the backend to clean up
 ```
@@ -163,7 +163,7 @@ Feature-sliced per [ADR-0008](../adr/0008-feature-sliced-packages.md)
 sub-package for framework-free domain interfaces).
 
 ```
-com.mirador
+org.iris
 ├── api/            ApiError, ApiExceptionHandler          — RFC 9457 error responses
 ├── auth/           JwtTokenProvider, JwtAuthenticationFilter, SecurityConfig,
 │                   AuthController, LoginAttemptService,
@@ -201,10 +201,10 @@ com.mirador
 ├── resilience/     IdempotencyFilter, RateLimitingFilter,
 │                   ShedLockConfig, ScheduledJobController,
 │                   ScheduledJobDto                         — rate limiting, idempotency, distributed lock
-└── MiradorApplication.java
+└── IrisApplication.java
 ```
 
-ArchUnit rules in [`ArchitectureTest.java`](../../src/test/java/com/mirador/ArchitectureTest.java)
+ArchUnit rules in [`ArchitectureTest.java`](../../src/test/java/org/iris/ArchitectureTest.java)
 enforce the key invariants: controllers go through services (never repo
 directly), repositories don't depend on upper layers, `@KafkaListener`
 classes live in `messaging/`, `@RestController` classes live in a

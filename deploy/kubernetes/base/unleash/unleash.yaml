@@ -5,7 +5,7 @@
 # initial scoping exercise (2026-04-18):
 #   1. Decouple deploy from release — push code to prod dark, flip the
 #      flag when ready. Pairs naturally with the Argo Rollouts canary.
-#   2. Kill-switch for flaky downstream deps — e.g. `mirador.bio.enabled`
+#   2. Kill-switch for flaky downstream deps — e.g. `iris.bio.enabled`
 #      hides the Bio tab when Ollama is unhealthy. Flip off in seconds
 #      instead of redeploying.
 # The earlier "ops-mode persona split" idea was dropped — the project
@@ -13,11 +13,11 @@
 # so the feature would have no real effect.
 #
 # Architecture:
-#   mirador-ui → Unleash Proxy SDK (browser) → Unleash backend → Postgres
+#   iris-ui → Unleash Proxy SDK (browser) → Unleash backend → Postgres
 #
 # The browser *never* talks to the Unleash admin API directly — it uses the
 # front-end SDK which authenticates with a client-token (read-only). Admins
-# use the web UI at unleash.mirador1.duckdns.org/.
+# use the web UI at unleash.iris-7.duckdns.org/.
 #
 # Seed data for the historical SQL-based bootstrap lives in `seed.yaml`
 # — kept in git as reference but no longer wired (Unleash 7.x uses the
@@ -57,7 +57,7 @@ spec:
       targetPort: 5432
 ---
 # ── Postgres backing Unleash (separate from the app Postgres) ───────────
-# Using a dedicated DB keeps Unleash's schema isolated from the mirador
+# Using a dedicated DB keeps Unleash's schema isolated from the iris
 # app — easier to nuke-and-restore independently, avoids version-lock
 # between Unleash's Flyway migrations and our own.
 apiVersion: apps/v1
@@ -91,7 +91,7 @@ spec:
               value: unleash
             - name: POSTGRES_PASSWORD
               # Not a secret worth rotating — it's a local-only DB for a
-              # demo tool. If you care, move to ESO / GSM like mirador-db.
+              # demo tool. If you care, move to ESO / GSM like iris-db.
               value: unleash
             - name: PGDATA
               # Same gotcha as the app Postgres (ADR-0022 note): GKE PVCs
@@ -173,7 +173,7 @@ spec:
             # IMPORT_FILE was removed in Unleash 7.x in favour of a JSON
             # state export format that requires live flag state first.
             # Flags are created via the Admin UI on first login. Today the
-            # project only uses one: `mirador.bio.enabled` (kill-switch for
+            # project only uses one: `iris.bio.enabled` (kill-switch for
             # the Ollama-backed /bio endpoint).
             - name: AUTH_TYPE
               value: demo
@@ -189,9 +189,9 @@ spec:
             # These placeholder tokens are fine for a demo cluster; in a
             # real deployment they'd come from ESO → GSM with a real secret.
             - name: INIT_CLIENT_API_TOKENS
-              value: "default:development.mirador-unleash-client-token"
+              value: "default:development.iris-unleash-client-token"
             - name: INIT_FRONTEND_API_TOKENS
-              value: "default:development.mirador-unleash-frontend-token"
+              value: "default:development.iris-unleash-frontend-token"
           resources:
             requests:
               cpu: 100m
@@ -283,11 +283,11 @@ spec:
             # secret matches INIT_CLIENT_API_TOKENS on the unleash server
             # (same file). Token format: <project>:<environment>.<secret>.
             - name: UNLEASH_API_TOKEN
-              value: "default:development.mirador-unleash-client-token"
+              value: "default:development.iris-unleash-client-token"
             # Front-end tokens — what the browser sends in X-API-Token.
             # Multiple allowed, comma-separated. One is enough for this demo.
             - name: UNLEASH_PROXY_SECRETS
-              value: "mirador-ui-proxy-secret"
+              value: "iris-ui-proxy-secret"
             - name: UNLEASH_PROXY_PORT
               value: "3000"
           resources:

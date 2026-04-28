@@ -1,4 +1,4 @@
-# Alert: `MiradorKafkaConsumerLagHigh`
+# Alert: `IrisKafkaConsumerLagHigh`
 
 Fired when `max(kafka_consumer_fetch_manager_records_lag) > 1000` for ≥
 5 min — at least one partition has a thousand records the consumer
@@ -10,7 +10,7 @@ hasn't caught up with. Warning-tier.
 # 1. Which consumer group + partition is lagging?
 curl -s 'http://localhost:9090/api/v1/query' --data-urlencode 'query=
   topk(5, max by (consumer_group, topic, partition) (
-    kafka_consumer_fetch_manager_records_lag{job=~"mirador.*"}
+    kafka_consumer_fetch_manager_records_lag{job=~"iris.*"}
   ))
 ' | jq '.data.result[] | {
   group: .metric.consumer_group,
@@ -48,10 +48,10 @@ open http://localhost:8090  # kafka-ui service in docker-compose
 # Consumer group state from CLI
 kubectl -n infra exec -it kafka-0 -- \
   kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
-  --describe --group mirador-enrich
+  --describe --group iris-enrich
 
 # Recent consumer errors in Loki
-#   {app="mirador"} |~ "KafkaException|SerializationException" | json
+#   {app="iris"} |~ "KafkaException|SerializationException" | json
 
 # DLT depth — if this is growing, poison pills are accumulating
 kubectl -n infra exec -it kafka-0 -- \

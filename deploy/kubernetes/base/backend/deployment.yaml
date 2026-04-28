@@ -1,5 +1,5 @@
 # =============================================================================
-# Deployment — Spring Boot backend (mirador)
+# Deployment — Spring Boot backend (iris)
 #
 # Key design decisions:
 #   - 2 replicas by default (HPA will scale 1→5 based on CPU)
@@ -18,17 +18,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mirador
+  name: iris
   namespace: app
   labels:
-    app.kubernetes.io/name: mirador
+    app.kubernetes.io/name: iris
     app.kubernetes.io/component: backend
     app.kubernetes.io/version: "main"
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: mirador
+      app.kubernetes.io/name: iris
       app.kubernetes.io/component: backend
   strategy:
     # RollingUpdate: Kubernetes replaces pods one at a time. With readinessProbe,
@@ -40,7 +40,7 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: mirador
+        app.kubernetes.io/name: iris
         app.kubernetes.io/component: backend
         app.kubernetes.io/version: "main"
       annotations:
@@ -53,7 +53,7 @@ spec:
       # create/delete on chaos-mesh.org/* so ChaosController can trigger
       # experiments. Without this name, pods bind to `default` SA which
       # has no chaos permissions (403 on every trigger call).
-      serviceAccountName: mirador-backend
+      serviceAccountName: iris-backend
       # 30s grace period allows in-flight requests and Kafka consumers to finish
       terminationGracePeriodSeconds: 30
       # ── Pod-level security context ─────────────────────────────────────
@@ -78,11 +78,11 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              app.kubernetes.io/name: mirador
+              app.kubernetes.io/name: iris
               app.kubernetes.io/component: backend
       containers:
-        - name: mirador
-          image: "registry.gitlab.com/mirador1/mirador-service/backend:main"
+        - name: iris
+          image: "registry.gitlab.com/iris-7/iris-service/backend:main"
           imagePullPolicy: Always
           # Container-level security context. Every field here is a CKS
           # audit checkpoint: no privileged, no root, no caps, no writable FS.
@@ -106,24 +106,24 @@ spec:
           # Non-sensitive config from ConfigMap
           envFrom:
             - configMapRef:
-                name: mirador-config
+                name: iris-config
           # Sensitive secrets (DB_PASSWORD, JWT_SECRET, API_KEY) from Kubernetes Secret
-          # Created by the CI pipeline: kubectl create secret generic mirador-secrets ...
+          # Created by the CI pipeline: kubectl create secret generic iris-secrets ...
           env:
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mirador-secrets
+                  name: iris-secrets
                   key: DB_PASSWORD
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: mirador-secrets
+                  name: iris-secrets
                   key: JWT_SECRET
             - name: API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: mirador-secrets
+                  name: iris-secrets
                   key: API_KEY
             # OTEL_EXPORTER_OTLP_AUTH was used to authenticate against a
             # Grafana Cloud OTLP endpoint. With the current in-cluster LGTM
@@ -136,7 +136,7 @@ spec:
             - name: GITLAB_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: mirador-secrets
+                  name: iris-secrets
                   key: GITLAB_API_TOKEN
           resources:
             # GKE Autopilot: request = limit for deterministic pod sizing and billing.

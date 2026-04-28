@@ -91,7 +91,7 @@ test:k8s-apply:
 #
 # Validates that the kube-prometheus-stack components added by the
 # `local-prom/` overlay (Prometheus Operator + Prometheus + node-exporter
-# + ksm + 6 ServiceMonitors + Mirador ServiceMonitor) apply cleanly in
+# + ksm + 6 ServiceMonitors + Iris ServiceMonitor) apply cleanly in
 # kind AND the operator-managed Prometheus StatefulSet rolls out
 # successfully — catching CRD drift, manifest typos, label-selector
 # mismatches BEFORE they hit GKE via the gke-prom overlay.
@@ -280,7 +280,7 @@ smoke-test:
       #    current repo (~4 min cold) and pull Ollama/Keycloak via
       #    depends_on — we avoid that by running `mvn spring-boot:run`
       #    directly below instead.
-      DB_PORT=5432 DB_USER=mirador DB_PASSWORD=mirador DB_NAME=mirador \
+      DB_PORT=5432 DB_USER=iris DB_PASSWORD=iris DB_NAME=iris \
       SERVER_PORT=8080 \
         docker compose -p "$COMPOSE_PROJECT" -f /tmp/docker-compose.ci.yml \
           up -d db kafka redis
@@ -299,9 +299,9 @@ smoke-test:
       #    SPRING_* env vars point at compose service names instead of
       #    the default localhost addresses (which only work in the
       #    developer's host-mode dev stack).
-      SPRING_DATASOURCE_URL="jdbc:postgresql://db:5432/mirador" \
-      SPRING_DATASOURCE_USERNAME=mirador \
-      SPRING_DATASOURCE_PASSWORD=mirador \
+      SPRING_DATASOURCE_URL="jdbc:postgresql://db:5432/iris" \
+      SPRING_DATASOURCE_USERNAME=iris \
+      SPRING_DATASOURCE_PASSWORD=iris \
       SPRING_DATA_REDIS_HOST=redis \
       SPRING_DATA_REDIS_PORT=6379 \
       SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092 \

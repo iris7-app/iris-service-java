@@ -53,7 +53,7 @@ curl -s http://localhost:8080/actuator/metrics/resilience4j.bulkhead.available.c
 
 # 4. Fallback log
 docker logs customerservice-app --tail 100 | grep bio_fallback
-# OR Grafana Loki: {app="mirador"} |~ "bio_fallback"
+# OR Grafana Loki: {app="iris"} |~ "bio_fallback"
 
 # 5. Direct Ollama call — bypasses circuit breaker
 curl -s http://localhost:11434/api/generate \

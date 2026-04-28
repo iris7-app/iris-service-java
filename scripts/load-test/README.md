@@ -18,7 +18,7 @@ catch regressions.
 
 ```bash
 # Smoke test against production
-K8S_HOST=mirador1.duckdns.org k6 run scripts/load-test/smoke.js
+K8S_HOST=iris-7.duckdns.org k6 run scripts/load-test/smoke.js
 
 # Against local (run the service first with ./run.sh all)
 K8S_HOST=localhost:8080 K8S_SCHEME=http k6 run scripts/load-test/smoke.js
@@ -54,7 +54,7 @@ Or pinned in CI via `mise` (see `.mise.toml`).
 
 | Threshold                                  | Value          | Why                                               |
 | ------------------------------------------ | -------------- | ------------------------------------------------- |
-| `http_req_duration`                        | `p(95)<2000`   | Same band as `MiradorHighLatencyP95` alert        |
+| `http_req_duration`                        | `p(95)<2000`   | Same band as `IrisHighLatencyP95` alert        |
 | `http_req_duration`                        | `p(99)<5000`   | Tail detection — JVM GC pauses surface here       |
 | `http_req_failed`                          | `rate<0.02`    | Slightly above smoke: some 429 expected under load |
 | `http_req_duration{endpoint:aggregate}`    | `p(95)<1500`   | Virtual-threads demo must stay healthy under load |

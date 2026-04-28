@@ -66,7 +66,7 @@ build-native:
 #   GCP_WIF_PROVIDER   WIF provider full resource name (set at group level)
 #   GCP_SERVICE_ACCOUNT service account email (set at group level)
 #   TF_VAR_project_id  GCP project ID
-#   TF_VAR_app_host    public hostname (e.g. mirador.example.com)
+#   TF_VAR_app_host    public hostname (e.g. iris.example.com)
 #   TF_VAR_db_password Cloud SQL app user password (sensitive)
 #   TF_STATE_BUCKET    GCS bucket name for Terraform state
 #

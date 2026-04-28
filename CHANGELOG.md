@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Mirador — Spring Boot backend + Angular UI.
+All notable changes to Iris — Spring Boot backend + Angular UI.
 
 Format: a lightly-formatted summary per `stable-vX.Y.Z` tag, maintained
 by `bin/ship/changelog.sh` (reads [Conventional Commits](https://www.conventionalcommits.org)
@@ -22,7 +22,7 @@ First real post-Phase-A stability checkpoint.
 
 ### Highlights
 
-- **CI shields retired** ([`314012f`](https://gitlab.com/mirador1/mirador-service/-/commit/314012f))
+- **CI shields retired** ([`314012f`](https://gitlab.com/iris-7/iris-service/-/commit/314012f))
   — user raised Docker Desktop VM to 16 GB, both `test:k8s-apply` +
   `test:k8s-apply-prom` back to BLOCKING. First successful exit of the
   [ADR-0049](docs/adr/0049-ci-shields-with-dated-exit-tickets.md)
@@ -106,7 +106,7 @@ wave.
 
 ### Chaos feature (CHAOS-1)
 
-- `com.mirador.chaos` feature slice with Fabric8 client + 3 experiments
+- `org.iris.chaos` feature slice with Fabric8 client + 3 experiments
   (PodChaos/NetworkChaos/StressChaos) + RBAC + UI buttons.
 
 ### Auth
@@ -159,7 +159,7 @@ wave.
 
 **ServiceMonitor + GKE kube-prom-stack overlay + ADR-0037 Path B.**
 
-- ServiceMonitor for Mirador in local-prom overlay.
+- ServiceMonitor for Iris in local-prom overlay.
 - `gke-prom/` overlay: kube-prom-stack on GKE Autopilot
   (7 d retention, 10 Gi PVC, 6 ServiceMonitors, ADR-0039).
 - `OpenApiCustomizer openApiSchemaSanitizer()` — clears 2
@@ -192,12 +192,12 @@ For the in-flight Phase B refactor targets, see [`TASKS.md`](TASKS.md).
 
 ---
 
-[stable-v1.0.11]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.11
-[stable-v1.0.10]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.10
-[stable-v1.0.9]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.9
-[stable-v1.0.8]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.8
-[stable-v1.0.7]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.7
-[stable-v1.0.6]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.6
-[stable-v1.0.5]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.5
-[stable-v1.0.4]: https://gitlab.com/mirador1/mirador-service/-/tags/stable-v1.0.4
+[stable-v1.0.11]: https://gitlab.com/iris-7/iris-service/-/tags/stable-v1.0.11
+[stable-v1.0.10]: https://gitlab.com/iris-7/iris-service/-/tags/stable-v1.0.10
+[stable-v1.0.9]: https://gitlab.com/iris-7/iris-service/-/tags/stable-v1.0.9
+[stable-v1.0.8]: https://gitlab.com/iris-7/iris-service/-/tags/stable-v1.0.8
+[stable-v1.0.7]: https://gitlab.com/iris-7/iris-service/-/tags/stable-v1.0.7
+[stable-v1.0.6]: https://gitlab.com/iris-7/iris-service/-/tags/stable-v1.0.6
+[stable-v1.0.5]: https://gitlab.com/iris-7/iris-service/-/tags/stable-v1.0.5
+[stable-v1.0.4]: https://gitlab.com/iris-7/iris-service/-/tags/stable-v1.0.4
 

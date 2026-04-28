@@ -1,7 +1,7 @@
 # =============================================================================
-# RBAC for the Mirador backend — grants just enough to:
+# RBAC for the Iris backend — grants just enough to:
 #   - create/get/list/delete Chaos Mesh CRs in the `app` namespace
-#     (triggered by ChaosController in com.mirador.chaos)
+#     (triggered by ChaosController in org.iris.chaos)
 #
 # Scope is deliberately narrow: Chaos Mesh CRDs live at chaos-mesh.org/v1alpha1;
 # the backend must NOT have broad cluster access. The Role below is
@@ -14,26 +14,26 @@
 #
 # Related:
 #   - deploy/kubernetes/base/chaos/experiments.yaml (the CRs created by the backend)
-#   - src/main/java/com/mirador/chaos/ChaosService.java (the client side)
+#   - src/main/java/org/iris/chaos/ChaosService.java (the client side)
 #   - ADR-0044 (hexagonal lite — port/adapter pattern similar shape here)
 # =============================================================================
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: mirador-backend
+  name: iris-backend
   namespace: app
   labels:
-    app.kubernetes.io/name: mirador
+    app.kubernetes.io/name: iris
     app.kubernetes.io/component: backend
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: mirador-backend-chaos
+  name: iris-backend-chaos
   namespace: app
   labels:
-    app.kubernetes.io/name: mirador
+    app.kubernetes.io/name: iris
     app.kubernetes.io/component: backend
 rules:
   - apiGroups: ["chaos-mesh.org"]
@@ -49,16 +49,16 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: mirador-backend-chaos
+  name: iris-backend-chaos
   namespace: app
   labels:
-    app.kubernetes.io/name: mirador
+    app.kubernetes.io/name: iris
     app.kubernetes.io/component: backend
 subjects:
   - kind: ServiceAccount
-    name: mirador-backend
+    name: iris-backend
     namespace: app
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: mirador-backend-chaos
+  name: iris-backend-chaos

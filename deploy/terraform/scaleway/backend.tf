@@ -10,8 +10,8 @@
 #
 #   terraform {
 #     backend "s3" {
-#       bucket                      = "mirador-tf-state"
-#       key                         = "mirador/scaleway.tfstate"
+#       bucket                      = "iris-tf-state"
+#       key                         = "iris/scaleway.tfstate"
 #       region                      = "fr-par"
 #       endpoints = {
 #         s3 = "https://s3.fr-par.scw.cloud"
@@ -25,7 +25,7 @@
 #   }
 #
 # Prerequisites for Scaleway Object Storage remote state (one-off):
-#   scw object bucket create name=mirador-tf-state region=fr-par
+#   scw object bucket create name=iris-tf-state region=fr-par
 #   # Then set AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY to the Scaleway
 #   # object-storage keys (NOT your SCW_ACCESS_KEY — they're different
 #   # credential pairs).

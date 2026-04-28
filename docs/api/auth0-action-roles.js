@@ -2,7 +2,7 @@
  * Auth0 Action — Inject user roles into access token
  *
  * PURPOSE:
- * The Mirador backend reads roles from the custom claim "https://mirador-api/roles"
+ * The Iris backend reads roles from the custom claim "https://iris-api/roles"
  * in JWT access tokens. Auth0 does not include roles by default — this Action
  * reads the user's assigned Auth0 roles and embeds them in every access token.
  *
@@ -20,8 +20,8 @@
  * RESULT:
  * Access tokens will contain:
  *   {
- *     "https://mirador-api/roles": ["ROLE_ADMIN"],
- *     "aud": ["https://mirador-api", "https://<domain>/userinfo"],
+ *     "https://iris-api/roles": ["ROLE_ADMIN"],
+ *     "aud": ["https://iris-api", "https://<domain>/userinfo"],
  *     ...
  *   }
  *
@@ -35,7 +35,7 @@
  */
 exports.onExecutePostLogin = async (event, api) => {
   // Namespace must match backend's JwtAuthenticationFilter claim key
-  const namespace = 'https://mirador-api';
+  const namespace = 'https://iris-api';
 
   // event.authorization.roles contains the Auth0 roles assigned to this user.
   // Requires the "read:roles" grant — automatically available in Actions.

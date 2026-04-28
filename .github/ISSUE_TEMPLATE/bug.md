@@ -1,6 +1,6 @@
 ---
 name: bug
-about: Report a bug on Mirador
+about: Report a bug on Iris
 title: '[$name] '
 labels: ['bug']
 ---
@@ -24,7 +24,7 @@ Steps to reproduce (commands, clicks, API calls):
 
 ## Environment
 
-- **Mirador version / tag / commit SHA**:
+- **Iris version / tag / commit SHA**:
 - **Deploy target**: `local (compose)` / `kind` / `GKE` / `other`
 - **Java version** (if building locally): `java -version`
 - **OS / arch**: `uname -a`

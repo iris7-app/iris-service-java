@@ -16,8 +16,8 @@
 The 2026-04-22 Clean Code + Clean Architecture audit flagged two
 classes that are **simultaneously JPA entities AND domain models**:
 
-- `com.mirador.auth.RefreshToken`
-- `com.mirador.customer.Customer`
+- `org.iris.auth.RefreshToken`
+- `org.iris.customer.Customer`
 
 Both carry `@Entity`, `@Column`, `@GeneratedValue` annotations (JPA —
 an infrastructure concern in Clean Architecture vocabulary — "how
@@ -36,7 +36,7 @@ Customer.java         (pure domain record, no annotations)
 CustomerMapper.java   (entity ↔ domain bidirectional mapper)
 ```
 
-Mirador deliberately does **NOT** do this. This ADR records the
+Iris deliberately does **NOT** do this. This ADR records the
 decision so future maintainers don't file the un-separated
 `@Entity` on `Customer.java` as tech debt waiting for a split.
 
@@ -55,7 +55,7 @@ ADR only covers intra-feature use.**
 ### What this decision actually looks like
 
 ```java
-// com.mirador.customer.Customer                (JPA entity)
+// org.iris.customer.Customer                (JPA entity)
 @Entity
 public class Customer {
   @Id @GeneratedValue(strategy = IDENTITY) private Long id;
@@ -65,14 +65,14 @@ public class Customer {
   // getters/setters via Lombok
 }
 
-// com.mirador.customer.CustomerService         (domain service)
+// org.iris.customer.CustomerService         (domain service)
 public CustomerDto findById(Long id) {
   return repository.findById(id)                // returns Customer, not CustomerEntity
                    .map(CustomerDto::from)       // DTO at the REST boundary
                    .orElseThrow(...);
 }
 
-// com.mirador.customer.port.CustomerEventPort  (outbound port, ADR-0044)
+// org.iris.customer.port.CustomerEventPort  (outbound port, ADR-0044)
 public interface CustomerEventPort {            // publishes DTO, NOT the entity
   void publishCreated(CustomerCreatedEvent event);
 }
@@ -97,7 +97,7 @@ Cost audited:
 - **MapStruct or manual loops** — both add a category of bug
   (field drift when the schema changes but the mapper forgets a
   field) that the "same class" approach doesn't have.
-- **Dependency rule gain** ≈ zero in practice: Mirador is a
+- **Dependency rule gain** ≈ zero in practice: Iris is a
   monolith with one persistence tech (Postgres via JPA). Swapping
   JPA for, say, MongoDB's `@Document` is a theoretical future that
   historically hasn't happened in this project, and when it does

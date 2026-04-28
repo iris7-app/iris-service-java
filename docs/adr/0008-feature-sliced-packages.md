@@ -1,4 +1,4 @@
-# ADR-0008: Feature-sliced package layout in `com.mirador.*`
+# ADR-0008: Feature-sliced package layout in `org.iris.*`
 
 - **Status**: Superseded by [ADR-0044](0044-hexagonal-considered-feature-slicing-retained.md) (2026-04-21)
 - **Date**: 2026-04-16
@@ -31,13 +31,13 @@ degrades.
 Use **feature slicing**. One top-level package per business capability:
 
 ```
-com.mirador.customer          ← CRUD + events + DTOs for the customer aggregate
-com.mirador.auth              ← JWT, UserDetails, SecurityConfig
-com.mirador.messaging         ← Kafka producer/consumer, topic config
-com.mirador.ratelimit         ← Filter, config, endpoint
-com.mirador.observability     ← Actuator customisations, metrics wiring
-com.mirador.ai                ← Ollama bio endpoint
-com.mirador.config            ← Cross-cutting configuration (root level only)
+org.iris.customer          ← CRUD + events + DTOs for the customer aggregate
+org.iris.auth              ← JWT, UserDetails, SecurityConfig
+org.iris.messaging         ← Kafka producer/consumer, topic config
+org.iris.ratelimit         ← Filter, config, endpoint
+org.iris.observability     ← Actuator customisations, metrics wiring
+org.iris.ai                ← Ollama bio endpoint
+org.iris.config            ← Cross-cutting configuration (root level only)
 ```
 
 Within a feature package, sub-packages are allowed when natural
@@ -60,7 +60,7 @@ mandatory for small features.
 ### Negative
 
 - Spring component scanning must be configured to walk all feature
-  packages (default `@SpringBootApplication` on `com.mirador` is fine;
+  packages (default `@SpringBootApplication` on `org.iris` is fine;
   just don't scatter `@ComponentScan(basePackages=...)`).
 - Some shared utilities (e.g., generic JSON error response) live in
   `config` which is a slight violation of "one package per feature". We
@@ -89,7 +89,7 @@ enough to justify it.
 
 ## References
 
-- `src/main/java/com/mirador/*/package-info.java` — per-package
+- `src/main/java/org/iris/*/package-info.java` — per-package
   documentation showing the pattern in action.
 - [Spring Boot docs — "Locating the Main Application Class"](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#using.structuring-your-code.locating-the-main-class) — recommends a single
   top-level package, consistent with our layout.

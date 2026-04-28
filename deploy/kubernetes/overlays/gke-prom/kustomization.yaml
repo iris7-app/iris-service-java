@@ -19,7 +19,7 @@
 #   • node-exporter DaemonSet (1 pod per Autopilot worker node)
 #   • kube-state-metrics Deployment
 #   • 6 ServiceMonitors (kubelet, apiserver, coreDNS, the 3 chart services)
-#     + 1 ServiceMonitor for the Mirador app itself
+#     + 1 ServiceMonitor for the Iris app itself
 #   • Grafana datasource patch — adds a 5th datasource pointing at this
 #     Prometheus, alongside the existing 4 (lgtm Mimir, Tempo, Loki,
 #     Pyroscope). lgtm still owns its Grafana — no duplicate UI.
@@ -66,12 +66,12 @@ resources:
   # bootstrap pattern: CRDs → CRs.
   - kube-prom-stack-crds.yaml
   - kube-prom-stack-rendered.yaml
-  # ServiceMonitor: Prometheus picks up Mirador's /actuator/prometheus.
+  # ServiceMonitor: Prometheus picks up Iris's /actuator/prometheus.
   # Required label `release: prometheus-stack` so the operator's selector
   # matches if it's ever tightened. See file header for the silent-ignore
   # trap.
-  - mirador-servicemonitor.yaml
-  # Mirador alert + recording rules (Phase 3 O2). Same base as local-prom —
+  - iris-servicemonitor.yaml
+  # Iris alert + recording rules (Phase 3 O2). Same base as local-prom —
   # avoid duplicating rules in each overlay.
   - ../../base/observability-prom
   # Adds the kube-prom Prometheus as a 5th Grafana datasource in lgtm's
@@ -84,7 +84,7 @@ resources:
   # would block lgtm Grafana → kube-prom Prometheus. Adds an
   # `infra → monitoring:9090` egress allow.
   #
-  # `monitoring → app:8080` (Prometheus scraping the Mirador backend) is
+  # `monitoring → app:8080` (Prometheus scraping the Iris backend) is
   # already permitted by the base `allow-port-forward-to-backend` rule —
   # see the comment in networkpolicy-extras.yaml for the analysis.
   - networkpolicy-extras.yaml
@@ -98,7 +98,7 @@ patches:
   - path: configmap-gke-patch.yaml
     target:
       kind: ConfigMap
-      name: mirador-config
+      name: iris-config
 
   # Mounts the grafana-extra-datasources ConfigMap into the lgtm pod's
   # Grafana provisioning dir. Strategic merge — adds 1 volume + 1

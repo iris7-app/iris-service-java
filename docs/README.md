@@ -1,4 +1,4 @@
-# Mirador Service — Documentation
+# Iris Service — Documentation
 
 All long-form documentation for the Spring Boot backend. The root
 `README.md` links here; everything more detailed than a paragraph lives
@@ -91,7 +91,7 @@ Live technical reference (auto-generated, not committed):
 | Javadoc             | `target/site/apidocs/`                 | `mvn site`              |
 | OpenAPI spec        | `http://localhost:8080/v3/api-docs`    | Run the service         |
 | Swagger UI          | `http://localhost:8080/swagger-ui.html`| Run the service         |
-| Angular reference   | `../mirador-ui/docs/compodoc/`         | `npm run compodoc`       |
+| Angular reference   | `../iris-ui/docs/compodoc/`         | `npm run compodoc`       |
 
 ## Assets
 
@@ -102,9 +102,9 @@ Live technical reference (auto-generated, not committed):
 
 ## Cross-repo
 
-- Frontend companion docs: `../../mirador-ui/docs/` (same layout).
+- Frontend companion docs: `../../iris-ui/docs/` (same layout).
 - Technology glossary for the frontend:
-  [mirador-ui/docs/reference/technologies.md](https://gitlab.com/mirador1/mirador-ui/-/blob/main/docs/reference/technologies.md)
+  [iris-ui/docs/reference/technologies.md](https://gitlab.com/iris-7/iris-ui/-/blob/main/docs/reference/technologies.md)
 
 ## Contributing
 

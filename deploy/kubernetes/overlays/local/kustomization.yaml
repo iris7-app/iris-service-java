@@ -28,21 +28,21 @@ patches:
   # ESO never syncs on kind (no Workload Identity Federation path to
   # GCP Secret Manager). Delete the ExternalSecret + SecretStore CRs
   # so they don't hang in Error state, so ESO doesn't fight us over
-  # Secret ownership, and so pods that `envFrom: secretRef: mirador-
+  # Secret ownership, and so pods that `envFrom: secretRef: iris-
   # secrets` find the plain Secret we provide in local-secrets.yaml.
   - patch: |-
       $patch: delete
       apiVersion: external-secrets.io/v1
       kind: ExternalSecret
       metadata:
-        name: mirador-secrets
+        name: iris-secrets
         namespace: app
   - patch: |-
       $patch: delete
       apiVersion: external-secrets.io/v1
       kind: ExternalSecret
       metadata:
-        name: mirador-secrets
+        name: iris-secrets
         namespace: infra
   - patch: |-
       $patch: delete

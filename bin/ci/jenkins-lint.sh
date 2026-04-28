@@ -25,7 +25,7 @@ set -euo pipefail
 # Default path reflects the 2026-04-20 root-hygiene move (root → ci/).
 FILE="${1:-ci/Jenkinsfile}"
 IMAGE="${JENKINS_IMAGE:-jenkins/jenkins:lts-jdk25}"
-CONTAINER="${JENKINS_LINT_CONTAINER:-mirador-jenkins-lint}"
+CONTAINER="${JENKINS_LINT_CONTAINER:-iris-jenkins-lint}"
 PORT="${JENKINS_LINT_PORT:-18082}"
 
 if [[ ! -f "$FILE" ]]; then

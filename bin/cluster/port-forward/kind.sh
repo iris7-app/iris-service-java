@@ -4,7 +4,7 @@
 # bin/cluster/port-forward/kind.sh — kubectl port-forward for the LOCAL kind cluster.
 #
 # Mirror of bin/cluster/port-forward/prod.sh but targets the kind cluster context
-# (`kind-mirador-local`) and uses the +10000 offset so it can coexist with
+# (`kind-iris-local`) and uses the +10000 offset so it can coexist with
 # both compose (upstream ports) and the prod tunnel (+20000).
 #
 # Port map (kind / +10000):
@@ -35,7 +35,7 @@ set -u
 DAEMON=false
 if [ "${1:-}" = "--daemon" ]; then DAEMON=true; fi
 
-KIND_CONTEXT="${KIND_CONTEXT:-kind-mirador-local}"
+KIND_CONTEXT="${KIND_CONTEXT:-kind-iris-local}"
 PID_FILE="/tmp/pf-kind.pids"
 LOG_DIR="/tmp/pf-kind-logs"
 mkdir -p "$LOG_DIR"
@@ -44,7 +44,7 @@ rm -f "$PID_FILE"
 # Sanity 1: the kind context exists.
 if ! kubectl config get-contexts -o name | grep -qx "$KIND_CONTEXT"; then
   echo "❌  kubectl context '$KIND_CONTEXT' not found. Create it with:" >&2
-  echo "    kind create cluster --name mirador-local --config deploy/kubernetes/kind-config.yaml" >&2
+  echo "    kind create cluster --name iris-local --config deploy/kubernetes/kind-config.yaml" >&2
   exit 1
 fi
 
@@ -59,7 +59,7 @@ fi
 # Tunnels: kind uses upstream + 10000. Same service list as prod modulo any
 # CRDs not deployed locally (Argo CD / Chaos Mesh are optional on kind).
 TUNNELS=(
-  "backend       | app       | svc/mirador                   | 18080:8080"
+  "backend       | app       | svc/iris                   | 18080:8080"
   "postgres      | infra     | svc/postgresql                | 15432:5432"
   "redis         | infra     | svc/redis                     | 16379:6379"
   "kafka         | infra     | svc/kafka                     | 19092:9092"

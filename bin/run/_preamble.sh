@@ -57,7 +57,7 @@ set -e
 
 MVNW="./mvnw"
 MAVEN="$MVNW --batch-mode --errors --no-transfer-progress"
-IMAGE="mirador:local"
+IMAGE="iris:local"
 
 # Ensure Docker is running for commands that need it
 ensure_docker() {

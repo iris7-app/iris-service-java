@@ -19,7 +19,7 @@ overhead of self-managed nodes).
 
 [ADR-0036](0036-multi-cloud-terraform-posture.md) then established
 the *reference modules* posture : ship Terraform code (the
-infrastructure-as-code language Mirador uses) for AWS / Azure /
+infrastructure-as-code language Iris uses) for AWS / Azure /
 Scaleway as **read-only** examples that pass `terraform validate`
 but never deploy. Crucially, **OVH was excluded from that list**, on
 the grounds that "OVH ≈ Scaleway" — same EU-sovereign narrative
@@ -44,7 +44,7 @@ Two things, actually :
    (Hébergeur de Données de Santé — French regulatory certification
    required to host health-related personal data). Scaleway does NOT.
    For any future use case touching health data (a not-improbable
-   evolution given Mirador's "observability for serious workloads"
+   evolution given Iris's "observability for serious workloads"
    positioning), OVH would be the *only* viable French-jurisdiction
    option. ADR-0036's "OVH ≈ Scaleway" equivalence collapses on
    this single regulatory axis.
@@ -81,7 +81,7 @@ where the reader's value is "understand the pattern across clouds".
 On that axis, yes, OVH and Scaleway look similar.
 
 But this ADR moves OVH to the **canonical** tier, where the reader's
-value is *"I want my Mirador deploy to land on this cloud"*. The
+value is *"I want my Iris deploy to land on this cloud"*. The
 "new thing taught" is HDS-grade French sovereignty, which Scaleway
 cannot teach.
 
@@ -99,7 +99,7 @@ both Terraform and OpenTofu. The default tool stays **Terraform 1.9.8**
 
 ### Why dual-compat instead of picking one
 
-- **Terraform-only** keeps Mirador on the BSL licence (Business
+- **Terraform-only** keeps Iris on the BSL licence (Business
   Source License — open-source-ish but HashiCorp/IBM can revoke usage
   rights for competitive products), which weakens the souveraineté
   narrative the OVH addition explicitly chases.
@@ -207,7 +207,7 @@ MR bundles the lot :
 **Pros** : zero new work, ADR-0036's signal-to-noise argument stays
 clean.
 **Cons** : the sovereignty motivation goes unanswered. Anyone
-asking "can I run Mirador on a French sovereign cloud where I can
+asking "can I run Iris on a French sovereign cloud where I can
 also host health data ?" gets "build it yourself".
 **Why rejected** : the question is concrete enough (and the answer
 takes ~10h to ship) that not having an answer is the more expensive
@@ -241,7 +241,7 @@ AWS + Azure + Scaleway + OVH)
 **Pros** : maximal portability story.
 **Cons** : the project cap is €10/month. Five canonical clouds is a
 500% cost blow-out for a portfolio demo. Also dilutes the *demo* :
-"Mirador can run anywhere" is less compelling than "Mirador's
+"Iris can run anywhere" is less compelling than "Iris's
 default is GCP, with a French-sovereign HDS-ready option".
 **Why rejected** : disproportionate cost + diluted narrative.
 

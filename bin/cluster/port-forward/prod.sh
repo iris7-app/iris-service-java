@@ -58,7 +58,7 @@ fi
 
 # Tunnels: "name | namespace | svc | local:remote"  — prod uses upstream + 20000.
 TUNNELS=(
-  "backend       | app       | svc/mirador                   | 28080:8080"
+  "backend       | app       | svc/iris                   | 28080:8080"
   "postgres      | infra     | svc/postgresql                | 25432:5432"
   "redis         | infra     | svc/redis                     | 26379:6379"
   "kafka         | infra     | svc/kafka                     | 29092:9092"

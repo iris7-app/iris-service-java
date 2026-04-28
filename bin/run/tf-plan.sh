@@ -10,5 +10,5 @@ source "$REPO_ROOT/bin/run/_preamble.sh"
     cd deploy/terraform/gcp
     [ ! -f terraform.tfvars ] && { echo "❌  deploy/terraform/gcp/terraform.tfvars not found. Copy from terraform.tfvars.example."; exit 1; }
     PROJECT=$(grep project_id terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/')
-    terraform init -backend-config="bucket=${PROJECT}-tf-state" -backend-config="prefix=mirador/gcp" -input=false
+    terraform init -backend-config="bucket=${PROJECT}-tf-state" -backend-config="prefix=iris/gcp" -input=false
     terraform plan

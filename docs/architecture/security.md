@@ -19,16 +19,16 @@
 
 ## Authentication flows
 
-Mirador supports **three authentication providers in parallel** via a single
+Iris supports **three authentication providers in parallel** via a single
 Spring Security filter chain. The UI offers a choice between them, and the
 backend validates all three shapes through
-[`JwtAuthenticationFilter`](../../src/main/java/com/mirador/auth/JwtAuthenticationFilter.java):
+[`JwtAuthenticationFilter`](../../src/main/java/org/iris/auth/JwtAuthenticationFilter.java):
 
 | Provider | Token signature | Issuer | Role source |
 |---|---|---|---|
 | Built-in | HMAC-SHA256 | self (`JwtTokenProvider`) | `role` claim (single) |
 | Keycloak | RS256 (JWKS) | `$KEYCLOAK_URL/realms/customer-service` | `realm_access.roles` (array) |
-| Auth0 | RS256 (JWKS) | `https://$AUTH0_DOMAIN/` | `https://mirador-api/roles` (array, injected by a Post-Login Action — see [`docs/api/auth0-action-roles.js`](../api/auth0-action-roles.js)) |
+| Auth0 | RS256 (JWKS) | `https://$AUTH0_DOMAIN/` | `https://iris-api/roles` (array, injected by a Post-Login Action — see [`docs/api/auth0-action-roles.js`](../api/auth0-action-roles.js)) |
 
 Read the corresponding ADRs for the rationale:
 [ADR-0018](../adr/0018-jwt-strategy-hmac-refresh-rotation.md) (built-in JWT),
@@ -96,14 +96,14 @@ sequenceDiagram
     API->>JWKS: GET /.well-known/jwks.json (cached)
     JWKS-->>API: RSA public keys
     API->>API: validate RS256 + iss + aud claims
-    API->>API: read 'https://mirador-api/roles' — ['ROLE_ADMIN']
+    API->>API: read 'https://iris-api/roles' — ['ROLE_ADMIN']
     API-->>Browser: 200 {quality...}
 ```
 
 #### Interceptor fallback — race condition handling
 
 On the first request right after an Auth0 callback, the UI's
-[`authInterceptor`](../../../mirador-ui/src/app/core/auth/auth.interceptor.ts)
+[`authInterceptor`](../../../iris-ui/src/app/core/auth/auth.interceptor.ts)
 might catch a 401 because `AuthService` doesn't yet have the token (Auth0
 SDK is still processing the `?code` callback). The interceptor then waits
 for `Auth0Service.isLoading$ = false`, fetches a fresh access token via

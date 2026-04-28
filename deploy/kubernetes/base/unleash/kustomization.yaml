@@ -4,7 +4,7 @@
 # Wired into `base/kustomization.yaml` for both fast and full demo modes.
 # seed.yaml is kept as a reference artefact only — Unleash 7.x dropped
 # IMPORT_FILE in favour of INIT_*_API_TOKENS env vars + Admin UI flag
-# creation. Today we use one flag: `mirador.bio.enabled` (kill-switch
+# creation. Today we use one flag: `iris.bio.enabled` (kill-switch
 # for the Ollama-backed /bio tab in the UI).
 # =============================================================================
 apiVersion: kustomize.config.k8s.io/v1beta1

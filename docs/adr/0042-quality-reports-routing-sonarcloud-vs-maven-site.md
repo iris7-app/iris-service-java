@@ -11,7 +11,7 @@
 
 ## Context
 
-Mirador produces quality / security artefacts from many tools: JaCoCo
+Iris produces quality / security artefacts from many tools: JaCoCo
 (coverage), Surefire/Failsafe (tests), Sonar (bugs + smells), PMD,
 Checkstyle, SpotBugs, Pitest (mutation), Trivy + Grype (CVEs), Semgrep
 (SAST), Spectral (OpenAPI lint), ESLint (Angular UI), Dockle +

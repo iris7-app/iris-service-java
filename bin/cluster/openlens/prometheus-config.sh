@@ -4,7 +4,7 @@
 # bin/cluster/openlens/prometheus-config.sh
 #
 # Wires OpenLens's "Metrics" feature to whichever Prometheus is currently
-# deployed in the kind-mirador-local cluster:
+# deployed in the kind-iris-local cluster:
 #   - If the `local-prom` overlay is applied (kube-prometheus-stack
 #     present) → point at `monitoring/prometheus-stack-kube-prom-prometheus:9090`.
 #     This is the native source the OpenLens "Auto" provider also finds;
@@ -34,7 +34,7 @@
 # Prerequisite:
 #   - OpenLens is installed and has been opened at least once (so the
 #     lens-cluster-store.json exists).
-#   - The kind-mirador-local cluster has been imported into OpenLens
+#   - The kind-iris-local cluster has been imported into OpenLens
 #     (usually automatic when kubeconfig has the context).
 #
 # Companion fix: deploy/kubernetes/base/observability/lgtm.yaml sets the
@@ -49,7 +49,7 @@ STORE="$HOME/Library/Application Support/OpenLens/lens-cluster-store.json"
 
 # ── Parse args ──────────────────────────────────────────────────────────────
 FORCE_MODE=""
-CONTEXT="kind-mirador-local"
+CONTEXT="kind-iris-local"
 for arg in "$@"; do
   case "$arg" in
     --force-lgtm)     FORCE_MODE="lgtm" ;;

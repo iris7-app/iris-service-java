@@ -4,11 +4,11 @@
 > C), UI page (Phase D), drift SLO (Phase E), promotion script (Phase F)
 > in progress.
 
-The `mirador-service-java` backend exposes a trained Customer Churn
+The `iris-service-java` backend exposes a trained Customer Churn
 prediction via two interfaces — a REST endpoint and an MCP `@Tool`. The
 underlying model is an [ONNX-format binary](https://onnxruntime.ai/) loaded
 in-process at startup ; same ML lifecycle as the
-[shared ADR-0060](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0060-onnx-cross-language-ml-inference.md)
+[shared ADR-0060](https://gitlab.com/iris-7/iris-service-shared/-/blob/main/docs/adr/0060-onnx-cross-language-ml-inference.md)
 contract — no sidecar, no network hop per inference, identical
 predictions across Java + Python.
 
@@ -87,7 +87,7 @@ reason about retry / fallback rather than getting an exception.
 
 ```bash
 # Wire it up in claude.
-claude mcp add --transport http mirador-java http://localhost:8080/mcp \
+claude mcp add --transport http iris-java http://localhost:8080/mcp \
     --header "X-API-Key: demo-api-key-2026"
 
 # Ask in natural language :
@@ -97,23 +97,23 @@ claude
 
 ## Model provisioning
 
-Per [shared ADR-0062](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0062-mlflow-registry-configmap-promotion.md),
+Per [shared ADR-0062](https://gitlab.com/iris-7/iris-service-shared/-/blob/main/docs/adr/0062-mlflow-registry-configmap-promotion.md),
 the ONNX artefact is distributed via a Kubernetes ConfigMap. Pods mount
 it read-only at `/etc/models/churn_predictor.onnx`.
 
 **Configuration properties** :
-- `mirador.churn.model-path` (default `/etc/models/churn_predictor.onnx`)
-- `mirador.churn.model-version` (default `unspecified`) — surfaced in
+- `iris.churn.model-path` (default `/etc/models/churn_predictor.onnx`)
+- `iris.churn.model-version` (default `unspecified`) — surfaced in
   every `ChurnPredictionDto` for audit + drift correlation
-- `mirador.churn.risk-thresholds` (default LOW=0.3, HIGH=0.7) — band
+- `iris.churn.risk-thresholds` (default LOW=0.3, HIGH=0.7) — band
   classification thresholds (Phase E will move these to a tunable
   config-server endpoint)
 
 **Local dev** : the Python training script
-[`mirador_service.ml.train_churn`](https://gitlab.com/mirador1/mirador-service-python/-/blob/main/src/mirador_service/ml/train_churn.py)
+[`iris_service.ml.train_churn`](https://gitlab.com/iris-7/iris-service-python/-/blob/main/src/iris_service/ml/train_churn.py)
 writes to `./.models/churn_predictor.onnx` by default. Override via :
 ```bash
-./mvnw spring-boot:run -Dmirador.churn.model-path=$(pwd)/../mirador-service-python/.models/churn_predictor.onnx
+./mvnw spring-boot:run -Diris.churn.model-path=$(pwd)/../iris-service-python/.models/churn_predictor.onnx
 ```
 
 **Production promotion** is `bin/ml/promote_to_configmap.sh` (Phase F)
@@ -128,7 +128,7 @@ the ONNX file is missing :
 - `ChurnPredictor#isReady()` returns `false`.
 - REST endpoint returns `503`.
 - MCP tool returns `ServiceUnavailableDto` with a clear hint.
-- All other Mirador endpoints (Customer / Order / Product / MCP /
+- All other Iris endpoints (Customer / Order / Product / MCP /
   Actuator / SLO dashboards) keep working unchanged.
 
 This pattern lets us deploy the JAR before the model is ready (e.g. on a
@@ -143,17 +143,17 @@ tolerance). Phase G ships `bin/ml/cross_language_smoke.py` that validates
 this on every promoted model.
 
 The 8 features + their canonical order (per [shared
-ADR-0061](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0061-customer-churn-prediction.md)
+ADR-0061](https://gitlab.com/iris-7/iris-service-shared/-/blob/main/docs/adr/0061-customer-churn-prediction.md)
 §"Feature engineering") are the contract — both
-[`ChurnFeatureExtractor`](../../src/main/java/com/mirador/ml/ChurnFeatureExtractor.java)
+[`ChurnFeatureExtractor`](../../src/main/java/org/iris/ml/ChurnFeatureExtractor.java)
 (Java) and
-[`feature_engineering.py`](https://gitlab.com/mirador1/mirador-service-python/-/blob/main/src/mirador_service/ml/feature_engineering.py)
+[`feature_engineering.py`](https://gitlab.com/iris-7/iris-service-python/-/blob/main/src/iris_service/ml/feature_engineering.py)
 (Python) implement the same logic. Tests on both sides assert determinism
 on golden inputs.
 
 ## Testing
 
-Unit tests under `src/test/java/com/mirador/ml/` :
+Unit tests under `src/test/java/org/iris/ml/` :
 - `ChurnFeatureExtractorTest` — feature engineering parity (the load-bearing test)
 - `ChurnPredictorTest` — graceful degradation (model missing, wrong feature shape)
 - `ChurnMcpToolServiceTest` — MCP soft-error DTOs
@@ -167,15 +167,15 @@ MCP tools.
 
 | Phase | Repo | Scope |
 |---|---|---|
-| **C** | mirador-service-python | Python in-process inference (mirror Java via `onnxruntime` + same ONNX file) |
-| **D** | mirador-ui | `/insights/churn` page : top-10 at-risk customers, search-by-id, drift over 30 days |
-| **E** | mirador-service-shared | MLflow tracking + drift SLO + dashboard + runbook |
-| **F** | mirador-service-shared | `bin/ml/promote_to_configmap.sh` + K8s deployment volumeMount + Argo CD GitOps |
+| **C** | iris-service-python | Python in-process inference (mirror Java via `onnxruntime` + same ONNX file) |
+| **D** | iris-ui | `/insights/churn` page : top-10 at-risk customers, search-by-id, drift over 30 days |
+| **E** | iris-service-shared | MLflow tracking + drift SLO + dashboard + runbook |
+| **F** | iris-service-shared | `bin/ml/promote_to_configmap.sh` + K8s deployment volumeMount + Argo CD GitOps |
 
 ## References
 
-- [shared ADR-0060 — ONNX cross-language inference](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0060-onnx-cross-language-ml-inference.md)
-- [shared ADR-0061 — Customer Churn pipeline](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0061-customer-churn-prediction.md)
-- [shared ADR-0062 — MLflow registry + ConfigMap promotion](https://gitlab.com/mirador1/mirador-service-shared/-/blob/main/docs/adr/0062-mlflow-registry-configmap-promotion.md)
+- [shared ADR-0060 — ONNX cross-language inference](https://gitlab.com/iris-7/iris-service-shared/-/blob/main/docs/adr/0060-onnx-cross-language-ml-inference.md)
+- [shared ADR-0061 — Customer Churn pipeline](https://gitlab.com/iris-7/iris-service-shared/-/blob/main/docs/adr/0061-customer-churn-prediction.md)
+- [shared ADR-0062 — MLflow registry + ConfigMap promotion](https://gitlab.com/iris-7/iris-service-shared/-/blob/main/docs/adr/0062-mlflow-registry-configmap-promotion.md)
 - [Microsoft ONNX Runtime Java API](https://onnxruntime.ai/docs/get-started/with-java.html)
-- [Python training pipeline](https://gitlab.com/mirador1/mirador-service-python/-/blob/main/src/mirador_service/ml/train_churn.py)
+- [Python training pipeline](https://gitlab.com/iris-7/iris-service-python/-/blob/main/src/iris_service/ml/train_churn.py)

@@ -70,7 +70,7 @@ Implementation:
 | Kustomize patch targets the wrong resource       | ❌  | ❌  | ✅ |
 | imagePullPolicy / image arch mismatch            | ❌  | ❌  | ⚠️ (1) |
 
-(1) Partial — the `mirador` backend pod is deliberately NOT in the
+(1) Partial — the `iris` backend pod is deliberately NOT in the
 Ready-wait list. Its image is built amd64-only (`buildx --platform
 linux/amd64`) and kind on the arm64 runner can't run amd64 bytes. We
 skip that pod; GKE remains the source of truth for the app container
@@ -107,7 +107,7 @@ GKE continues to be the last-mile validation, with the full
 - **Catches a new bug class** (PodSecurity, NetworkPolicy, probe timing,
   CRD shape) that neither compose nor `kubectl kustomize` sees.
 - **Low CI cost**: path filter means most MRs (business logic on
-  `src/main/java`, UI on `mirador-ui`) never trigger the job. Estimated
+  `src/main/java`, UI on `iris-ui`) never trigger the job. Estimated
   6–10 min / week of CI runner time.
 - **Uses existing infrastructure**: `kind-config.yaml` and
   `overlays/local/` were already in the repo, just not enforced.
@@ -117,7 +117,7 @@ GKE continues to be the last-mile validation, with the full
 - **Runner resource consumption**: kind + core pods ≈ 3 GB RAM + 2 CPU
   during the ~3 min job. Shared with other CI jobs on the macbook-local
   runner. Interruptible: true so it can be cancelled if needed.
-- **Arch mismatch workaround**: mirador backend pod skipped on kind.
+- **Arch mismatch workaround**: iris backend pod skipped on kind.
   Readers of the ADR need to understand *why* — hence the explicit
   table of "what is / isn't validated".
 - **Extra moving part**: kind version, kubectl version, base image
@@ -127,7 +127,7 @@ GKE continues to be the last-mile validation, with the full
 ## Revisit this when
 
 - Kind's arm64 story breaks (unlikely — official releases cover both).
-- Mirador backend image becomes multi-arch (planned, not committed).
+- Iris backend image becomes multi-arch (planned, not committed).
   Then we un-skip the backend pod readiness wait.
 - The compat-sb4-java21 CI job starts catching the same class of bugs
   (unlikely — it's a JVM compat check, not a K8s check).
