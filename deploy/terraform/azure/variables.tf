@@ -31,7 +31,7 @@ variable "location" {
 
 # =============================================================================
 # Role        : Resource Group name — Azure's per-deployment namespace.
-# Why         : Default `mirador-prod` mirrors the cluster naming across
+# Why         : Default `iris7-prod` mirrors the cluster naming across
 #               the three cloud modules. Azure RG names are account-wide
 #               unique (within a subscription).
 # Cost        : n/a (identifier; Resource Groups are free).
@@ -43,13 +43,13 @@ variable "location" {
 variable "resource_group_name" {
   description = "Azure Resource Group name — will contain every resource"
   type        = string
-  default     = "mirador-prod"
+  default     = "iris7-prod"
 }
 
 # =============================================================================
 # Role        : AKS cluster name — also used as prefix for VNet, subnet,
 #               Log Analytics workspace, and as `dns_prefix`.
-# Why         : Default matches the GCP `cluster_name = mirador-prod` for
+# Why         : Default matches the GCP `cluster_name = iris7-prod` for
 #               cross-cloud consistency. `dns_prefix` becomes part of the
 #               cluster's FQDN, so it's publicly visible — don't put
 #               secrets in it.
@@ -62,7 +62,7 @@ variable "resource_group_name" {
 variable "cluster_name" {
   description = "AKS cluster name — used as prefix for VNet, subnet, logs, DNS"
   type        = string
-  default     = "mirador-prod"
+  default     = "iris7-prod"
 }
 
 # =============================================================================

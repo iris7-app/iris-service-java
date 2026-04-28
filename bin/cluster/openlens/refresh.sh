@@ -33,7 +33,7 @@ KIND_CLUSTER="${KIND_CLUSTER:-iris-local}"
 # GKE coordinates. Sourced from gcloud config so this script is
 # portable across Iris workstations.
 GKE_PROJECT="${GKE_PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
-GKE_CLUSTER="${GKE_CLUSTER:-mirador-prod}"
+GKE_CLUSTER="${GKE_CLUSTER:-iris7-prod}"
 GKE_REGION="${GKE_REGION:-europe-west1}"
 
 OPEN_LENS=1

@@ -6,7 +6,7 @@
         "enable": true,
         "iconColor": "rgba(255, 96, 0, 0.9)",
         "name": "Chaos — slow-query",
-        "expr": "changes(http_server_requests_seconds_count{job=\"mirador-service\",uri=\"/customers/slow-query\"}[1m]) > 0",
+        "expr": "changes(http_server_requests_seconds_count{job=\"iris-service-java\",uri=\"/customers/slow-query\"}[1m]) > 0",
         "step": "1m",
         "tagKeys": "uri",
         "titleFormat": "Chaos: slow-query",
@@ -18,7 +18,7 @@
         "enable": true,
         "iconColor": "rgba(108, 117, 125, 0.9)",
         "name": "Chaos — kafka-timeout",
-        "expr": "changes(http_server_requests_seconds_count{job=\"mirador-service\",uri=\"/customers/kafka-timeout\"}[1m]) > 0",
+        "expr": "changes(http_server_requests_seconds_count{job=\"iris-service-java\",uri=\"/customers/kafka-timeout\"}[1m]) > 0",
         "step": "1m",
         "tagKeys": "uri",
         "titleFormat": "Chaos: kafka-timeout",
@@ -38,7 +38,7 @@
       "targetBlank": true,
       "title": "← back to SLO Overview",
       "type": "link",
-      "url": "/d/mirador-slo-overview/slo-overview-mirador"
+      "url": "/d/iris-slo-overview/slo-overview-iris"
     }
   ],
   "panels": [
@@ -79,7 +79,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum by (le) (rate(http_server_requests_seconds_bucket{job=\"mirador-service\"}[1m]))",
+          "expr": "sum by (le) (rate(http_server_requests_seconds_bucket{job=\"iris-service-java\"}[1m]))",
           "format": "heatmap",
           "legendFormat": "{{ le }}",
           "refId": "A"
@@ -111,7 +111,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum by (le) (rate(http_server_requests_seconds_bucket{job=\"mirador-service\",uri=\"$uri\"}[1m]))",
+          "expr": "sum by (le) (rate(http_server_requests_seconds_bucket{job=\"iris-service-java\",uri=\"$uri\"}[1m]))",
           "format": "heatmap",
           "legendFormat": "{{ le }}",
           "refId": "A"
@@ -124,18 +124,18 @@
   "preload": false,
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["slo", "mirador", "sre", "latency"],
+  "tags": ["slo", "iris", "sre", "latency"],
   "templating": {
     "list": [
       {
         "current": {"selected": false, "text": "/customers", "value": "/customers"},
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "definition": "label_values(http_server_requests_seconds_count{job=\"mirador-service\"}, uri)",
+        "definition": "label_values(http_server_requests_seconds_count{job=\"iris-service-java\"}, uri)",
         "includeAll": false,
         "multi": false,
         "name": "uri",
         "options": [],
-        "query": {"query": "label_values(http_server_requests_seconds_count{job=\"mirador-service\"}, uri)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
+        "query": {"query": "label_values(http_server_requests_seconds_count{job=\"iris-service-java\"}, uri)", "refId": "PrometheusVariableQueryEditor-VariableQuery"},
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -147,7 +147,7 @@
   "time": {"from": "now-6h", "to": "now"},
   "timepicker": {},
   "timezone": "browser",
-  "title": "Latency Heatmap — Mirador",
-  "uid": "mirador-latency-heatmap",
+  "title": "Latency Heatmap — Iris",
+  "uid": "iris-latency-heatmap",
   "version": 1
 }

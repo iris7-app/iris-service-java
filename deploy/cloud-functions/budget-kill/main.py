@@ -38,7 +38,7 @@ from google.cloud import container_v1
 
 PROJECT_ID = os.environ.get("GCP_PROJECT", "project-8d6ea68c-33ac-412b-8aa")
 REGION = os.environ.get("GKE_REGION", "europe-west1")
-CLUSTER = os.environ.get("GKE_CLUSTER", "mirador-prod")
+CLUSTER = os.environ.get("GKE_CLUSTER", "iris7-prod")
 
 # Kill threshold. 1.0 = 100% of budget. Anything below just logs.
 KILL_THRESHOLD = float(os.environ.get("KILL_THRESHOLD", "1.0"))

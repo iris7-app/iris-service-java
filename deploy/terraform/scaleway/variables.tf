@@ -36,7 +36,7 @@ variable "region" {
 
 # =============================================================================
 # Role        : Kapsule cluster name.
-# Why         : Default `mirador-prod` matches the cross-cloud convention.
+# Why         : Default `iris7-prod` matches the cross-cloud convention.
 #               Visible in `kubectl config get-contexts` after
 #               `scw k8s kubeconfig install`.
 # Cost        : n/a (identifier).
@@ -47,7 +47,7 @@ variable "region" {
 variable "cluster_name" {
   description = "Kapsule cluster name"
   type        = string
-  default     = "mirador-prod"
+  default     = "iris7-prod"
 }
 
 # =============================================================================

@@ -33,7 +33,7 @@ glab auth login                               # one-shot token setup
 - **Setup for this project**:
   - `kind-iris-local` appears automatically after
     `kind create cluster --name iris-local --config deploy/kubernetes/kind-config.yaml`.
-  - `gke_…mirador-prod` appears automatically after `bin/cluster/connect-prod.sh`
+  - `gke_…iris7-prod` appears automatically after `bin/cluster/connect-prod.sh`
     (or a manual `gcloud container clusters get-credentials`).
 - **What it's good at**: pod logs / exec / events, CRD browsing (Argo
   Rollouts, Chaos Mesh, ExternalSecret show up as first-class objects),

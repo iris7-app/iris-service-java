@@ -136,7 +136,7 @@ data "aws_subnets" "default" {
 # Why         : ECS clusters are free (no control-plane fee, unlike EKS).
 #               We create one per environment so CloudWatch metrics and
 #               IAM scoping stay tidy. Naming matches var.cluster_name,
-#               default `mirador-prod`, for symmetry with the GCP module.
+#               default `iris7-prod`, for symmetry with the GCP module.
 # Cost        : €0 for the cluster itself. You pay only for the Fargate
 #               tasks running inside it.
 # Gotchas     : - An ECS cluster cannot be deleted while any tasks or

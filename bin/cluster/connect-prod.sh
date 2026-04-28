@@ -19,7 +19,7 @@ set -u
 
 PROJECT_ID="${TF_VAR_project_id:-project-8d6ea68c-33ac-412b-8aa}"
 REGION="${TF_VAR_region:-europe-west1}"
-CLUSTER_NAME="${TF_VAR_cluster_name:-mirador-prod}"
+CLUSTER_NAME="${TF_VAR_cluster_name:-iris7-prod}"
 
 if ! command -v gcloud >/dev/null 2>&1; then
   echo "❌  gcloud not found. Install with: brew install --cask google-cloud-sdk"

@@ -53,21 +53,22 @@ sonar-analysis:
       artifacts: true
       optional: true
   rules:
-    # 2026-04-28 (Iris rebrand) — pom.xml's sonar.organization reverted to
-    # `mirador1` to preserve historical Sonar analysis (quality gate trend,
-    # coverage history). The legacy SonarCloud org/project key are kept
-    # because :
-    #   1. Renaming an org on SonarCloud is a manual user action.
-    #   2. Re-creating the project loses the trend data (quality gate
-    #      ageing, coverage delta, issue first-seen timestamps).
-    #   3. The Sonar key is just a string, decoupled from the GitLab path.
-    # If a future rev wants to fully consolidate under iris-7 :
-    #   (a) create the iris-7 org on SonarCloud
-    #   (b) update both pom.xml's <sonar.organization> + <sonar.projectKey>
-    #   (c) update this comment block
-    # Shield removed 2026-04-28 — the analysis hits the existing mirador1
-    # org/project successfully.
-    #
+    # 2026-04-28 (Iris rebrand) — TEMPORARILY SCOPED OUT until the
+    # `iris-7` org is created on SonarCloud. pom.xml now uses
+    # sonar.organization=iris-7 and sonar.projectKey=iris-7_iris-service-java
+    # but the org doesn't exist yet on sonarcloud.io (verified via
+    # GET /api/organizations/search?organizations=iris-7 → empty).
+    # User action required : create the `iris-7` organization on
+    # SonarCloud (Account → Organizations → Create), then either :
+    #   (a) re-import the project under iris-7 with key
+    #       `iris-7_iris-service-java`, or
+    #   (b) accept that historical trend (coverage delta, quality
+    #       gate ageing) restarts from this rebrand.
+    # Then remove the `- when: never` line below to re-enable the
+    # main-branch analysis.
+    # TODO remove by 2026-05-15 — SonarCloud iris-7 org creation pending.
+    - when: never
+    # ↓ Original rules (re-enable after SonarCloud org creation)
     # MAIN ONLY — SonarCloud free tier does NOT support PR/MR analysis
     # (the "Project not found" error you see if you try). Branch+MR
     # decoration requires the paid Developer Edition.
@@ -283,7 +284,7 @@ generate-reports:
     # and can be served by the nginx container in docker-compose.yml.
     # GITLAB_REPORTS_TOKEN must be a project access token (Reporter, write_repository).
     - |
-      git config user.email "ci-reports@mirador-service"
+      git config user.email "ci-reports@iris-service"
       git config user.name "CI Reports Bot"
       # Create or reset the reports/ branch to an orphan (no history — keeps the branch small).
       git fetch origin reports || true
@@ -291,7 +292,7 @@ generate-reports:
       # Clear everything except the generated site and keep a README at the root.
       git rm -rf . --quiet 2>/dev/null || true
       cp -r target/site/* .
-      echo "# Mirador Service — Generated Reports" > README.md
+      echo "# Iris Service — Generated Reports" > README.md
       echo "" >> README.md
       echo "Generated: $(date -u '+%Y-%m-%d %H:%M UTC') from commit [\`${CI_COMMIT_SHORT_SHA}\`](${CI_PROJECT_URL}/-/commit/${CI_COMMIT_SHA}) on \`${CI_COMMIT_BRANCH}\`." >> README.md
       echo "" >> README.md

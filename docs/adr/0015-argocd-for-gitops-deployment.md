@@ -102,7 +102,7 @@ Negative:
 ## Reference implementation
 
 - `deploy/argocd/application.yaml` — the Application CR currently
-  deployed on the `mirador-prod` GKE cluster.
+  deployed on the `iris7-prod` GKE cluster.
 - Install (one-time):
   ```
   kubectl create namespace argocd

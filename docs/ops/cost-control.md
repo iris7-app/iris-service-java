@@ -176,7 +176,7 @@ Cloud Function "budget-kill" (2nd gen, Python 3.12)
   │ filters alertThresholdExceeded >= 1.0
   │ calls container.v1.ClusterManagerClient.delete_cluster
   ▼
-GKE cluster mirador-prod → DELETING → gone in ~2 min
+GKE cluster iris7-prod → DELETING → gone in ~2 min
 ```
 
 ### Code

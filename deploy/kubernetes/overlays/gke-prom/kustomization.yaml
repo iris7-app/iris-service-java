@@ -1,7 +1,7 @@
 # =============================================================================
 # gke-prom/ overlay — GKE Autopilot + kube-prometheus-stack alongside lgtm
 #
-# Target: GKE Autopilot cluster (mirador-prod, europe-west1, ephemeral per
+# Target: GKE Autopilot cluster (iris7-prod, europe-west1, ephemeral per
 # ADR-0022). Same as `gke/` but adds the full kube-prometheus-stack so:
 #   - OpenLens "Metrics" tab works against a real Prometheus + ksm + node-
 #     exporter (the OTel-aliased path in lgtm-only `gke/` works too, but

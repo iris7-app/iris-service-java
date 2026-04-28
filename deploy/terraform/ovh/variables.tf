@@ -135,7 +135,7 @@ variable "region" {
 
 # =============================================================================
 # Role        : Cluster display name (visible in OVH manager + kubeconfig).
-# Why         : `mirador-prod` matches the GCP module's cluster name —
+# Why         : `iris7-prod` matches the GCP module's cluster name —
 #               keeps the deploy story consistent across clouds. Override
 #               for staging / preview clusters.
 # Cost        : n/a (label).
@@ -146,7 +146,7 @@ variable "region" {
 variable "cluster_name" {
   description = "Cluster display name (max 30 chars, no spaces)"
   type        = string
-  default     = "mirador-prod"
+  default     = "iris7-prod"
 
   validation {
     condition     = length(var.cluster_name) <= 30 && !can(regex("[ \\t]", var.cluster_name))

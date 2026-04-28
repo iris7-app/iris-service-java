@@ -13,7 +13,7 @@
 #      the end-to-end flow
 #
 # After this, the 100%-of-budget threshold triggers the Cloud Function
-# which does `gcloud container clusters delete mirador-prod --region=
+# which does `gcloud container clusters delete iris7-prod --region=
 # europe-west1 --quiet`. Re-run this script any time you change the
 # function code or the budget cap — all steps are idempotent.
 #
@@ -75,7 +75,7 @@ run gcloud functions deploy "$FUNCTION_NAME" \
   --entry-point=budget_kill \
   --source="$SRC_DIR" \
   --trigger-topic="$TOPIC" \
-  --set-env-vars="GCP_PROJECT=$PROJECT,GKE_REGION=$REGION,GKE_CLUSTER=mirador-prod" \
+  --set-env-vars="GCP_PROJECT=$PROJECT,GKE_REGION=$REGION,GKE_CLUSTER=iris7-prod" \
   --memory=256MB \
   --timeout=60s \
   --gen2 \

@@ -1,7 +1,7 @@
 # =============================================================================
 # ovh-prom/ overlay — OVH Managed Kubernetes + kube-prometheus-stack + lgtm
 #
-# Target: OVH Managed K8s cluster `mirador-prod` in GRA9 (HDS-eligible
+# Target: OVH Managed K8s cluster `iris7-prod` in GRA9 (HDS-eligible
 # region). Per ADR-0053, OVH joins GCP at the canonical-tier delivery
 # target list.
 #

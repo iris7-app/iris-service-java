@@ -93,7 +93,7 @@ terraform destroy
 ```
 
 AKS takes ~15 min to fully destroy (node pool drain, control-plane
-deprovision). Alternatively, `az group delete --name mirador-prod --yes
+deprovision). Alternatively, `az group delete --name iris7-prod --yes
 --no-wait` is faster but leaves Terraform state out of sync — use only
 when you don't plan to `terraform apply` again.
 
