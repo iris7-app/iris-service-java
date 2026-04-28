@@ -25,7 +25,7 @@
 #
 # What this module provisions:
 #   - OVH Public Cloud project (assumes one already exists — see README)
-#   - Managed Kubernetes cluster `mirador-prod` in GRA9 (Gravelines, France)
+#   - Managed Kubernetes cluster `iris7-prod` in GRA9 (Gravelines, France)
 #   - Single node pool of 1× B2-7 instances (2 vCPU / 7 GB RAM)
 #   - Private network attachment via vRack (see network.tf)
 #
@@ -134,7 +134,7 @@ provider "ovh" {
 #               resource (see below).
 # Gotchas     : - `name` cannot be changed after apply — destroy + recreate
 #                 if a rename is needed. Follow the convention
-#                 `iris-<env>` (mirador-prod, iris-staging).
+#                 `iris-<env>` (iris7-prod, iris-staging).
 #               - The cluster is region-bound. To move regions
 #                 (GRA9 → SBG5 for instance) requires destroy + recreate.
 #                 The cluster's HDS certification status follows the

@@ -36,7 +36,7 @@ export TF_VAR_ovh_application_secret="$OVH_APPLICATION_SECRET"
 export TF_VAR_ovh_consumer_key="$OVH_CONSUMER_KEY"
 export TF_VAR_ovh_project_id="$OVH_PROJECT_ID"
 export TF_VAR_region="${OVH_REGION:-GRA9}"
-export TF_VAR_cluster_name="${OVH_CLUSTER_NAME:-mirador-prod}"
+export TF_VAR_cluster_name="${OVH_CLUSTER_NAME:-iris7-prod}"
 
 cd "$TF_DIR"
 

@@ -259,7 +259,7 @@ The vRack private network IS in place for node-to-node + node-to-control-plane t
 
 ### ⏸ Multi-region peering — DEFERRED
 
-For a `iris-staging` cluster in SBG5 alongside `mirador-prod` in GRA9. Worth doing once we have a real staging workflow ; not justified by the demo's single-cluster setup today.
+For a `iris-staging` cluster in SBG5 alongside `iris7-prod` in GRA9. Worth doing once we have a real staging workflow ; not justified by the demo's single-cluster setup today.
 
 ---
 

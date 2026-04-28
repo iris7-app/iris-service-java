@@ -48,7 +48,7 @@ output "region" {
 # =============================================================================
 # Role        : Full kubeconfig YAML — drop into ~/.kube/ovh-iris.yaml
 #               and switch context with `kubectl config use-context
-#               kubernetes-admin@mirador-prod` (the user/context name OVH
+#               kubernetes-admin@iris7-prod` (the user/context name OVH
 #               assigns).
 # Why         : Mark sensitive=true so this doesn't render in plain text
 #               on the apply output (terraform redacts sensitive outputs).

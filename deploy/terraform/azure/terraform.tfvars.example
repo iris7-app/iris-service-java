@@ -13,13 +13,13 @@
 #   northeurope     — Ireland, typically cheapest for compute
 # location = "westeurope"
 
-# Optional — Resource Group name. Default "mirador-prod".
+# Optional — Resource Group name. Default "iris7-prod".
 # Azure RG names are unique within the subscription. Cannot be renamed.
-# resource_group_name = "mirador-prod"
+# resource_group_name = "iris7-prod"
 
 # Optional — AKS cluster name + prefix for VNet, subnet, logs, DNS.
-# Default "mirador-prod". Max 63 chars, alphanumeric + hyphens.
-# cluster_name = "mirador-prod"
+# Default "iris7-prod". Max 63 chars, alphanumeric + hyphens.
+# cluster_name = "iris7-prod"
 
 # Optional — VM size for the default node pool. Default Standard_B2s
 # (2 vCPU, 4 GB, burstable, ~€30/month). For production, bump to

@@ -19,8 +19,8 @@
 #   pl-waw  — Warsaw, sometimes cheapest SKUs, ~30 ms from Paris.
 # region = "fr-par"
 
-# Optional — Kapsule cluster name. Default "mirador-prod". Max 63 chars.
-# cluster_name = "mirador-prod"
+# Optional — Kapsule cluster name. Default "iris7-prod". Max 63 chars.
+# cluster_name = "iris7-prod"
 
 # Optional — Kubernetes version. Default "1.31" (widely supported as of
 # 2026-04). Check `scw k8s version list` before bumping.

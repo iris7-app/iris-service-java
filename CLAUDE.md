@@ -133,7 +133,7 @@ they survive a new push mid-run. Don't remove this flag without understanding th
 | Project ID | `project-8d6ea68c-33ac-412b-8aa` |
 | Project display name | `Iris` |
 | Project number | `32654862595` |
-| GKE cluster | `mirador-prod` (europe-west1) |
+| GKE cluster | `iris7-prod` (europe-west1) |
 | Ingress IP | `34.52.233.183` |
 | Domain | `iris-7.duckdns.org` (DuckDNS free — A record → 34.52.233.183) |
 | App URL | https://iris-7.duckdns.org (HTTP until cert-manager wired) |

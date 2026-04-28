@@ -63,7 +63,7 @@ export TF_VAR_ovh_project_id="$OVH_PROJECT_ID"
 
 # Optional overrides (defaults in variables.tf).
 export TF_VAR_region="${OVH_REGION:-GRA9}"
-export TF_VAR_cluster_name="${OVH_CLUSTER_NAME:-mirador-prod}"
+export TF_VAR_cluster_name="${OVH_CLUSTER_NAME:-iris7-prod}"
 
 cd "$TF_DIR"
 

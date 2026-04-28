@@ -45,7 +45,7 @@
     - cd deploy/terraform/gcp
     - terraform init
         -backend-config="bucket=${TF_STATE_BUCKET}"
-        -backend-config="prefix=mirador/gcp"
+        -backend-config="prefix=iris/gcp"
         -input=false
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -59,7 +59,7 @@ terraform-plan:
   extends: .terraform-base
   # 2026-04-28 (Iris rebrand) — TEMPORARILY SCOPED OUT until the GCP WIF
   # (Workload Identity Federation) attribute condition is updated to allow
-  # the new path `iris-7/iris-service-java` (was `mirador1/mirador-service-java`).
+  # the new path `iris-7/iris-service-java` (was `iris-7/iris-service-java`).
   # The OIDC subject from GitLab changed after the group + project rename, and
   # the GCP IAM provider rejects the new identity with:
   #   "The given credential is rejected by the attribute condition"
@@ -230,7 +230,7 @@ terraform-apply:
     - |
       # App secrets — masked GitLab CI group variables injected into K8s.
       # GRAFANA_OTLP_AUTH = base64(instanceId:apiToken) for Grafana Cloud direct OTLP push.
-      kubectl create secret generic mirador-secrets \
+      kubectl create secret generic iris-secrets \
         --from-literal=DB_PASSWORD="$DB_PASSWORD" \
         --from-literal=JWT_SECRET="$JWT_SECRET" \
         --from-literal=API_KEY="${API_KEY:-}" \
@@ -239,7 +239,7 @@ terraform-apply:
         --namespace=app --dry-run=client -o yaml | kubectl apply -f -
     - |
       # Legacy-resource cleanup. When a resource is renamed (e.g. the Ingress
-      # went from customer-service-ingress → mirador-ingress in commit e884286),
+      # went from customer-service-ingress → iris-ingress in commit e884286),
       # `kubectl apply` creates the new name but never deletes the old one.
       # The nginx-ingress admission webhook then rejects the new resource
       # because the old one still claims the same host+path pair. List every
@@ -257,10 +257,10 @@ terraform-apply:
         | kubectl apply -f -
     # Wait for the rolling update to complete. 6 min covers cold-start on GKE
     # Autopilot (image pull + JVM warmup + Flyway); matches startupProbe budget.
-    - kubectl rollout status deployment/mirador -n app --timeout=360s
+    - kubectl rollout status deployment/iris -n app --timeout=360s
 
 # ── smoke-test — k6 smoke test ────────────────────────────────────────────────
-# Manual-trigger job. Pre-ADR-0025 this ran against mirador1.duckdns.org
+# Manual-trigger job. Pre-ADR-0025 this ran against iris7.duckdns.org
 # after deploy:gke. Now that the cluster has no public surface, the job
 # stands up its OWN backend inside the runner (docker-compose for deps +
 # `mvn spring-boot:run` for the app) and runs k6 against it.
@@ -368,7 +368,7 @@ deploy:cloud-run:
     - gcloud auth login --cred-file=/tmp/gcp_credentials.json --quiet
     - gcloud config set project "$GCP_PROJECT"
     - |
-      gcloud run deploy mirador-service \
+      gcloud run deploy iris-service-java \
         --image "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" \
         --region "${GCP_REGION:-europe-west1}" \
         --platform managed \
@@ -376,7 +376,7 @@ deploy:cloud-run:
         --port 8080 \
         --cpu 1 --memory 512Mi \
         --set-env-vars "SPRING_PROFILES_ACTIVE=cloud-run" \
-        --set-secrets "DB_PASSWORD=mirador-db-password:latest" \
+        --set-secrets "DB_PASSWORD=iris-db-password:latest" \
         --quiet
 
 # ── Fly.io — manual ───────────────────────────────────────────────────────────

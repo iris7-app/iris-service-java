@@ -31,7 +31,7 @@ If pods are Pending with "Insufficient cpu/memory" → Autopilot quota.
 
 ```bash
 # 1. Cluster existence + status
-gcloud container clusters describe mirador-prod --region=europe-west1 \
+gcloud container clusters describe iris7-prod --region=europe-west1 \
   --format="value(status,currentMasterVersion,currentNodeCount)"
 
 # 2. Pending pods + events

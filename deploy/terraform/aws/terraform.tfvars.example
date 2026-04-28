@@ -20,8 +20,8 @@ container_image = "123456789012.dkr.ecr.eu-west-3.amazonaws.org/iris:stable"
 # region = "eu-west-3"
 
 # Optional — ECS cluster name + prefix for all resources. Default:
-# "mirador-prod". Keep ≤ 28 chars so ALB/TG name truncation stays clean.
-# cluster_name = "mirador-prod"
+# "iris7-prod". Keep ≤ 28 chars so ALB/TG name truncation stays clean.
+# cluster_name = "iris7-prod"
 
 # Optional — Fargate sizing. Defaults match the GCP Deployment
 # (0.5 vCPU / 1 GB). Valid pairs per AWS matrix — see variables.tf.

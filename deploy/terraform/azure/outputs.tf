@@ -41,7 +41,7 @@ output "resource_group_name" {
 # Related     : main.tf → azurerm_kubernetes_cluster.main.fqdn.
 # =============================================================================
 output "cluster_fqdn" {
-  description = "AKS control-plane FQDN (e.g. mirador-prod-xyz.hcp.westeurope.azmk8s.io)"
+  description = "AKS control-plane FQDN (e.g. iris7-prod-xyz.hcp.westeurope.azmk8s.io)"
   value       = azurerm_kubernetes_cluster.main.fqdn
 }
 

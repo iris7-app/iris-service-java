@@ -85,7 +85,7 @@ terraform apply     # will prompt before making changes
 
 # Get the URL
 terraform output alb_dns_name
-# → http://mirador-prod-alb-1234567890.eu-west-3.elb.amazonaws.com/
+# → http://iris7-prod-alb-1234567890.eu-west-3.elb.amazonaws.com/
 ```
 
 After provisioning the ALB takes ~60-90 seconds for DNS propagation before

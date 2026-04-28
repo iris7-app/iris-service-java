@@ -30,7 +30,7 @@ variable "region" {
 # =============================================================================
 # Role        : ECS cluster name — also used as the prefix for every
 #               other resource (ALB, target group, SGs, log group, role).
-# Why         : Default matches the GCP `cluster_name = mirador-prod` for
+# Why         : Default matches the GCP `cluster_name = iris7-prod` for
 #               consistency across clouds. Changing this variable recreates
 #               every named resource — one-time decision per environment.
 # Cost        : n/a (identifier)
@@ -43,7 +43,7 @@ variable "region" {
 variable "cluster_name" {
   description = "Name for the ECS cluster — used as prefix for all resources"
   type        = string
-  default     = "mirador-prod"
+  default     = "iris7-prod"
 }
 
 # =============================================================================

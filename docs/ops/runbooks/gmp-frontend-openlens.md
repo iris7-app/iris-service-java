@@ -1,6 +1,6 @@
 # Runbook: OpenLens metrics on GKE Autopilot via GMP frontend
 
-**Last verified**: 2026-04-22 · **Applies to**: `mirador-prod` GKE Autopilot cluster
+**Last verified**: 2026-04-22 · **Applies to**: `iris7-prod` GKE Autopilot cluster
 
 ## Symptom
 

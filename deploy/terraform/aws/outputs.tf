@@ -8,7 +8,7 @@
 # Role        : ALB DNS name — the stage-1 access URL.
 # Why         : With no Route53 wiring yet, the ALB's auto-generated DNS
 #               name (something like
-#               `mirador-prod-alb-1234567890.eu-west-3.elb.amazonaws.com`)
+#               `iris7-prod-alb-1234567890.eu-west-3.elb.amazonaws.com`)
 #               IS the URL. Output it so scripts and humans can reach
 #               the deployed app without hunting through the console.
 # Cost        : n/a (string).

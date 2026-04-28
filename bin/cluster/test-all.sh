@@ -62,7 +62,7 @@ fi
 # Detect target flavour from context name (best-effort).
 case "$CONTEXT" in
   gke_*)        FLAVOUR="GKE"  ;;
-  ovh_*|kubernetes-admin@mirador-prod) FLAVOUR="OVH" ;;
+  ovh_*|kubernetes-admin@iris7-prod) FLAVOUR="OVH" ;;
   kind-*)       FLAVOUR="kind" ;;
   *)            FLAVOUR="?"    ;;
 esac

@@ -11,7 +11,7 @@ TOKEN="$(cat "$TOKEN_FILE")"
 export USE_GKE_GCLOUD_AUTH_PLUGIN=True
 
 # Switch kubectl to the new cluster
-gcloud container clusters get-credentials mirador-prod \
+gcloud container clusters get-credentials iris7-prod \
   --region europe-west1 \
   --project project-8d6ea68c-33ac-412b-8aa
 
