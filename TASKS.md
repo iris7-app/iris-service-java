@@ -18,30 +18,17 @@ Cluster #2 was torn down to save costs — restart via
 `bin/cluster/demo/up.sh` when ready, deploy iris-service-java alongside
 postgres for write traffic.
 
-## 🎯 e-commerce coverage — remaining items
+## 🎯 e-commerce coverage — last item
 
-JaCoCo bundle 93%+, order/product packages 100%, Spring Boot IT
-landed via stable-v1.2.16/17 (OrderHttpITest + ProductHttpITest with
-Testcontainers Postgres). Remaining :
+JaCoCo bundle 94.97%, order/product packages 100%, Spring Boot IT
+landed via stable-v1.2.16/17, smoke.hurl already covers the order/
+product/lines flow (section 9bis), bin/dev/sections/code.sh already
+loops over order + product slices. Remaining :
 
 - ☐ PIT mutations score ≥ 75 % on `org.iris.{order,product}.*`
-- ☐ `bin/dev/api-smoke.sh` : POST /orders + 2 OrderLines + GET +
-  DELETE + total recalculé (manual smoke covered by IT, but a
-  scriptable ./run.sh entrypoint is convenient for cluster demos)
-- ☐ `bin/dev/sections/code.sh` : include order + product packages
-  in the stability-check section once it lands
-
-## 🔒 SecurityConfig coverage (deferred — needs @SpringBootTest)
-
-`org.iris.auth.SecurityConfig` sits at 27 % in unit-only JaCoCo
-because the `securityFilterChain(HttpSecurity)` lambda DSL only
-evaluates when Spring builds the filter chain. The MR pipeline's
-IT data covers them in production CI but local UT does not.
-
-To close locally without the full IT slowdown : `@SpringBootTest`
-narrowed to `classes = SecurityConfig.class` with mocked
-`JwtAuthenticationFilter` + `ApiKeyAuthenticationFilter`. Estimated
-~5 min setup, ~3-5 s per test.
+  (slow — `mvn test-compile org.pitest:pitest-maven:mutationCoverage`
+  takes ~5-10 min on the e-commerce slice ; defer to a scheduled
+  batch unless the time is budgeted)
 
 ## 🎨 SLO dashboard screenshots
 
