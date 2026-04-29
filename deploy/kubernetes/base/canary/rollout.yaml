@@ -119,7 +119,7 @@ spec:
         - name: iris
           # Pinned to :main (CI pushes this tag on every main merge since
           # commit 7049b3e). Matches the Deployment image in overlays/gke/.
-          image: "registry.gitlab.com/iris-7/iris-service/backend:main"
+          image: "registry.gitlab.com/iris-7/iris-service-java/backend:main"
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false

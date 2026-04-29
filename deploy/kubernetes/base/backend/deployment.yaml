@@ -82,7 +82,7 @@ spec:
               app.kubernetes.io/component: backend
       containers:
         - name: iris
-          image: "registry.gitlab.com/iris-7/iris-service/backend:main"
+          image: "registry.gitlab.com/iris-7/iris-service-java/backend:main"
           imagePullPolicy: Always
           # Container-level security context. Every field here is a CKS
           # audit checkpoint: no privileged, no root, no caps, no writable FS.
