@@ -82,7 +82,7 @@ lives**. Resource requests/limits follow
   `/actuator/*` (health, Prometheus, quality, maintenance), `/auth/*`
   (JWT issuance, Keycloak OIDC relay), and pushes OTLP telemetry to
   `lgtm.infra:4317`.
-- **Image**: `registry.gitlab.com/iris-7/iris-service/backend:main`
+- **Image**: `registry.gitlab.com/iris-7/iris-service-java/backend:main`
   (rolling tag, `imagePullPolicy: Always`; overridden to `Never` in the
   `local` overlay because kind side-loads images).
 - **Port**: `8080/TCP` (http, behind Service `iris`).
