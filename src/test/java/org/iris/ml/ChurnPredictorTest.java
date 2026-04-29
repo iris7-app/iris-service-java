@@ -151,4 +151,27 @@ class ChurnPredictorTest {
 
         predictor.closeSession();
     }
+
+    @org.junit.jupiter.api.Test
+    void loadModel_corruptOnnxFile_isCaughtAndIsReadyStaysFalse(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws java.io.IOException {
+        // The OrtException | IOException catch in loadModel() was
+        // unreachable from earlier tests — both nonexistent-file and
+        // happy-load tests sidestep it. A file that EXISTS but is NOT
+        // valid ONNX hits the OrtException branch. Pinned because a
+        // future refactor that lets the exception propagate would
+        // crash the bean and take the whole MCP server down on a
+        // subtly broken .onnx artefact (e.g. half-written by a
+        // ConfigMap update mid-rollout).
+        java.nio.file.Path corrupt = tmp.resolve("corrupt.onnx");
+        java.nio.file.Files.writeString(corrupt, "not-a-real-onnx-file");
+
+        ChurnPredictor predictor = new ChurnPredictor(corrupt.toString(), "v0-corrupt");
+        predictor.loadModel();
+
+        org.assertj.core.api.Assertions.assertThat(predictor.isReady()).isFalse();
+        // closeSession on a never-loaded predictor is a no-op (session is
+        // null) — covered indirectly by the isReady() guard inside.
+        predictor.closeSession();
+    }
 }
