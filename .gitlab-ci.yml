@@ -115,6 +115,7 @@ workflow:
 
 stages:
   - pages         # GitLab Pages static site — published from public/ (ADR-0022 landing page)
+  - validate      # Universal upstream gates from iris-common (shellcheck, adr-drift)
   - lint          # Static file checks — instant feedback before any compilation
   - test          # Unit tests + security scans — fast, no Docker
   - integration   # Testcontainers ITests + SpotBugs + coverage gate — needs Docker
@@ -174,6 +175,15 @@ cache:
 # See docs/adr/0050-ci-yaml-modularisation-plan.md for the split rationale and
 # the owner-map (which include holds which job family).
 include:
+  # Universal CI templates from iris-common — pinned via the infra/common/ submodule
+  # (the ref: main here is for GitLab include resolution ; the submodule SHA is the
+  # source of truth for the regen-adr-index.sh script that adr-drift invokes)
+  - project: 'iris-7/iris-common'
+    ref: main
+    file: 'ci-templates/shellcheck.yml'
+  - project: 'iris-7/iris-common'
+    ref: main
+    file: 'ci-templates/adr-drift.yml'
   # Semgrep-based SAST — works on all GitLab tiers
   - template: Security/SAST.gitlab-ci.yml
   # Maven/Gemnasium dependency CVE scan
