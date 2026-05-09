@@ -1,4 +1,5 @@
-# bin/run/_preamble.sh — shared preamble for every sub-script under bin/run/
+# shellcheck shell=bash
+# bin/run/_preamble.sh -- shared preamble for every sub-script under bin/run/
 # Sourced (not executed) by each case-script. Provides helper functions and
 # `set -e` behaviour consistent with the original run.sh.
 #
