@@ -74,7 +74,9 @@ workflow:
         - "CLAUDE.md"
         - "TASKS.md"
         - ".gitmodules"     # Added 2026-04-26 so submodule SHA bumps trigger the pipeline (otherwise bump-only MRs sit blocked on ci_must_pass with no pipeline ever firing)
+        - "infra/common"    # Gitlink itself — `infra/common/**/*` (with glob) matches files INSIDE the submodule folder ; `changes:` against the gitlink SHA bump only fires when listed without glob. Discovered 2026-05-09 on !280.
         - "infra/common/**/*"
+        - "infra/shared"    # Same gitlink-vs-glob fix.
         - "infra/shared/**/*"
         - "infra/observability/**/*"  # Added 2026-04-27 so Grafana dashboard JSON edits trigger a pipeline (lint/spectral/etc still skip cleanly, but the gate fires)
         - ".grype.yaml"     # Added 2026-04-26 so grype CVE-suppression edits trigger a pipeline
@@ -113,6 +115,7 @@ workflow:
 
 stages:
   - pages         # GitLab Pages static site — published from public/ (ADR-0022 landing page)
+  - validate      # Universal upstream gates from iris-common (shellcheck, adr-drift)
   - lint          # Static file checks — instant feedback before any compilation
   - test          # Unit tests + security scans — fast, no Docker
   - integration   # Testcontainers ITests + SpotBugs + coverage gate — needs Docker
@@ -172,6 +175,15 @@ cache:
 # See docs/adr/0050-ci-yaml-modularisation-plan.md for the split rationale and
 # the owner-map (which include holds which job family).
 include:
+  # Universal CI templates from iris-common — pinned via the infra/common/ submodule
+  # (the ref: main here is for GitLab include resolution ; the submodule SHA is the
+  # source of truth for the regen-adr-index.sh script that adr-drift invokes)
+  - project: 'iris-7/iris-common'
+    ref: main
+    file: 'ci-templates/shellcheck.yml'
+  - project: 'iris-7/iris-common'
+    ref: main
+    file: 'ci-templates/adr-drift.yml'
   # Semgrep-based SAST — works on all GitLab tiers
   - template: Security/SAST.gitlab-ci.yml
   # Maven/Gemnasium dependency CVE scan
