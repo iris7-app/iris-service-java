@@ -74,7 +74,9 @@ workflow:
         - "CLAUDE.md"
         - "TASKS.md"
         - ".gitmodules"     # Added 2026-04-26 so submodule SHA bumps trigger the pipeline (otherwise bump-only MRs sit blocked on ci_must_pass with no pipeline ever firing)
+        - "infra/common"    # Gitlink itself — `infra/common/**/*` (with glob) matches files INSIDE the submodule folder ; `changes:` against the gitlink SHA bump only fires when listed without glob. Discovered 2026-05-09 on !280.
         - "infra/common/**/*"
+        - "infra/shared"    # Same gitlink-vs-glob fix.
         - "infra/shared/**/*"
         - "infra/observability/**/*"  # Added 2026-04-27 so Grafana dashboard JSON edits trigger a pipeline (lint/spectral/etc still skip cleanly, but the gate fires)
         - ".grype.yaml"     # Added 2026-04-26 so grype CVE-suppression edits trigger a pipeline
