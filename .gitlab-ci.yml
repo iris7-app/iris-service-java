@@ -80,8 +80,11 @@ workflow:
         - "infra/shared/**/*"
         - "infra/observability/**/*"  # Added 2026-04-27 so Grafana dashboard JSON edits trigger a pipeline (lint/spectral/etc still skip cleanly, but the gate fires)
         - ".grype.yaml"     # Added 2026-04-26 so grype CVE-suppression edits trigger a pipeline
-    # Main branch pushes — same allowlist, compared against HEAD~1 (last commit).
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
+    # Main + dev branch pushes — same allowlist, compared against HEAD~1 (last commit).
+    # dev added 2026-05-10 so the auto-merge-dev-to-main template fires on dev pushes
+    # (it has its own job-level rule for $CI_COMMIT_BRANCH == "dev"; without a workflow
+    # match the pipeline never starts).
+    - if: ($CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "dev") && $CI_PIPELINE_SOURCE != "schedule"
       changes:
         - "src/**/*"
         - "pom.xml"
