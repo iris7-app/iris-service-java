@@ -83,6 +83,17 @@
         -->
         <tomcat.version>11.0.21</tomcat.version>
         <!--
+          Netty + postgresql JDBC pinned ahead of SB 4.0.6 BOM defaults to fix
+          CVE backlog flagged by grype:scan on 2026-05-10 :
+          - netty 4.2.12.Final → 4.2.13.Final (5x High GHSA-mj4r-2hfc-f8p6,
+            GHSA-cm33-6792-r9fm, GHSA-57rv-r2g8-2cj3, GHSA-f6hv-jmp6-3vwv ×2
+            across compression / dns / http / http2)
+          - postgresql 42.7.10 → 42.7.11 (High GHSA-98qh-xjc8-98pq)
+          Both will be removed once SB BOM catches up.
+        -->
+        <netty.version>4.2.13.Final</netty.version>
+        <postgresql.version>42.7.11</postgresql.version>
+        <!--
           Fabric8 Kubernetes client — used by the `org.iris.chaos` feature
           slice (ADR-0044 port-style decoupling between "which failure to
           inject" and "how to inject it"). The client creates Chaos Mesh
