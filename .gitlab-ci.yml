@@ -127,6 +127,7 @@ stages:
   - reports       # Maven site + docs generation (report schedule only — REPORT_PIPELINE=true)
   - infra         # Terraform plan/apply for GCP infrastructure (manual)
   - deploy        # Deploy to Kubernetes / PaaS (6 targets — see below)
+  - promote       # Auto-merge dev → main when dev pipeline succeeds (iris-common template)
 
 # ── shared defaults ────────────────────────────────────────────────────────────
 
@@ -184,6 +185,11 @@ include:
   - project: 'iris-7/iris-common'
     ref: main
     file: 'ci-templates/adr-drift.yml'
+  # Auto-merge dev → main once dev pipeline goes green (uses AUTOMERGE_TOKEN
+  # group variable). Eliminates manual dev → main promote MRs.
+  - project: 'iris-7/iris-common'
+    ref: main
+    file: 'ci-templates/auto-merge-dev-to-main.yml'
   # Semgrep-based SAST — works on all GitLab tiers
   - template: Security/SAST.gitlab-ci.yml
   # Maven/Gemnasium dependency CVE scan
