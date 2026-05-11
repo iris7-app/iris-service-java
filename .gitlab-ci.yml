@@ -108,6 +108,11 @@ workflow:
         - "deploy/**/*"
         - "scripts/**/*"
         - "bin/**/*"
+        - ".gitmodules"     # Same paths as MR rule — added 2026-05-11 so dev-pushes from submodule SHA bumps also trigger pipeline (otherwise promote-dev-to-main never fires for bump merges)
+        - "infra/common"    # Gitlink itself (no glob — `infra/common/**/*` doesn't catch SHA-only changes)
+        - "infra/common/**/*"
+        - "infra/shared"    # Same gitlink fix
+        - "infra/shared/**/*"
         - "infra/observability/**/*"  # Same as MR rule above — keeps post-merge pipelines aware of dashboard drift
         - ".grype.yaml"     # Same as MR rule above — keeps post-merge pipelines aware of grype config drift
     # Scheduled pipelines: two named schedules (native build + report generation).
