@@ -212,6 +212,10 @@ smoke-test:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
+    # Manual opt-in k6 smoke load test (~3-5 min). Per ADR-0049 :
+    # transient infra hiccups (postgres slow start, kafka lag spike)
+    # shouldn't gate the green main run ; the load-test signal stays
+    # visible as a yellow ⚠️ in the pipeline.
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: manual
       allow_failure: true

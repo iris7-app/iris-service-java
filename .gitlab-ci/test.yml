@@ -317,6 +317,10 @@ mutation-test:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $REPORT_PIPELINE == "true"
       when: on_success
+    # Manual fallback — clicking ▶ runs the full PIT mutation pass
+    # (~10-15 min) without gating the rest of the pipeline. Per ADR-0049 :
+    # surviving mutants surface as a yellow ⚠️ in the pipeline, tracked
+    # as test-gap tickets, never block a green main run.
     - when: manual
       allow_failure: true
   needs:
