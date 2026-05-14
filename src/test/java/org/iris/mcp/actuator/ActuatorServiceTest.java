@@ -83,11 +83,10 @@ class ActuatorServiceTest {
         assertThat(info).containsKeys("git", "build");
     }
 
-    @Test
-    void infoNullReturnsEmptyMap() {
-        when(infoEndpoint.info()).thenReturn(null);
-        assertThat(service.getInfo()).isEmpty();
-    }
+    // Removed `infoNullReturnsEmptyMap` 2026-05-14 along with the dead
+    // null-check in ActuatorService#getInfo (Sonar S2583). Spring Boot's
+    // InfoEndpoint#info() never returns null per its API contract ; the
+    // test was exercising unreachable defensive code.
 
     @Test
     void caseInsensitiveSecretMatch() {

@@ -146,7 +146,12 @@ class SecurityConfigTest {
         // must STAY hand-curated.
         var corsConfig = corsForRequest(newConfig(List.of("*")), "/customers");
 
-        assertThat(corsConfig.getAllowedHeaders()).doesNotContain("*");
+        // `.isNotEmpty()` first so the next assertion is meaningful —
+        // `doesNotContain("*")` would be vacuously true on an empty list.
+        // Sonar S5841 ; fixed 2026-05-14.
+        assertThat(corsConfig.getAllowedHeaders())
+                .isNotEmpty()
+                .doesNotContain("*");
     }
 
     @Test
