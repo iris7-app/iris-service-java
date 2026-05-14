@@ -10,7 +10,6 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpServer;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.security.KeyPair;

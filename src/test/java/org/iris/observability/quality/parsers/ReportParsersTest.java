@@ -9,7 +9,6 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.OptionalLong;
 

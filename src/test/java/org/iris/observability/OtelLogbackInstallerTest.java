@@ -2,7 +2,6 @@ package org.iris.observability;
 
 import io.opentelemetry.api.OpenTelemetry;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
