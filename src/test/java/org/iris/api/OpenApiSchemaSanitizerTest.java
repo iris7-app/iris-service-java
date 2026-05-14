@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
  * Unit tests for the OpenApiCustomizer bean exposed by {@link OpenApiConfig}
@@ -192,7 +193,9 @@ class OpenApiSchemaSanitizerTest {
     @Test
     void handlesNullComponentsAndPathsGracefully() {
         // Defensive: an empty OpenAPI must not NPE.
-        customizer.customise(new OpenAPI());
+        // Wrapped in assertThatNoException so Sonar S2699 sees an explicit
+        // assertion. The contract is "no NPE on empty OpenAPI tree".
+        assertThatNoException().isThrownBy(() -> customizer.customise(new OpenAPI()));
     }
 
     @Test

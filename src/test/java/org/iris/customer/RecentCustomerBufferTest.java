@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.inOrder;
@@ -142,8 +143,9 @@ class RecentCustomerBufferTest {
         };
         RecentCustomerBuffer buf = new RecentCustomerBuffer(freshTemplate, brokenMapper);
 
-        // Must not throw. The mapper raises before any Redis call.
-        buf.add(dto(99));
+        // Wrapped in assertThatNoException so Sonar S2699 sees an explicit
+        // assertion. The contract is "swallow Jackson failure, log + continue".
+        assertThatNoException().isThrownBy(() -> buf.add(dto(99)));
     }
 
     /** Test-only subclass to surface JacksonException with a public ctor. */

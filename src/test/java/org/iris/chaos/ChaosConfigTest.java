@@ -4,6 +4,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
  * Unit test for {@link ChaosConfig#kubernetesClient()} — pin the
@@ -41,7 +42,9 @@ class ChaosConfigTest {
         ChaosConfig config = new ChaosConfig();
         KubernetesClient client = config.kubernetesClient();
 
-        // No exception expected
-        client.close();
+        // Wrapped in assertThatNoException so Sonar S2699 sees an explicit
+        // assertion. The contract is "close() never throws when no API call
+        // was made" — verified by the lambda completing without exception.
+        assertThatNoException().isThrownBy(client::close);
     }
 }
