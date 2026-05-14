@@ -14,6 +14,7 @@ import org.springdoc.core.customizers.OpenApiCustomizer;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
  * Unit tests for {@link OpenApiConfig} — the Swagger UI metadata bean
@@ -157,7 +158,9 @@ class OpenApiConfigTest {
         OpenApiCustomizer customizer = config.openApiSchemaSanitizer();
         OpenAPI api = new OpenAPI();
 
-        customizer.customise(api); // must not throw
+        // Wrapped in assertThatNoException so Sonar S2699 sees an explicit
+        // assertion. The contract is "no NPE on empty components tree".
+        assertThatNoException().isThrownBy(() -> customizer.customise(api));
     }
 
     @Test

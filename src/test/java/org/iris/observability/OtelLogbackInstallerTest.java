@@ -46,10 +46,12 @@ class OtelLogbackInstallerTest {
         OpenTelemetry otel = mock(OpenTelemetry.class);
         OtelLogbackInstaller installer = new OtelLogbackInstaller(otel);
 
-        installer.install();
-        installer.install();
-        installer.install();
-
-        // No exception expected
+        // Wrapped in assertThatNoException so Sonar S2699 sees an explicit
+        // assertion. The contract is "install() is idempotent across calls".
+        assertThatNoException().isThrownBy(() -> {
+            installer.install();
+            installer.install();
+            installer.install();
+        });
     }
 }

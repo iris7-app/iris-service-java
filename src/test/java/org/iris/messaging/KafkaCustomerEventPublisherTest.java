@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -109,10 +110,10 @@ class KafkaCustomerEventPublisherTest {
         Throwable rootCause = new RuntimeException("connection refused");
 
         // Method is package-private for exactly this testability reason.
-        publisher.publishCreatedFallback(100L, "Dave", "dave@example.com", rootCause);
-
-        // No exception means the test passes. We don't assert on the log
-        // content here — the method's job is to swallow the error silently.
+        // Wrapped in assertThatNoException so Sonar S2699 sees an explicit
+        // assertion. The contract is "swallow + log, never throw".
+        assertThatNoException().isThrownBy(() ->
+                publisher.publishCreatedFallback(100L, "Dave", "dave@example.com", rootCause));
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────

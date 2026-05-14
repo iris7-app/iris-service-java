@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
  * Unit tests for {@link TestReportInfoContributor} — pin the
@@ -122,9 +123,8 @@ class TestReportInfoContributorTest {
         TestReportInfoContributor contributor = new TestReportInfoContributor();
         Info.Builder builder = new Info.Builder();
 
-        // Just calling contribute(builder) shouldn't throw under any
-        // circumstance — pinned by absence of try/catch in contribute()
-        // would leak the IOException to actuator.
-        contributor.contribute(builder);
+        // Wrapped in assertThatNoException so Sonar S2699 sees an explicit
+        // assertion. The contract is "swallow filesystem errors silently".
+        assertThatNoException().isThrownBy(() -> contributor.contribute(builder));
     }
 }
