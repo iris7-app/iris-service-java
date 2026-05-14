@@ -35,6 +35,11 @@ import java.util.Map;
 @Configuration
 public class OpenApiConfig {
 
+    // Repeated 4× across the sanitizer + example-coercion blocks below
+    // (Sonar S1192). Centralised here so a future rename of the OAS
+    // primitive name (unlikely) only edits one place.
+    private static final String SCHEMA_TYPE_STRING = "string";
+
     @Bean
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "bearerAuth";
@@ -215,7 +220,7 @@ public class OpenApiConfig {
 
         // Case 2: empty string default on a non-string schema (integer, number,
         // boolean, object, array…). Never a valid instance of the declared type.
-        if (defaultValue instanceof String s && s.isEmpty() && type != null && !"string".equals(type)) {
+        if (defaultValue instanceof String s && s.isEmpty() && type != null && !SCHEMA_TYPE_STRING.equals(type)) {
             schema.setDefault(null);
             schema.setDefaultSetFlag(false);
             return;
@@ -225,7 +230,7 @@ public class OpenApiConfig {
         // format (email, uri, date-time, uuid…). Empty string fails the format,
         // which Spectral validates.
         if (defaultValue instanceof String s && s.isEmpty()
-                && "string".equals(type) && schema.getFormat() != null) {
+                && SCHEMA_TYPE_STRING.equals(type) && schema.getFormat() != null) {
             schema.setDefault(null);
             schema.setDefaultSetFlag(false);
         }
@@ -324,7 +329,7 @@ public class OpenApiConfig {
             return example;          // unknown schema type — best-effort, keep example
         }
         boolean alreadyValid = switch (schemaType) {
-            case "string" -> example instanceof String;
+            case SCHEMA_TYPE_STRING -> example instanceof String;
             case "integer" -> example instanceof Integer || example instanceof Long;
             case "number" -> example instanceof Number;
             case "boolean" -> example instanceof Boolean;
@@ -334,7 +339,7 @@ public class OpenApiConfig {
             return example;
         }
         try {
-            if ("string".equals(schemaType)
+            if (SCHEMA_TYPE_STRING.equals(schemaType)
                     && (example instanceof Number || example instanceof Boolean)) {
                 return example.toString();
             }

@@ -20,6 +20,14 @@ import java.util.Map;
 @Service
 public class ChaosToolService {
 
+    // String keys for the structured response Map. Defined as constants
+    // per Sonar S1192 (each was duplicated 3-4 times in the catch blocks
+    // below). The LLM-facing wire format stays identical.
+    private static final String KEY_STATUS = "status";
+    private static final String KEY_ERROR_CODE = "error_code";
+    private static final String KEY_MESSAGE = "message";
+    private static final String STATUS_ERROR = "error";
+
     private final ChaosService chaosService;
 
     public ChaosToolService(ChaosService chaosService) {
@@ -57,15 +65,15 @@ public class ChaosToolService {
         } catch (IllegalArgumentException ex) {
             // Unknown slug — surface the valid list back so the LLM can self-correct.
             return Map.of(
-                    "status", "error",
-                    "error_code", "unknown_scenario",
-                    "message", ex.getMessage()
+                    KEY_STATUS, STATUS_ERROR,
+                    KEY_ERROR_CODE, "unknown_scenario",
+                    KEY_MESSAGE, ex.getMessage()
             );
         }
         try {
             String crName = chaosService.trigger(exp);
             return Map.of(
-                    "status", "triggered",
+                    KEY_STATUS, "triggered",
                     "experiment", exp.slug(),
                     "kind", exp.kind(),
                     "customResourceName", crName,
@@ -74,18 +82,18 @@ public class ChaosToolService {
         } catch (IllegalStateException ex) {
             // Chaos Mesh CRDs not installed (404 from the API).
             return Map.of(
-                    "status", "error",
-                    "error_code", "chaos_mesh_unavailable",
-                    "message", ex.getMessage()
+                    KEY_STATUS, STATUS_ERROR,
+                    KEY_ERROR_CODE, "chaos_mesh_unavailable",
+                    KEY_MESSAGE, ex.getMessage()
             );
         } catch (KubernetesClientException ex) {
             // RBAC denied, conflict, generic API error — surface the code so
             // the LLM can suggest the right remediation (RBAC for 403,
             // re-trigger for 409 conflict, …).
             return Map.of(
-                    "status", "error",
-                    "error_code", "kubernetes_api_error_" + ex.getCode(),
-                    "message", ex.getMessage()
+                    KEY_STATUS, STATUS_ERROR,
+                    KEY_ERROR_CODE, "kubernetes_api_error_" + ex.getCode(),
+                    KEY_MESSAGE, ex.getMessage()
             );
         }
     }

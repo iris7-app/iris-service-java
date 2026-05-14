@@ -67,7 +67,11 @@ public class RingBufferAppenderRegistration implements ApplicationListener<Appli
             return;
         }
 
-        Logger root = context.getLogger(Logger.ROOT_LOGGER_NAME);
+        // org.slf4j.Logger declares ROOT_LOGGER_NAME ; accessing it via the
+        // logback subclass (ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME)
+        // works but Sonar S3252 prefers the declaring class. Functionally
+        // identical — the constant is the literal string "ROOT".
+        Logger root = context.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
         if (root.getAppender(APPENDER_NAME) != null) {
             // Idempotent : a hot-restart of the context (test reloads,
             // Spring DevTools) must not register the same appender twice
