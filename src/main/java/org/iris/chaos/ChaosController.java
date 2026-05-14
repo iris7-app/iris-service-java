@@ -31,6 +31,8 @@ import java.util.Map;
 public class ChaosController {
 
     private static final Logger log = LoggerFactory.getLogger(ChaosController.class);
+    // Repeated key in the error-response bodies — extracted per Sonar S1192.
+    private static final String KEY_ERROR = "error";
 
     private final ChaosService chaosService;
 
@@ -95,20 +97,20 @@ public class ChaosController {
         } catch (IllegalArgumentException e) {
             // Unknown slug — echo the valid list back to help the caller.
             return ResponseEntity.badRequest().body(Map.of(
-                    "error", e.getMessage()));
+                    KEY_ERROR, e.getMessage()));
         } catch (IllegalStateException e) {
             // Chaos Mesh CRDs not registered — actionable message already
             // embedded in the exception (see ChaosService).
             log.warn("chaos_trigger_unavailable experiment={} reason={}",
                     experiment, e.getMessage());
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
-                    "error", e.getMessage()));
+                    KEY_ERROR, e.getMessage()));
         } catch (KubernetesClientException e) {
             // RBAC, conflict, generic API failure — log and surface 500.
             log.error("chaos_trigger_failed experiment={} code={} message={}",
                     experiment, e.getCode(), e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                    "error", "Kubernetes API error: " + e.getMessage(),
+                    KEY_ERROR, "Kubernetes API error: " + e.getMessage(),
                     "code", e.getCode()));
         }
     }
