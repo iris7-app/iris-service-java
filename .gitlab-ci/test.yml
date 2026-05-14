@@ -174,10 +174,21 @@ integration-test:keycloak:
     DOCKER_HOST: ""
     TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
   rules:
+    # Scheduled run with RUN_COMPAT=true → runs the matrix automatically.
+    # Created 2026-05-14 to convert the manual carry-forward item into a
+    # weekly cadence (see project pipeline schedule "compat-matrix-weekly").
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $RUN_COMPAT == "true"
+      when: on_success
+    # Other scheduled pipelines (native-build, reports) explicitly skip
+    # compat — the schedule above is the only entry point.
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
+    # Manual trigger with RUN_COMPAT=true (kept for ad-hoc verification
+    # from the GitLab "Run pipeline" button or local `glab pipeline trigger`).
     - if: $RUN_COMPAT == "true"
       when: on_success
+    # Default on MR/dev/main pipelines : exposed as a manual button —
+    # don't gate green main on a 4×~3min compat run.
     - when: manual
       allow_failure: true
   allow_failure: true
