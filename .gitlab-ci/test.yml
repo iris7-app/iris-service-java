@@ -168,36 +168,40 @@ integration-test:keycloak:
 #   4. Set SONAR_TOKEN in GitLab group CI/CD variables (iris-7 → Settings → CI/CD)
 #
 # sonar.organization and sonar.projectKey are set in pom.xml sonar properties.
-.compat-job: &compat-job
+.compat-job:
   stage: compat
   variables:
     DOCKER_HOST: ""
     TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
-  rules:
-    # Scheduled run with RUN_COMPAT=true → runs the matrix automatically.
-    # Created 2026-05-14 to convert the manual carry-forward item into a
-    # weekly cadence (see project pipeline schedule "compat-matrix-weekly").
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $RUN_COMPAT == "true"
-      when: on_success
-    # Other scheduled pipelines (native-build, reports) explicitly skip
-    # compat — the schedule above is the only entry point.
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    # Manual trigger with RUN_COMPAT=true (kept for ad-hoc verification
-    # from the GitLab "Run pipeline" button or local `glab pipeline trigger`).
-    - if: $RUN_COMPAT == "true"
-      when: on_success
-    # Default on MR/dev/main pipelines : exposed as a manual button —
-    # don't gate green main on a 4×~3min compat run.
-    - when: manual
-      allow_failure: true
+  # NOTE : rules are kept inline in each compat-sb*-java* job below rather
+  # than here in the base template. Reason : `extends: .compat-job` merges
+  # rules from the parent at YAML-parse time, but schedule-source pipelines
+  # had an inconsistent rule evaluation context — RUN_COMPAT=true was set
+  # on the schedule but the rule never matched, producing a 0-job pipeline
+  # (observed 2026-05-14 on java schedule pipeline #1094/#1096). Inlining
+  # the rules on each job mirrors the python mutation-test pattern which
+  # works correctly. The rule block is duplicated 4× — accept the small
+  # YAML drift for the schedule reliability.
   allow_failure: true
 
+# Compat-job rules block — DUPLICATED on each of the 4 compat-* jobs.
+# See the `.compat-job` template comment above for why the rules can't
+# live on the parent (YAML-anchor / extends rule inheritance + schedule
+# source = 0-job pipeline). 4-way duplication is the pragmatic cost.
 compat-sb4-java21:
-  <<: *compat-job
+  extends: .compat-job
   image: maven:3.9.14-eclipse-temurin-21-noble
   variables:
     MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $RUN_COMPAT == "true"
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $RUN_COMPAT == "true"
+      when: on_success
+    - when: manual
+      allow_failure: true
   script:
     - mvn $MAVEN_CLI_OPTS verify -Dcompat
   artifacts:
@@ -209,10 +213,19 @@ compat-sb4-java21:
     expire_in: 1 week
 
 compat-sb4-java17:
-  <<: *compat-job
+  extends: .compat-job
   image: maven:3.9.14-eclipse-temurin-17-noble
   variables:
     MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $RUN_COMPAT == "true"
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $RUN_COMPAT == "true"
+      when: on_success
+    - when: manual
+      allow_failure: true
   script:
     - mvn $MAVEN_CLI_OPTS verify -Dcompat -Djava17
   artifacts:
@@ -224,10 +237,19 @@ compat-sb4-java17:
     expire_in: 1 week
 
 compat-sb3-java21:
-  <<: *compat-job
+  extends: .compat-job
   image: maven:3.9.14-eclipse-temurin-21-noble
   variables:
     MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $RUN_COMPAT == "true"
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $RUN_COMPAT == "true"
+      when: on_success
+    - when: manual
+      allow_failure: true
   script:
     - mvn $MAVEN_CLI_OPTS verify -Dsb3
   artifacts:
@@ -239,10 +261,19 @@ compat-sb3-java21:
     expire_in: 1 week
 
 compat-sb3-java17:
-  <<: *compat-job
+  extends: .compat-job
   image: maven:3.9.14-eclipse-temurin-17-noble
   variables:
     MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $RUN_COMPAT == "true"
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $RUN_COMPAT == "true"
+      when: on_success
+    - when: manual
+      allow_failure: true
   script:
     - mvn $MAVEN_CLI_OPTS verify -Dsb3 -Djava17
   artifacts:
