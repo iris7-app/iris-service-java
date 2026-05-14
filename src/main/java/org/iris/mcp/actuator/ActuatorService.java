@@ -196,8 +196,10 @@ public class ActuatorService {
         if (infoEndpoint == null) {
             return Map.of();
         }
-        Map<String, Object> info = infoEndpoint.info();
-        return info == null ? Map.of() : Map.copyOf(info);
+        // Spring Boot's InfoEndpoint#info() returns a Map (never null) ; the
+        // null-check that used to live here was Sonar-flagged S2583 (dead
+        // branch). Cleaned up 2026-05-14.
+        return Map.copyOf(infoEndpoint.info());
     }
 
     /**
