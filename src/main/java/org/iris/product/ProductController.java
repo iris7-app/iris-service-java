@@ -57,7 +57,11 @@ public class ProductController {
      * unfiltered listing — same shape as before the search support
      * landed, so existing callers keep working unchanged.
      */
-    @Operation(summary = "List products (paginated, optional search)")
+    @Operation(summary = "List products (paginated, optional search)",
+            description = "Returns Page<ProductDto>. Default page size = 20. "
+                    + "Optional ?search=TERM does a case-insensitive LIKE on name "
+                    + "+ description (Postgres ILIKE under the hood). Empty or blank "
+                    + "search param falls through to unfiltered listing.")
     @GetMapping
     public Page<ProductDto> list(
             @RequestParam(required = false) String search,
@@ -68,7 +72,9 @@ public class ProductController {
         return repo.search(search.trim(), pageable).map(ProductDto::from);
     }
 
-    @Operation(summary = "Get product by ID")
+    @Operation(summary = "Get product by ID",
+            description = "Returns 200 + ProductDto if found, 404 with ProblemDetail if not. "
+                    + "Read-only ; no stock-quantity refresh or side effects.")
     @GetMapping("/{id}")
     public ResponseEntity<ProductDto> get(@PathVariable Long id) {
         return repo.findById(id)
@@ -77,7 +83,10 @@ public class ProductController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create a product")
+    @Operation(summary = "Create a product",
+            description = "Body : CreateProductRequest (name, description, unitPrice, stockQuantity). "
+                    + "Returns 201 + ProductDto. Bean validation enforces non-blank name, "
+                    + "non-negative price + stock_quantity (matching the DB CHECK constraint).")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ProductDto create(@Valid @RequestBody CreateProductRequest req) {
@@ -98,7 +107,11 @@ public class ProductController {
      *
      * <p>Returns 404 if the product doesn't exist (no implicit upsert).
      */
-    @Operation(summary = "Update a product (partial body — fields supplied are replaced)")
+    @Operation(summary = "Update a product (partial body — fields supplied are replaced)",
+            description = "Body : CreateProductRequest. Fields supplied in the body replace "
+                    + "the persisted values. Returns 200 + ProductDto on success, 404 if missing. "
+                    + "Per ADR-0059 : changing unitPrice DOES NOT mutate the OrderLine snapshot "
+                    + "(unitPriceAtOrder is immutable to preserve historical totals).")
     @PutMapping("/{id}")
     public ResponseEntity<ProductDto> update(
             @PathVariable Long id,
@@ -115,7 +128,11 @@ public class ProductController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Delete a product")
+    @Operation(summary = "Delete a product",
+            description = "Idempotent ; returns 204 whether or not the id existed. "
+                    + "Will FAIL with 409 if the product is referenced by any OrderLine "
+                    + "(no CASCADE on the product → order_line FK ; we intentionally preserve "
+                    + "historical orders even if the catalog entry is gone).")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
@@ -134,7 +151,12 @@ public class ProductController {
      * empty page is the legitimate result for an existing but unsold
      * product.
      */
-    @Operation(summary = "List orders that contain at least one line for this product")
+    @Operation(summary = "List orders that contain at least one line for this product",
+            description = "Returns Page<OrderDto> of orders containing ≥1 OrderLine for the "
+                    + "given product. Returns 404 if the product itself doesn't exist (avoids "
+                    + "silent empty result on typo). Empty page = legitimate result for an "
+                    + "existing but unsold product. Replaces the UI-side fan-out previously in "
+                    + "ProductDetailComponent#findConsumerOrders.")
     @GetMapping("/{id}/orders")
     public ResponseEntity<Page<OrderDto>> ordersForProduct(
             @PathVariable Long id,

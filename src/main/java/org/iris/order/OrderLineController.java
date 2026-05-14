@@ -49,7 +49,9 @@ public class OrderLineController {
         this.productRepo = productRepo;
     }
 
-    @Operation(summary = "List all lines of an order")
+    @Operation(summary = "List all lines of an order",
+            description = "Returns List<OrderLineDto> in insertion order (line id ASC). "
+                    + "Empty list if the order exists but has no lines yet (returns 200 + []).")
     @GetMapping
     public List<OrderLineDto> list(@PathVariable Long orderId) {
         return lineRepo.findByOrderIdOrderByIdAsc(orderId).stream()
@@ -57,7 +59,12 @@ public class OrderLineController {
                 .toList();
     }
 
-    @Operation(summary = "Add a line to an order (snapshots Product.unitPrice + recomputes Order.total)")
+    @Operation(summary = "Add a line to an order (snapshots Product.unitPrice + recomputes Order.total)",
+            description = "Body : CreateOrderLineRequest (productId, quantity). "
+                    + "Returns 201 + OrderLineDto. Snapshots the current Product.unitPrice into "
+                    + "OrderLine.unitPriceAtOrder so later price changes don't mutate historical "
+                    + "totals (ADR-0059). Transactional : recomputes Order.totalAmount within the "
+                    + "same write txn. 400 if order or product is missing.")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
@@ -82,7 +89,10 @@ public class OrderLineController {
         return OrderLineDto.from(saved);
     }
 
-    @Operation(summary = "Delete a line from an order (recomputes Order.total)")
+    @Operation(summary = "Delete a line from an order (recomputes Order.total)",
+            description = "Idempotent ; returns 204 whether or not the lineId existed. "
+                    + "Transactional : recomputes Order.totalAmount within the same write txn "
+                    + "so the parent invariant (total = sum(unitPriceAtOrder × quantity)) holds.")
     @DeleteMapping("/{lineId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Transactional
