@@ -46,7 +46,11 @@ public class ChaosController {
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "List available chaos experiments")
+    @Operation(summary = "List available chaos experiments",
+            description = "Returns the static catalog of ChaosExperiment enum values "
+                    + "(slug, kind, duration). ADMIN-only — chaos triggers can take "
+                    + "the cluster down, no anonymous read either. Read-only endpoint, "
+                    + "no Kubernetes API call.")
     public ResponseEntity<Map<String, Object>> catalog() {
         return ResponseEntity.ok(Map.of(
                 "experiments", Arrays.stream(ChaosExperiment.values())
@@ -72,7 +76,12 @@ public class ChaosController {
      */
     @PostMapping("/{experiment}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Trigger a chaos experiment")
+    @Operation(summary = "Trigger a chaos experiment",
+            description = "Creates a Chaos Mesh CR with a unique timestamped name ; CR "
+                    + "auto-deletes after the experiment duration. Returns 200 + CR name "
+                    + "on success, 400 for unknown slug, 503 if Chaos Mesh CRDs aren't "
+                    + "installed, 500 for other K8s API failures (RBAC, conflict). "
+                    + "ADMIN-only.")
     public ResponseEntity<Map<String, Object>> trigger(@PathVariable String experiment) {
         try {
             ChaosExperiment exp = ChaosExperiment.fromSlug(experiment);

@@ -41,13 +41,18 @@ public class OrderController {
         this.repo = repo;
     }
 
-    @Operation(summary = "List orders (paginated)")
+    @Operation(summary = "List orders (paginated)",
+            description = "Returns a Spring Data Page<OrderDto>. Default page size = 20. "
+                    + "Pagination params : ?page=N&size=M&sort=field,asc|desc. "
+                    + "Empty result returns 200 + empty content list (no 404).")
     @GetMapping
     public Page<OrderDto> list(@PageableDefault(size = 20) Pageable pageable) {
         return repo.findAll(pageable).map(OrderDto::from);
     }
 
-    @Operation(summary = "Get order by ID")
+    @Operation(summary = "Get order by ID",
+            description = "Returns 200 + OrderDto if found, 404 with ProblemDetail body "
+                    + "if no order matches the path id. Read-only ; no side effects.")
     @GetMapping("/{id}")
     public ResponseEntity<OrderDto> get(@PathVariable Long id) {
         return repo.findById(id)
@@ -56,7 +61,10 @@ public class OrderController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create a new (empty) order — lines added via /orders/{id}/lines (follow-up MR)")
+    @Operation(summary = "Create a new (empty) order — lines added via /orders/{id}/lines (follow-up MR)",
+            description = "Creates an Order in PENDING state with totalAmount=0. "
+                    + "Body : CreateOrderRequest (customerId only). Returns 201 + OrderDto. "
+                    + "Lines are added separately via POST /orders/{id}/lines.")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OrderDto create(@Valid @RequestBody CreateOrderRequest req) {
@@ -115,7 +123,11 @@ public class OrderController {
         return ResponseEntity.ok(OrderDto.from(saved));
     }
 
-    @Operation(summary = "Delete an order (CASCADE deletes its lines per V9 ON DELETE CASCADE)")
+    @Operation(summary = "Delete an order (CASCADE deletes its lines per V9 ON DELETE CASCADE)",
+            description = "Idempotent ; returns 204 whether or not the id existed. "
+                    + "Foreign-key CASCADE removes child OrderLine rows automatically "
+                    + "(Flyway migration V9). Use only after confirming no fulfillment "
+                    + "downstream — there is no soft-delete + no audit trail on this endpoint.")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
