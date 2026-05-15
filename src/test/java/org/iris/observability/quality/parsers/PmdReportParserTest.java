@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 3=Low), and includes one violation in a file path with no `/` (tests
  * the no-slash branch of the filename shortener).
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class PmdReportParserTest {
 
     private final PmdReportParser parser = new PmdReportParser();

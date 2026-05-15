@@ -36,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @see <a href="https://gitlab.com/iris-7/iris-service-shared/-/blob/main/docs/adr/0059-customer-order-product-data-model.md">ADR-0059</a>
  */
 @AutoConfigureMockMvc
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class ProductHttpITest extends AbstractIntegrationTest {
 
     @Autowired

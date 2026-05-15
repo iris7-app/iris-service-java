@@ -57,6 +57,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // `mvn verify -Dgroups=keycloak-heavy` (or the
 // `integration-test:keycloak` weekly schedule) opts in.
 @Tag("keycloak-heavy")
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class KeycloakAuthITest extends AbstractIntegrationTest {
 
     /**

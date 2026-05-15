@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
  * <p>JdbcTemplate is mocked: actual DB access is integration territory.
  * Each test runs in milliseconds.
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class SecurityDemoControllerTest {
 
     private JdbcTemplate jdbcTemplate;

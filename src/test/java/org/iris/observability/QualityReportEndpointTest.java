@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
  *   - JAR layers section (BOOT-INF/layers.idx classpath read)
  */
 // eslint-disable-next-line max-lines-per-function
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class QualityReportEndpointTest {
 
     private RequestMappingHandlerMapping handlerMapping;

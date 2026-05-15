@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  * tests cover the boot-without-model and validation paths that must
  * never crash the application.
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class ChurnPredictorTest {
 
     @Test

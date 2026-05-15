@@ -29,6 +29,7 @@ import static org.mockito.Mockito.mock;
  *   - Security headers exposed for the Angular Security Demo
  */
 // eslint-disable-next-line max-lines-per-function
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class SecurityConfigTest {
 
     private SecurityConfig newConfig(List<String> origins) {

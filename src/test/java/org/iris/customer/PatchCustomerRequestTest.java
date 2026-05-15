@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * contract) but values that ARE provided still pass through their
  * format constraints.
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class PatchCustomerRequestTest {
 
     private static ValidatorFactory factory;

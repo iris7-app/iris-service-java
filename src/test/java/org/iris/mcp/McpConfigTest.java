@@ -37,6 +37,7 @@ import static org.mockito.Mockito.mock;
  *       services.</li>
  * </ul>
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class McpConfigTest {
 
     private final McpConfig config = new McpConfig();

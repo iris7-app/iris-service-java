@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * STYLE), 3 priorities (1=High, 2=Normal, 3=Low), and one entry without
  * a package-qualified class name (tests the fallback branch).
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class SpotBugsReportParserTest {
 
     private final SpotBugsReportParser parser = new SpotBugsReportParser();

@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
  *   - endpoints sorted by path asc (stable dashboard order)
  *   - handler = ClassSimpleName.methodName (used as the dashboard label)
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class ApiSectionProviderTest {
 
     private static Method sampleMethod() throws NoSuchMethodException {

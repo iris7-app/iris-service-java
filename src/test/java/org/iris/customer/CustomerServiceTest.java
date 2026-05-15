@@ -33,6 +33,7 @@ import static org.mockito.Mockito.when;
  * <p>All collaborators mocked — no Spring context, no PostgreSQL,
  * no Kafka, no Redis. Each test runs in milliseconds.
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class CustomerServiceTest {
 
     private CustomerRepository repository;

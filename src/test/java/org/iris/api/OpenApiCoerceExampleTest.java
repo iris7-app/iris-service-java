@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 104 instructions missed in coerceExample at stable-v1.2.17 ; these tests
  * push class coverage past 95 %.
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class OpenApiCoerceExampleTest {
 
     private final OpenApiCustomizer customizer = new OpenApiConfig().openApiSchemaSanitizer();

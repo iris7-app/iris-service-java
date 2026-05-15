@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * {@link SseEmitterRegistry#send(String, Object)} and the {@code @Scheduled}
  * {@link SseEmitterRegistry#ping()} method were uncovered.
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class SseEmitterRegistryTest {
 
     private final SseEmitterRegistry registry = new SseEmitterRegistry();
