@@ -62,8 +62,8 @@ class OpenApiServiceTest {
         OpenApiService service = new OpenApiService(openApi);
 
         OpenApiSummary summary = (OpenApiSummary) service.getSpec(true);
-        assertThat(summary.info().title()).isEqualTo("");
-        assertThat(summary.info().version()).isEqualTo("");
+        assertThat(summary.info().title()).isEmpty();
+        assertThat(summary.info().version()).isEmpty();
         assertThat(summary.pathsByVerb()).containsKey("GET");
     }
 

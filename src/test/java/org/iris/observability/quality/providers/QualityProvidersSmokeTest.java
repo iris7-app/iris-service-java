@@ -26,7 +26,7 @@ class QualityProvidersSmokeTest {
         Map<String, Object> r = new ApiSectionProvider(mapping).parse();
         assertThat(r).isNotNull().containsKey("available");
         // With no handlers registered, total = 0 and endpoints list is empty.
-        assertThat(r.get("total")).isEqualTo(0);
+        assertThat(r).containsEntry("total", 0);
     }
 
     @Test

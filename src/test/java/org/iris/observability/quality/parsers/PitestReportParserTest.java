@@ -87,7 +87,7 @@ class PitestReportParserTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Integer> byStatus = (Map<String, Integer>) result.get("byStatus");
-        assertThat(byStatus.get("NO_COVERAGE")).isEqualTo(1);
+        assertThat(byStatus).containsEntry("NO_COVERAGE", 1);
     }
 
     @Test

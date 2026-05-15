@@ -132,6 +132,6 @@ class ChaosControllerTest {
         Map<String, Object> body = response.getBody();
         assertThat(body).isNotNull();
         assertThat((String) body.get("error")).contains("Kubernetes API error");
-        assertThat(body.get("code")).isEqualTo(HttpStatus.FORBIDDEN.value());
+        assertThat(body).containsEntry("code", HttpStatus.FORBIDDEN.value());
     }
 }
