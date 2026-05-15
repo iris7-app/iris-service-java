@@ -53,6 +53,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 public class SecurityConfig {
 
     // Sonar java:S1192 — centralise frequently-repeated string literals.

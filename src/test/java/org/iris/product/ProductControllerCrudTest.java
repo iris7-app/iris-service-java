@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
  * <p>Pure Mockito ; no Spring context. Closes the JaCoCo gap on the
  * {@code get / create / update / delete} branches.
  */
+@SuppressWarnings("java:S125")  // Prose comments with code-like glyphs (arrows, backticks, paren) — not actual commented-out code.
 class ProductControllerCrudTest {
 
     private ProductRepository repo;
