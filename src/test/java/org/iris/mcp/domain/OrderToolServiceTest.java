@@ -93,8 +93,8 @@ class OrderToolServiceTest {
         assertThat(result).isInstanceOf(Map.class);
         @SuppressWarnings("unchecked")
         Map<String, Object> sentinel = (Map<String, Object>) result;
-        assertThat(sentinel.get("status")).isEqualTo("not_found");
-        assertThat(sentinel.get("id")).isEqualTo(99L);
+        assertThat(sentinel).containsEntry("status", "not_found");
+        assertThat(sentinel).containsEntry("id", 99L);
     }
 
     @Test

@@ -125,7 +125,7 @@ class QualityReportEndpointTest {
 
         Map<String, Object> result = endpoint.report();
 
-        assertThat(result.get("build")).isEqualTo(custom);
+        assertThat(result).containsEntry("build", custom);
     }
 
     @Test
@@ -140,7 +140,7 @@ class QualityReportEndpointTest {
 
         Map<String, Object> result = endpoint.report();
 
-        assertThat(result.get("api")).isEqualTo(custom);
+        assertThat(result).containsEntry("api", custom);
     }
 
     @Test

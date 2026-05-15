@@ -34,17 +34,17 @@ class ChaosToolServiceTest {
                 .thenReturn("iris-pod-kill-1730000000000");
 
         Map<String, Object> result = tool.triggerChaosExperiment("pod-kill");
-        assertThat(result.get("status")).isEqualTo("triggered");
-        assertThat(result.get("experiment")).isEqualTo("pod-kill");
-        assertThat(result.get("kind")).isEqualTo("PodChaos");
-        assertThat(result.get("customResourceName")).isEqualTo("iris-pod-kill-1730000000000");
+        assertThat(result).containsEntry("status", "triggered");
+        assertThat(result).containsEntry("experiment", "pod-kill");
+        assertThat(result).containsEntry("kind", "PodChaos");
+        assertThat(result).containsEntry("customResourceName", "iris-pod-kill-1730000000000");
     }
 
     @Test
     void unknownSlugReturnsErrorWithList() {
         Map<String, Object> result = tool.triggerChaosExperiment("not-a-thing");
-        assertThat(result.get("status")).isEqualTo("error");
-        assertThat(result.get("error_code")).isEqualTo("unknown_scenario");
+        assertThat(result).containsEntry("status", "error");
+        assertThat(result).containsEntry("error_code", "unknown_scenario");
         assertThat(result.get("message")).asString()
                 .contains("Unknown chaos experiment");
     }
@@ -55,8 +55,8 @@ class ChaosToolServiceTest {
                 .thenThrow(new IllegalStateException("Chaos Mesh CRDs not installed"));
 
         Map<String, Object> result = tool.triggerChaosExperiment("pod-kill");
-        assertThat(result.get("status")).isEqualTo("error");
-        assertThat(result.get("error_code")).isEqualTo("chaos_mesh_unavailable");
+        assertThat(result).containsEntry("status", "error");
+        assertThat(result).containsEntry("error_code", "chaos_mesh_unavailable");
     }
 
     @Test
@@ -65,7 +65,7 @@ class ChaosToolServiceTest {
         when(chaosService.trigger(ChaosExperiment.NETWORK_DELAY)).thenThrow(ex);
 
         Map<String, Object> result = tool.triggerChaosExperiment("network-delay");
-        assertThat(result.get("status")).isEqualTo("error");
-        assertThat(result.get("error_code")).isEqualTo("kubernetes_api_error_403");
+        assertThat(result).containsEntry("status", "error");
+        assertThat(result).containsEntry("error_code", "kubernetes_api_error_403");
     }
 }

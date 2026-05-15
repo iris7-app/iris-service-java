@@ -52,13 +52,12 @@ class ActuatorServiceTest {
         when(envProvider.snapshot(null)).thenReturn(raw);
 
         EnvSnapshot snap = service.getEnv(null);
-        assertThat(snap.properties().get("spring.datasource.url"))
-                .isEqualTo("jdbc:postgresql://localhost/demo");
-        assertThat(snap.properties().get("spring.datasource.password")).isEqualTo("***");
-        assertThat(snap.properties().get("auth0.client.secret")).isEqualTo("***");
-        assertThat(snap.properties().get("custom.api.token")).isEqualTo("***");
-        assertThat(snap.properties().get("private.key.pem")).isEqualTo("***");
-        assertThat(snap.properties().get("any.credential.expiry")).isEqualTo("***");
+        assertThat(snap.properties()).containsEntry("spring.datasource.url", "jdbc:postgresql://localhost/demo");
+        assertThat(snap.properties()).containsEntry("spring.datasource.password", "***");
+        assertThat(snap.properties()).containsEntry("auth0.client.secret", "***");
+        assertThat(snap.properties()).containsEntry("custom.api.token", "***");
+        assertThat(snap.properties()).containsEntry("private.key.pem", "***");
+        assertThat(snap.properties()).containsEntry("any.credential.expiry", "***");
     }
 
     @Test

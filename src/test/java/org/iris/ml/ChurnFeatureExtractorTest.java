@@ -39,7 +39,7 @@ class ChurnFeatureExtractorTest {
         // 0 = corporate (default), 1 = mainstream, 2 = disposable, 3 = unknown.
         assertThat(ChurnFeatureExtractor.classifyEmailDomain("alice@gmail.com")).isEqualTo(1);
         assertThat(ChurnFeatureExtractor.classifyEmailDomain("alice@TEMPMAIL.com")).isEqualTo(2);
-        assertThat(ChurnFeatureExtractor.classifyEmailDomain("alice@acme-corp.example")).isEqualTo(0);
+        assertThat(ChurnFeatureExtractor.classifyEmailDomain("alice@acme-corp.example")).isZero();
         assertThat(ChurnFeatureExtractor.classifyEmailDomain("")).isEqualTo(3);
         assertThat(ChurnFeatureExtractor.classifyEmailDomain(null)).isEqualTo(3);
         assertThat(ChurnFeatureExtractor.classifyEmailDomain("not-an-email")).isEqualTo(3);

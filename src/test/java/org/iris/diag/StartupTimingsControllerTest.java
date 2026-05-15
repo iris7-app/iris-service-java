@@ -55,8 +55,8 @@ class StartupTimingsControllerTest {
         Map<String, Object> body = controller.startupTimings().getBody();
 
         assertThat(body).isNotNull();
-        assertThat(body.get("totalBootMs")).isEqualTo(1234L);
-        assertThat(body.get("readyAt")).isEqualTo("2026-04-23T00:30:00Z");
+        assertThat(body).containsEntry("totalBootMs", 1234L);
+        assertThat(body).containsEntry("readyAt", "2026-04-23T00:30:00Z");
     }
 
     @Test
@@ -72,7 +72,7 @@ class StartupTimingsControllerTest {
 
         assertThat(body).isNotNull();
         assertThat(body.get("readyAt")).isNull();
-        assertThat(body.get("totalBootMs")).isEqualTo(-1L);
+        assertThat(body).containsEntry("totalBootMs", -1L);
     }
 
     @Test

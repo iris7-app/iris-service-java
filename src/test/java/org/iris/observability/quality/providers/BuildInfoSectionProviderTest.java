@@ -49,7 +49,7 @@ class BuildInfoSectionProviderTest {
         // the project's friendly name.
         Map<String, Object> result = provider.parse();
 
-        assertThat(result.get("artifact")).isEqualTo("iris");
+        assertThat(result).containsEntry("artifact", "iris");
     }
 
     @Test
@@ -58,8 +58,7 @@ class BuildInfoSectionProviderTest {
         // running the tests (today: Java 25 in Phase B / Java 21 in compat).
         Map<String, Object> result = provider.parse();
 
-        assertThat(result.get("javaVersion"))
-                .isEqualTo(System.getProperty("java.version"));
+        assertThat(result).containsEntry("javaVersion", System.getProperty("java.version"));
     }
 
     @Test
@@ -69,6 +68,6 @@ class BuildInfoSectionProviderTest {
         // both fields; both must reflect the same string for consistency.
         Map<String, Object> result = provider.parse();
 
-        assertThat(result.get("springBootVersion")).isEqualTo(result.get("version"));
+        assertThat(result).containsEntry("springBootVersion", result.get("version"));
     }
 }
