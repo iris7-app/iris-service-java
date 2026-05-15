@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
  * other caches.
  */
 @Service
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public class MetricsService {
 
     /** Caffeine cache name — declared in {@code application.yml}. */

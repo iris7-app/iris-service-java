@@ -39,6 +39,7 @@ import java.util.Objects;
  * <p>[Spring Boot 3+ / spring-data-redis]
  */
 @Service
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public class RecentCustomerBuffer {
 
     private static final Logger log = LoggerFactory.getLogger(RecentCustomerBuffer.class);

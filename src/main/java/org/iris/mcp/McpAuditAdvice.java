@@ -53,6 +53,7 @@ import java.util.Map;
  */
 @Aspect
 @Component
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public class McpAuditAdvice {
 
     private static final Logger log = LoggerFactory.getLogger(McpAuditAdvice.class);

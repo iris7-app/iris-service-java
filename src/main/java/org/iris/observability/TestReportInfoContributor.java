@@ -29,6 +29,7 @@ import org.w3c.dom.Element;
  * without running a separate CI pipeline.
  */
 @Component
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public class TestReportInfoContributor implements InfoContributor {
 
     private static final String REPORTS_DIR = "target/surefire-reports";

@@ -66,6 +66,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  */
 @Component
 @Endpoint(id = "quality")
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public class QualityReportEndpoint {
 
     private static final DateTimeFormatter TS_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
