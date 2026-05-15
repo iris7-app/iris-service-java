@@ -40,6 +40,7 @@ import org.springframework.stereotype.Component;
  * COMPLEXITY_MISSED, COMPLEXITY_COVERED, METHOD_MISSED, METHOD_COVERED.
  */
 @Component
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public class JacocoReportParser {
 
     private static final String CP_JACOCO       = "META-INF/build-reports/jacoco.csv";

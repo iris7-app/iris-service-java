@@ -47,6 +47,7 @@ import org.springframework.stereotype.Component;
  * </ol>
  */
 @Component
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public class MetricsSectionProvider {
 
     private static final String CP_JACOCO       = "META-INF/build-reports/jacoco.csv";

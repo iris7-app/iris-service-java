@@ -32,6 +32,7 @@ import org.springframework.context.annotation.Configuration;
  * show how the in-memory buffer fills up over time.
  */
 @Configuration
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public class ObservabilityConfig {
 
     /**

@@ -48,6 +48,7 @@ import org.w3c.dom.NodeList;
  * the caller passes in). Making this a {@code @Component} would buy
  * nothing and cost a Spring context in unit tests.
  */
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public final class ReportParsers {
 
     private ReportParsers() { /* static-only helper */ }

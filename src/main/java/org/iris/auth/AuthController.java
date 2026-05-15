@@ -57,6 +57,7 @@ import java.util.Map;
 @SecurityRequirements   // these endpoints are permit-all, no JWT required
 @RestController
 @RequestMapping("/auth")
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);

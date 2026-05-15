@@ -33,6 +33,7 @@ import java.util.Map;
  * </ul>
  */
 @Configuration
+@SuppressWarnings("java:S7467")  // Unnamed patterns (_) are Java 22+ stable ; compat matrix builds on Java 17/21 so we keep the named ignored variable.
 public class OpenApiConfig {
 
     // Repeated 4× across the sanitizer + example-coercion blocks below
